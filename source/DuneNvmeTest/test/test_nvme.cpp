@@ -1,17 +1,25 @@
 /*******************************************************************************
  *	test_nvme.cpp	Test of FPGA NVME access over PCIe DMA channels
  *	T.Barnaby,	Beam Ltd,	2020-03-01
- *	Copyright (c) 2020 All Right Reserved, Beam Ltd, http://www.beam.ltd.uk
  *******************************************************************************
+ */
+/**
+ * @file	test_nvme.cpp
+ * @author	Terry Barnaby <terry.barnaby@beam.ltd.uk>
+ * @date	2020-03-13
+ * @version	0.0.1
  *
+ * @brief
  * This is a simple test program that uses the Xilinx xdma Linux driver to access
- * an Nvme device on a KCU105 with the test009-nvme bit file running.
+ *
+ * @details
+ * an Nvme device on a KCU105 with the DuneNvmeStorageTest bit file running.
  * The system allows an NVMe situtated on the Xilinx KCU105 to be accessed and experimented with. It implements the following:
- *	Configuration of the NVMe PCIe configuration space registers.
- *	Accessing the NVMe registers
- *	Configuration of the NVMe via registers.
- *	Sending Admin commands to the NVMe via the admin request/completion shared memory queues. This includes configuration commands.
- *	Sending of read and write IO commands to the NVMe via IO request/completion shared memory queues.
+ *  - Configuration of the NVMe PCIe configuration space registers.
+ *  - Accessing the NVMe registers.
+ *  - Configuration of the NVMe via registers.
+ *  - Sending Admin commands to the NVMe via the admin request/completion shared memory queues. This includes configuration commands.
+ *  - Sending of read and write IO commands to the NVMe via IO request/completion shared memory queues.
  *
  * There is access to the memory mappend NvmeStorage registers and there are two bi-directional DMA streams.
  * The first set of DMA streams send and receive packets to/from the NVMe encapsulated in the Xilinx PCIe DMA IP's headers.
@@ -19,6 +27,19 @@
  *
  * The program accesses the FPGA test009-nvme system over the hosts PCIe bus using the Beam bfpga Linux driver. This interfaces with the Xilinx PCIe DMA IP.
  * The program uses a thread to respond to VNMe requests. Note there is no thread data synchronisation code.
+ *
+ * @copyright GNU GPL License
+ * Copyright (c) Beam Ltd, All rights reserved. <br>
+ * This code is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details. <br>
+ * You should have received a copy of the GNU General Public License
+ * along with this code. If not, see <https://www.gnu.org/licenses/>.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -109,6 +130,7 @@ void hd32(void* data,BUInt32 n){
 	printf("\n");
 }
 
+/// Overal operation control class.
 class Control {
 public:
 			Control();
