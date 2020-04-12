@@ -62,12 +62,12 @@ port (
 	reset		: in std_logic;					--! The reset line
 
 	-- AXIS Interface to PCIE
-	hostReq		: inout AxisStream	:= AxisInput;		--! Host request stream
-	hostReply	: inout AxisStream	:= AxisOutput;		--! Host reply stream
+	hostReq		: inout AxisStream := AxisInput;		--! Host request stream
+	hostReply	: inout AxisStream := AxisOutput;		--! Host reply stream
 
 	-- From Nvme reqeuest and reply stream
-	nvmeReq		: inout AxisStream	:= AxisOutput;		--! Nvme request stream (bus master)
-	nvmeReply	: inout AxisStream	:= AxisInput		--! Nvme reply stream
+	nvmeReq		: inout AxisStream := AxisOutput;		--! Nvme request stream (bus master)
+	nvmeReply	: inout AxisStream := AxisInput		--! Nvme reply stream
 );
 end;
 
@@ -98,7 +98,7 @@ signal chunkCount		: unsigned(10 downto 0);
 begin
 	-- Register access
 	hostReply.data(63 downto 32) <=	(others => '0');
-	hostReply.data(31 downto 0) <=	reg_pci_command when address = "0000" else x"FFFFFFFF";
+	hostReply.data(31 downto 0) <= reg_pci_command when address = "0000" else x"FFFFFFFF";
 		
 	hostRequest <= to_PcieRequestHead(hostReq.data);
 	nvmeReq.data <= to_stl(nvmeRequest);
@@ -115,7 +115,9 @@ begin
 				reg_io2_queue	<= (others => '0');
 				hostReq.ready	<= '0';
 				hostReply.valid <= '0';
+				hostReply.last <= '0';
 				nvmeReq.valid	<= '0';
+				nvmeReq.last	<= '0';
 				nvmeReply.ready <= '0';
 				state		<= STATE_IDLE;
 			else
@@ -172,10 +174,12 @@ begin
 					nvmeRequest.request	<= "0000";
 					nvmeRequest.count	<= to_unsigned(16#000F#, nvmeRequest.count'length);
 					nvmeReq.valid 		<= '1';
+					nvmeReq.last 		<= '1';
 					
 					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
 						count		<= nvmeRequest.count + 1;	-- Note ignoring 1 DWord in first 128 bits
 						nvmeReq.valid 	<= '0';
+						nvmeReq.last 	<= '0';
 						nvmeReply.ready <= '1';
 						state		<= STATE_READ_QUEUE;
 					end if;

@@ -19,6 +19,8 @@ FPGA_TOP	= DuneNvmeTestTop
 SYN_FILES	= ../src/AxiPkg.vhd ../src/NvmeStoragePkg.vhd
 SYN_FILES	+= ../src/AxilClockConverter.vhd
 SYN_FILES	+= ../src/AxisClockConverter.vhd
+SYN_FILES	+= ../src/AxisStreamMux.vhd
+SYN_FILES	+= ../src/AxisStreamDeMux.vhd
 SYN_FILES	+= ../src/NvmeStorage.vhd
 SYN_FILES	+= ../src/DuneNvmeTestTop.vhd
 

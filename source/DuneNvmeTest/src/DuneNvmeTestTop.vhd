@@ -186,12 +186,8 @@ port (
 	axilOut		: out AxilToMaster;
 
 	-- From host to NVMe request/reply streams
-	hostReq		: inout AxisStream	:= AxisInput;
-	hostReply	: inout AxisStream	:= AxisOutput;                        
-	
-	-- From Nvme to host request/reply streams
-	nvmeReq		: inout AxisStream	:= AxisOutput;
-	nvmeReply	: inout AxisStream	:= AxisInput;                        
+	hostSend	: inout AxisStream := AxisInput;
+	hostRecv	: inout AxisStream := AxisOutput;                        
 	
 	-- AXIS data stream input
 	--dataRx	: inout AxisStream	:= AxisInput;
@@ -232,8 +228,8 @@ signal axil_reset		: std_logic;
 --signal msi_vector_width	: std_logic;
 
 signal axil			: AxilBus;
-signal hostReq			: AxisStream;
-signal hostReply		: AxisStream;
+signal hostSend			: AxisStream;
+signal hostRecv		: AxisStream;
 signal nvmeReq			: AxisStream;
 signal nvmeReply		: AxisStream;
 
@@ -329,16 +325,16 @@ begin
 		--cfg_mgmt_read_write_done	=> cfg_mgmt_read_write_done,
 		cfg_mgmt_type1_cfg_reg_access	=> '0',
 
-		s_axis_c2h_tdata_0	=> hostReply.data,
-		s_axis_c2h_tlast_0	=> hostReply.last,
-		s_axis_c2h_tvalid_0	=> hostReply.valid,
-		s_axis_c2h_tready_0	=> hostReply.ready,
-		s_axis_c2h_tkeep_0	=> hostReply.keep,
-		m_axis_h2c_tdata_0	=> hostReq.data,
-		m_axis_h2c_tlast_0	=> hostReq.last,
-		m_axis_h2c_tvalid_0	=> hostReq.valid,
-		m_axis_h2c_tready_0	=> hostReq.ready,
-		m_axis_h2c_tkeep_0	=> hostReq.keep,
+		s_axis_c2h_tdata_0	=> hostRecv.data,
+		s_axis_c2h_tlast_0	=> hostRecv.last,
+		s_axis_c2h_tvalid_0	=> hostRecv.valid,
+		s_axis_c2h_tready_0	=> hostRecv.ready,
+		s_axis_c2h_tkeep_0	=> hostRecv.keep,
+		m_axis_h2c_tdata_0	=> hostSend.data,
+		m_axis_h2c_tlast_0	=> hostSend.last,
+		m_axis_h2c_tvalid_0	=> hostSend.valid,
+		m_axis_h2c_tready_0	=> hostSend.ready,
+		m_axis_h2c_tkeep_0	=> hostSend.keep,
 
 		s_axis_c2h_tdata_1	=> nvmeReq.data,
 		s_axis_c2h_tlast_1	=> nvmeReq.last,
@@ -354,11 +350,11 @@ begin
 
 	zap10: if false generate
 	-- Echo back AXI streaming ports
-	hostReply.valid	<= hostReq.valid;   
-	hostReply.last	<= hostReq.last;   
-	hostReply.keep	<= hostReq.keep;   
-	hostReply.data	<= hostReq.data;  
-	hostReq.ready	<= hostReply.ready;
+	hostRecv.valid	<= hostSend.valid;   
+	hostRecv.last	<= hostSend.last;   
+	hostRecv.keep	<= hostSend.keep;   
+	hostRecv.data	<= hostSend.data;  
+	hostSend.ready	<= hostRecv.ready;
 
 	nvmeReply.valid	<= nvmeReq.valid;   
 	nvmeReply.last	<= nvmeReq.last;   
@@ -409,13 +405,9 @@ begin
 		axilIn		=> axil.toSlave,
 		axilOut		=> axil.toMaster,
 
-		-- AXIS Interface to PCIE
-		hostReply	=> hostReply,
-		hostReq		=> hostReq,
-
-		-- From Nvme reqeuest and reply stream
-		nvmeReq		=> nvmeReq,
-		nvmeReply	=> nvmeReply,
+		-- From host to NVMe request/reply streams
+		hostSend	=> hostSend,
+		hostRecv	=> hostRecv,
 
 		-- AXIS data stream input
 		--dataRx	=> dataRx,
@@ -432,6 +424,14 @@ begin
 		-- Debug
 		leds		=> leds_l(3 downto 0)
 	);
+
+	-- Echo this stream	
+	nvmeReply.valid	<= nvmeReq.valid;   
+	nvmeReply.last	<= nvmeReq.last;   
+	nvmeReply.keep	<= nvmeReq.keep;   
+	nvmeReply.data	<= nvmeReq.data;  
+	nvmeReq.ready	<= nvmeReply.ready;
+
 	end generate;
 
 	-- Led buffers

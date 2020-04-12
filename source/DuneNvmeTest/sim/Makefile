@@ -9,17 +9,21 @@
 #TEST	= test002-axil
 #TEST	= test003-regs
 #TEST	= test004-nvme
-TEST	= test005-nvme
+#TEST	= test005-nvme
+#TEST	= test006-testdata
+TEST	= test007-hostnvme
 
 # VHDL source files
-FILES_BASE	+= ../src/AxiPkg.vhd ../src/NvmeStoragePkg.vhd
+FILES_BASE	+= ../src/AxiPkg.vhd ../src/NvmeStoragePkg.vhd ../src/AxilClockConverter.vhd ../src/AxisClockConverter.vhd ../src/AxisStreamMux.vhd ../src/AxisStreamDeMux.vhd
 
 # Test files
 FILES_test001-leds += testbench/${TEST}.vhd ${FILES_BASE} ../src/LedCount.vhd
 FILES_test002-axil += testbench/${TEST}.vhd ${FILES_BASE} ../src/AxilToCfg.vhd
-FILES_test003-regs += testbench/${TEST}.vhd ${FILES_BASE} ../src/AxilClockConverter.vhd ../src/AxisClockConverter.vhd ../src/NvmeStorage.vhd
+FILES_test003-regs += testbench/${TEST}.vhd ${FILES_BASE} ../src/NvmeStorage.vhd
 FILES_test004-nvme += testbench/${TEST}.vhd ${FILES_BASE} ../src/NvmeSim.vhd
 FILES_test005-nvme += testbench/${TEST}.vhd ${FILES_BASE} ../src/NvmeSim.vhd
+FILES_test006-testdata += testbench/${TEST}.vhd ${FILES_BASE} ../src/TestData.vhd
+FILES_test007-hostnvme += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeStorage.vhd ../src/NvmeSim.vhd
 
 # VHDL testbench files
 STOP	= test

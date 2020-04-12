@@ -10,8 +10,8 @@ TOP	= ..
 obj-m	:= bfpga.o
 
 TARGET			= 
-KERNELVERSION		= $(shell uname -r)
-#KERNELVERSION		= 5.5.7-200.fc31.x86_64
+KERNELVERSION		?= $(shell uname -r)
+#KERNELVERSION		?= 5.5.15-200.fc31.x86_64
 
 ifeq ("$(TARGET)", "")
 DEST_DIR 		=
@@ -46,7 +46,7 @@ installRules:
 
 load:
 	-rmmod bfpga
-	#echo 1 > /sys/bus/pci/devices/0000:01:00.0/remove
+	echo 1 > /sys/bus/pci/devices/0000:01:00.0/remove
 	echo 1 > /sys/bus/pci/rescan
 	echo 1 > /sys/bus/pci/devices/0000:01:00.0/reset
 	insmod bfpga.ko

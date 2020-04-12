@@ -5,7 +5,7 @@
 /**
 \author Dr Terry Barnaby
 \version 0.0.1
-\date 2020-04-01
+\date 2020-04-12
 
 \mainpage
 
@@ -13,13 +13,17 @@
 This directory contains a simple NVMe test environment that allows experimentation with the low level PCIe NVMe interfaces as available on a Xilinx FPGA environment.
 The directory contains the source code, simulation environment and build environment for the NVME test FPGA firmware as well as the nvme_test host software.
 
-\section Diectories
+See the Readme.pdf file for more information.
+
+\section Directories
 <table>
 <tr><td>src</td><td>The main VHDL source code</td></tr>
 <tr><td>ip-core</td><td>IP cores generated with Vivado</td></tr>
 <tr><td>sim</td><td>The simulation environment</td></tr>
 <tr><td>vivado</td><td>The build environment</td></tr>
 <tr><td>test</td><td>Host test programs accessing the FPGA firmware</td></tr>
+<tr><td>docsrc</td><td>Source for the documentation</td></tr>
+<tr><td>doc</td><td>Output for the documentation</td></tr>
 </table>
 
 \section The Test Program

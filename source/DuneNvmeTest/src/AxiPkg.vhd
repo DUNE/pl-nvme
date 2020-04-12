@@ -33,6 +33,8 @@ use ieee.numeric_std.all;
 package AxiPkg is
 	--! General functions
 	function to_stl(v: integer; b: integer) return std_logic_vector;
+	function log2(v: integer) return integer;
+	function concat(v: std_logic; n: integer) return std_logic_vector;
 
 	--! AXI Lite bus like interface
 	constant AxilAddressWidth	: integer := 32;
@@ -102,6 +104,23 @@ package body AxiPkg is
 	function to_stl(v: integer; b: integer) return std_logic_vector is
 	begin
 		return std_logic_vector(to_unsigned(v, b));
+	end function;
+	
+	function log2(v: integer) return integer is
+	begin
+		for i in 1 to 30 loop  -- Works for up to 30 bit integers
+			if(2**i > v) then return(i-1); end if;
+		end loop;
+		return(30);
+	end;
+	
+	function concat(v: std_logic; n: integer) return std_logic_vector is
+	variable ret: std_logic_vector(n-1 downto 0);
+	begin
+		for i in 0 to n-1 loop
+			ret(i) := v;
+		end loop;
+		return ret;
 	end function;
 
 	function to_AxilAddress(v: integer) return std_logic_vector is

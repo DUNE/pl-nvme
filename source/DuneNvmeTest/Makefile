@@ -22,6 +22,7 @@ clean:
 distclean: clean
 	make -C vivado distclean
 	make -C docsrc distclean
+	make -C test distclean
 	
 release:
 	mkdir -p release

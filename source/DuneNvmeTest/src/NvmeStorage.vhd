@@ -55,14 +55,10 @@ port (
 	axilIn		: in AxilToSlave;			--! Axil bus input signals
 	axilOut		: out AxilToMaster;			--! Axil bus output signals
 
-	-- AXIS Interface to PCIE
-	hostReq		: inout AxisStream	:= AxisInput;	--! Host request stream
-	hostReply	: inout AxisStream	:= AxisOutput;	--! Host reply stream
+	-- From host to NVMe request/reply streams
+	hostSend	: inout AxisStream := AxisInput;	--! Host request stream
+	hostRecv	: inout AxisStream := AxisOutput;	--! Host reply stream
 
-	-- From Nvme reqeuest and reply stream
-	nvmeReq		: inout AxisStream	:= AxisOutput;	--! Nvme request stream (bus master)
-	nvmeReply	: inout AxisStream	:= AxisInput;	--! Nvme reply stream
-	
 	-- AXIS data stream input
 	--dataRx	: inout AxisStream	:= AxisInput;	--! Raw data to save stream
 
@@ -217,36 +213,74 @@ component Pcie_nvme0
 	);
 end component;
 
-function concat(v: std_logic; n: integer) return std_logic_vector is
-variable ret: std_logic_vector(n-1 downto 0);
-begin
-	for i in 0 to n-1 loop
-		ret(i) := v;
-	end loop;
-	return ret;
-end function;
+component AxisStreamMux is
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+	
+	streamIn1	: inout AxisStream := AxisInput;	--! Input data stream
+	streamIn2	: inout AxisStream := AxisInput;	--! Input data stream
+
+	streamOut	: inout AxisStream := AxisOutput	--! Output data stream
+);
+end component;
+
+component AxisStreamDeMux is
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+	
+	streamIn	: inout AxisStream := AxisInput;	--! Input data stream
+
+	streamOut1	: inout AxisStream := AxisOutput;	--! Output data stream1
+	streamOut2	: inout AxisStream := AxisOutput	--! Output data stream2
+);
+end component;
+
+component NvmeSim is
+generic(
+	Simulate	: boolean	:= True
+);
+port (
+	clk		: in std_logic;
+	reset		: in std_logic;
+
+	-- AXIS Interface to PCIE
+	hostReq		: inout AxisStream := AxisInput;
+	hostReply	: inout AxisStream := AxisOutput;                        
+	
+	-- From Nvme reqeuest and reply stream
+	nvmeReq		: inout AxisStream := AxisOutput;
+	nvmeReply	: inout AxisStream := AxisInput
+);
+end component;
 
 constant TCQ			: time := 1 ns;
 
 signal axil1Out			: AxilToMaster;
 signal axil1In			: AxilToSlave;
 
-signal hostReq1			: AxisStream;
-signal hostReq1_ready		: std_logic_vector(3 downto 0);
-signal hostReq1_user		: std_logic_vector(59 downto 0);
-signal hostReq1_keep		: std_logic_vector(3 downto 0);
+signal hostSend1		: AxisStream;
+signal hostRecv1		: AxisStream;
 
-signal hostReply1		: AxisStream;
-signal hostReply1_keep		: std_logic_vector(3 downto 0);
+signal hostReq			: AxisStream;
+signal hostReq_ready		: std_logic_vector(3 downto 0);
+signal hostReq_morethan1	: std_logic;
+signal hostReq_user		: std_logic_vector(59 downto 0);
+signal hostReq_keep		: std_logic_vector(3 downto 0);
 
-signal nvmeReq1			: AxisStream;
-signal nvmeReq1_keep		: std_logic_vector(3 downto 0);
+signal hostReply		: AxisStream;
+signal hostReply_keep		: std_logic_vector(3 downto 0);
 
-signal nvmeReply1		: AxisStream;
-signal nvmeReply1_ready		: std_logic_vector(3 downto 0);
-signal nvmeReply1_user		: std_logic_vector(32 downto 0);
-signal nvmeReply1_keep		: std_logic_vector(3 downto 0);
+signal nvmeReq			: AxisStream;
+signal nvmeReq_keep		: std_logic_vector(3 downto 0);
 
+signal nvmeReply		: AxisStream;
+signal nvmeReply_ready		: std_logic_vector(3 downto 0);
+signal nvmeReply_user		: std_logic_vector(32 downto 0);
+signal nvmeReply_keep		: std_logic_vector(3 downto 0);
+
+-- Register interface
 constant RegWidth		: integer := 32;
 subtype RegDataType		is std_logic_vector(RegWidth-1 downto 0);
 
@@ -305,44 +339,22 @@ begin
 	port map (
 		clkRx		=> clk,
 		resetRx		=> reset,
-		streamRx	=> hostReq,
+		streamRx	=> hostSend,
 
 		clkTx		=> nvme_user_clk,
 		resetTx		=> nvme_user_reset,
-		streamTx	=> hostReq1
+		streamTx	=> hostSend1
 	);
 
 	axisClockConverter1 :  AxisClockConverter
 	port map (
 		clkRx		=> nvme_user_clk,
 		resetRx		=> nvme_user_reset,
-		streamRx	=> hostReply1,
+		streamRx	=> hostRecv1,
 
 		clkTx		=> clk,
 		resetTx		=> reset,
-		streamTx	=> hostReply
-	);
-
-	axisClockConverter2 :  AxisClockConverter
-	port map (
-		clkRx		=> clk,
-		resetRx		=> reset,
-		streamRx	=> nvmeReply,
-
-		clkTx		=> nvme_user_clk,
-		resetTx		=> nvme_user_reset,
-		streamTx	=> nvmeReply1
-	);
-
-	axisClockConverter3 :  AxisClockConverter
-	port map (
-		clkRx		=> nvme_user_clk,
-		resetRx		=> nvme_user_reset,
-		streamRx	=> nvmeReq1,
-
-		clkTx		=> clk,
-		resetTx		=> reset,
-		streamTx	=> nvmeReq
+		streamTx	=> hostRecv
 	);
 
 	-- Register access
@@ -449,12 +461,23 @@ begin
 
 
 	sim: if (Simulate = True) generate
-		nvme_user_clk	<= clk;
-		nvme_user_reset	<= reset;
+	nvme_user_clk	<= clk;
+	nvme_user_reset	<= reset;
+
+	nvmeSim0 : NvmeSim
+	port map (
+		clk		=> nvme_user_clk,
+		reset		=> nvme_user_reset,
+
+		hostReq		=> hostReq,
+		hostReply	=> hostReply,
+
+		nvmeReq		=> nvmeReq,
+		nvmeReply	=> nvmeReply
+	);
 	end generate;
 	
 	synth: if (Simulate = False) generate
-	
 	nvme_reset_local_n <= not reset;
 	nvme_reset_n <= nvme_reset_local_n;
 	
@@ -467,37 +490,6 @@ begin
 		ODIV2   => nvme_clk,
 		CEB     => '0'
 	);
-	
-	hostReq1.ready <= hostReq1_ready(0);
-	
-	-- The last_be bits should be 0 when reading just one word due to the daft pcie core. This is difficult to do
-	-- so here we set them to 0 and expect all reads to be at least 2 words
-	hostReq1_user <= x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "1111" & "1111" when (reg_control(31) = '1')
-		else x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "0000" & "1111";
-
-	--hostReq1_keep <= hostReq1.keep(4) & '1';	-- Indicate whether last word 32bit is present
-	hostReq1_keep <= hostReq1.keep(12) & hostReq1.keep(8) & hostReq1.keep(4) & hostReq1.keep(0);	-- Indicate which words are present
-
-	--hostReply1.keep <=  "111111" & hostReply1_keep;
-	--hostReply1.keep <=  "11111111";
-	--hostReply1.keep <= "11111111" when (hostReply1_keep(1) = '1') else "00001111";
-	hostReply1.keep <= concat(hostReply1_keep(3), 4) & concat(hostReply1_keep(2), 4) & concat(hostReply1_keep(1), 4) & concat(hostReply1_keep(0), 4);
-	
-	--nvmeReq1.keep <= "111111" & nvmeReq1_keep;
-	--nvmeReq1.keep <= "11111111";
-	--nvmeReq1.keep <= "11111111" when (nvmeReq1_keep(1) = '1') else "00001111";
-	nvmeReq1.keep <= concat(nvmeReq1_keep(3), 4) & concat(nvmeReq1_keep(2), 4) & concat(nvmeReq1_keep(1), 4) & concat(nvmeReq1_keep(0), 4);
-
-	nvmeReply1.ready <= nvmeReply1_ready(0) and nvmeReply1_ready(1) and nvmeReply1_ready(2) and nvmeReply1_ready(3);
-	nvmeReply1_user <= (others => '0');
-	--nvmeReply1_keep <= nvmeReply1.keep(4) & '1';	-- Indicate whether last word 32bit is present
-	nvmeReply1_keep <= nvmeReply1.keep(12) & nvmeReply1.keep(8) & nvmeReply1.keep(4) & nvmeReply1.keep(0);	-- Indicate which words are present
-	
-	cfg_mgmt_addr <= (others => '0');
-	cfg_mgmt_write <= '0';
-	cfg_mgmt_write_data <= (others => '0');
-	cfg_mgmt_read <= '0';
-	cfg_mgmt_type1_cfg_reg_access <= '0';
 	
 	-- The PCIe to NVMe interface
 	pcie_nvme0_0 : Pcie_nvme0
@@ -516,34 +508,34 @@ begin
 		user_reset		=> nvme_user_reset,
 		user_lnk_up		=> leds(1),
 
-		s_axis_rq_tdata		=> hostReq1.data,
-		--s_axis_rq_tkeep		=> hostReq1.keep(1 downto 0),
-		s_axis_rq_tkeep		=> hostReq1_keep,
-		s_axis_rq_tlast		=> hostReq1.last,
-		s_axis_rq_tready	=> hostReq1_ready,
-		s_axis_rq_tuser		=> hostReq1_user,
-		s_axis_rq_tvalid	=> hostReq1.valid,
+		s_axis_rq_tdata		=> hostReq.data,
+		--s_axis_rq_tkeep	=> hostReq.keep(1 downto 0),
+		s_axis_rq_tkeep		=> hostReq_keep,
+		s_axis_rq_tlast		=> hostReq.last,
+		s_axis_rq_tready	=> hostReq_ready,
+		s_axis_rq_tuser		=> hostReq_user,
+		s_axis_rq_tvalid	=> hostReq.valid,
 		
-		m_axis_rc_tdata		=> hostReply1.data,
-		m_axis_rc_tkeep		=> hostReply1_keep,
-		m_axis_rc_tlast		=> hostReply1.last,
-		m_axis_rc_tready	=> hostReply1.ready,
-		--m_axis_rc_tuser	=> hostReply1_user,
-		m_axis_rc_tvalid	=> hostReply1.valid,
+		m_axis_rc_tdata		=> hostReply.data,
+		m_axis_rc_tkeep		=> hostReply_keep,
+		m_axis_rc_tlast		=> hostReply.last,
+		m_axis_rc_tready	=> hostReply.ready,
+		--m_axis_rc_tuser	=> hostReply_user,
+		m_axis_rc_tvalid	=> hostReply.valid,
 		
-		m_axis_cq_tdata		=> nvmeReq1.data,
-		m_axis_cq_tkeep		=> nvmeReq1_keep,
-		m_axis_cq_tlast		=> nvmeReq1.last,
-		m_axis_cq_tready	=> nvmeReq1.ready,
-		--m_axis_cq_tuser	=> nvmeReq1_user,
-		m_axis_cq_tvalid	=> nvmeReq1.valid,
+		m_axis_cq_tdata		=> nvmeReq.data,
+		m_axis_cq_tkeep		=> nvmeReq_keep,
+		m_axis_cq_tlast		=> nvmeReq.last,
+		m_axis_cq_tready	=> nvmeReq.ready,
+		--m_axis_cq_tuser	=> nvmeReq_user,
+		m_axis_cq_tvalid	=> nvmeReq.valid,
 		
-		s_axis_cc_tdata		=> nvmeReply1.data,
-		s_axis_cc_tkeep		=> nvmeReply1_keep,
-		s_axis_cc_tlast		=> nvmeReply1.last,
-		s_axis_cc_tready	=> nvmeReply1_ready,
-		s_axis_cc_tuser		=> nvmeReply1_user,
-		s_axis_cc_tvalid	=> nvmeReply1.valid,
+		s_axis_cc_tdata		=> nvmeReply.data,
+		s_axis_cc_tkeep		=> nvmeReply_keep,
+		s_axis_cc_tlast		=> nvmeReply.last,
+		s_axis_cc_tready	=> nvmeReply_ready,
+		s_axis_cc_tuser		=> nvmeReply_user,
+		s_axis_cc_tvalid	=> nvmeReply.valid,
 
 		--pcie_rq_seq_num		=> pcie_rq_seq_num,
 		--pcie_rq_seq_num_vld		=> pcie_rq_seq_num_vld,
@@ -604,8 +596,61 @@ begin
 		--cfg_interrupt_sent			=> --cfg_interrupt_sent,
 	);
 
+	-- Interface between Axis streams and PCIe Gen3 streams
+	hostReq.ready <= hostReq_ready(0);
+
+	-- The last_be bits in hostReq_user should be 0 when reading/writing less than 2 words due to the daft PCIe Gen3 core.
+	-- This code peeks at the PCIe TLP headers numDwords field and sets the be bits appropriately. Only valid in the first
+	-- beat of the 128bit wide data stream packet.
+	-- Warning: This may not be valid for message and atomic packets.
+	--hostReq_morethan1 <= reg_control(31);
+	hostReq_morethan1 <= '1' when(unsigned(hostReq.data(74 downto 64)) > 1) else '0';
+	hostReq_user <= x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "1111" & "1111" when(hostReq_morethan1 = '1')
+		else x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "0000" & "1111";
+
+	hostReq_keep <= hostReq.keep(12) & hostReq.keep(8) & hostReq.keep(4) & hostReq.keep(0);	-- Indicate which words are present
+
+	hostReply.keep <= concat(hostReply_keep(3), 4) & concat(hostReply_keep(2), 4) & concat(hostReply_keep(1), 4) & concat(hostReply_keep(0), 4);
+	
+	nvmeReq.keep <= concat(nvmeReq_keep(3), 4) & concat(nvmeReq_keep(2), 4) & concat(nvmeReq_keep(1), 4) & concat(nvmeReq_keep(0), 4);
+
+	nvmeReply.ready <= nvmeReply_ready(0) and nvmeReply_ready(1) and nvmeReply_ready(2) and nvmeReply_ready(3);
+	nvmeReply_user <= (others => '0');
+	nvmeReply_keep <= nvmeReply.keep(12) & nvmeReply.keep(8) & nvmeReply.keep(4) & nvmeReply.keep(0);	-- Indicate which words are present
+	
+	cfg_mgmt_addr <= (others => '0');
+	cfg_mgmt_write <= '0';
+	cfg_mgmt_write_data <= (others => '0');
+	cfg_mgmt_read <= '0';
+	cfg_mgmt_type1_cfg_reg_access <= '0';
+	
+
 	leds(2) <= '0';
 	leds(3) <= '0';
 	
 	end generate;
+	
+	-- Host to Nvme stream DeMux
+	axisDeMux0 : AxisStreamDeMux
+	port map (
+		clk		=> nvme_user_clk,
+		reset		=> nvme_user_reset,
+
+		streamIn	=> hostSend1,
+
+		streamOut1	=> hostReq,
+		streamOut2	=> nvmeReply
+	);
+
+	-- Nvme to Host stream Mux
+	axisMux0 : AxisStreamMux
+	port map (
+		clk		=> nvme_user_clk,
+		reset		=> nvme_user_reset,
+
+		streamIn1	=> hostReply,
+		streamIn2	=> nvmeReq,
+
+		streamOut	=> hostRecv1
+	);
 end;

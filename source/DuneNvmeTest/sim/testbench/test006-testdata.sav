@@ -1,0 +1,32 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Tue Apr  7 13:19:42 2020
+[*]
+[dumpfile] "/src/dune/FpgaPlay/test010-nvme/sim/simu/test.ghw"
+[dumpfile_mtime] "Tue Apr  7 13:15:00 2020"
+[dumpfile_size] 3024
+[savefile] "/src/dune/FpgaPlay/test010-nvme/sim/testbench/test006-testdata.sav"
+[timestart] 0
+[size] 1920 1051
+[pos] -1 -1
+*-25.922155 131300000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] top.
+[treeopen] top.test.
+[treeopen] top.test.datastream.
+[treeopen] top.test.testdata0.
+[treeopen] top.test.testdata0.datastream.
+[sst_width] 230
+[signals_width] 391
+[sst_expanded] 1
+[sst_vpaned_height] 314
+@28
+top.test.clk
+top.test.reset
+top.test.enable
+top.test.testdata0.datastream.valid
+top.test.testdata0.datastream.last
+top.test.testdata0.datastream.ready
+@22
+#{top.test.testdata0.datastream.data[127:0]} top.test.testdata0.datastream.data[127] top.test.testdata0.datastream.data[126] top.test.testdata0.datastream.data[125] top.test.testdata0.datastream.data[124] top.test.testdata0.datastream.data[123] top.test.testdata0.datastream.data[122] top.test.testdata0.datastream.data[121] top.test.testdata0.datastream.data[120] top.test.testdata0.datastream.data[119] top.test.testdata0.datastream.data[118] top.test.testdata0.datastream.data[117] top.test.testdata0.datastream.data[116] top.test.testdata0.datastream.data[115] top.test.testdata0.datastream.data[114] top.test.testdata0.datastream.data[113] top.test.testdata0.datastream.data[112] top.test.testdata0.datastream.data[111] top.test.testdata0.datastream.data[110] top.test.testdata0.datastream.data[109] top.test.testdata0.datastream.data[108] top.test.testdata0.datastream.data[107] top.test.testdata0.datastream.data[106] top.test.testdata0.datastream.data[105] top.test.testdata0.datastream.data[104] top.test.testdata0.datastream.data[103] top.test.testdata0.datastream.data[102] top.test.testdata0.datastream.data[101] top.test.testdata0.datastream.data[100] top.test.testdata0.datastream.data[99] top.test.testdata0.datastream.data[98] top.test.testdata0.datastream.data[97] top.test.testdata0.datastream.data[96] top.test.testdata0.datastream.data[95] top.test.testdata0.datastream.data[94] top.test.testdata0.datastream.data[93] top.test.testdata0.datastream.data[92] top.test.testdata0.datastream.data[91] top.test.testdata0.datastream.data[90] top.test.testdata0.datastream.data[89] top.test.testdata0.datastream.data[88] top.test.testdata0.datastream.data[87] top.test.testdata0.datastream.data[86] top.test.testdata0.datastream.data[85] top.test.testdata0.datastream.data[84] top.test.testdata0.datastream.data[83] top.test.testdata0.datastream.data[82] top.test.testdata0.datastream.data[81] top.test.testdata0.datastream.data[80] top.test.testdata0.datastream.data[79] top.test.testdata0.datastream.data[78] top.test.testdata0.datastream.data[77] top.test.testdata0.datastream.data[76] top.test.testdata0.datastream.data[75] top.test.testdata0.datastream.data[74] top.test.testdata0.datastream.data[73] top.test.testdata0.datastream.data[72] top.test.testdata0.datastream.data[71] top.test.testdata0.datastream.data[70] top.test.testdata0.datastream.data[69] top.test.testdata0.datastream.data[68] top.test.testdata0.datastream.data[67] top.test.testdata0.datastream.data[66] top.test.testdata0.datastream.data[65] top.test.testdata0.datastream.data[64] top.test.testdata0.datastream.data[63] top.test.testdata0.datastream.data[62] top.test.testdata0.datastream.data[61] top.test.testdata0.datastream.data[60] top.test.testdata0.datastream.data[59] top.test.testdata0.datastream.data[58] top.test.testdata0.datastream.data[57] top.test.testdata0.datastream.data[56] top.test.testdata0.datastream.data[55] top.test.testdata0.datastream.data[54] top.test.testdata0.datastream.data[53] top.test.testdata0.datastream.data[52] top.test.testdata0.datastream.data[51] top.test.testdata0.datastream.data[50] top.test.testdata0.datastream.data[49] top.test.testdata0.datastream.data[48] top.test.testdata0.datastream.data[47] top.test.testdata0.datastream.data[46] top.test.testdata0.datastream.data[45] top.test.testdata0.datastream.data[44] top.test.testdata0.datastream.data[43] top.test.testdata0.datastream.data[42] top.test.testdata0.datastream.data[41] top.test.testdata0.datastream.data[40] top.test.testdata0.datastream.data[39] top.test.testdata0.datastream.data[38] top.test.testdata0.datastream.data[37] top.test.testdata0.datastream.data[36] top.test.testdata0.datastream.data[35] top.test.testdata0.datastream.data[34] top.test.testdata0.datastream.data[33] top.test.testdata0.datastream.data[32] top.test.testdata0.datastream.data[31] top.test.testdata0.datastream.data[30] top.test.testdata0.datastream.data[29] top.test.testdata0.datastream.data[28] top.test.testdata0.datastream.data[27] top.test.testdata0.datastream.data[26] top.test.testdata0.datastream.data[25] top.test.testdata0.datastream.data[24] top.test.testdata0.datastream.data[23] top.test.testdata0.datastream.data[22] top.test.testdata0.datastream.data[21] top.test.testdata0.datastream.data[20] top.test.testdata0.datastream.data[19] top.test.testdata0.datastream.data[18] top.test.testdata0.datastream.data[17] top.test.testdata0.datastream.data[16] top.test.testdata0.datastream.data[15] top.test.testdata0.datastream.data[14] top.test.testdata0.datastream.data[13] top.test.testdata0.datastream.data[12] top.test.testdata0.datastream.data[11] top.test.testdata0.datastream.data[10] top.test.testdata0.datastream.data[9] top.test.testdata0.datastream.data[8] top.test.testdata0.datastream.data[7] top.test.testdata0.datastream.data[6] top.test.testdata0.datastream.data[5] top.test.testdata0.datastream.data[4] top.test.testdata0.datastream.data[3] top.test.testdata0.datastream.data[2] top.test.testdata0.datastream.data[1] top.test.testdata0.datastream.data[0]
+[pattern_trace] 1
+[pattern_trace] 0
