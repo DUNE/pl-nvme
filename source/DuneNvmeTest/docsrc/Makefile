@@ -13,27 +13,33 @@ all:	config docs
 config: .configured
 
 .configured: ../Config.mk
-	sed -i "s/PROJECT_NUMBER.*/PROJECT_NUMBER\t\t= ${VERSION}/g" doxygen.dox
-	sed -i "s/\\\version.*/\\\version ${VERSION}/g" overview.dox
+	sed -i "s/PROJECT_NUMBER.*/PROJECT_NUMBER\t\t= ${VERSION}/g" fpga_doxygen.dox
+	sed -i "s/PROJECT_NUMBER.*/PROJECT_NUMBER\t\t= ${VERSION}/g" host_doxygen.dox
+	sed -i "s/\\\version.*/\\\version ${VERSION}/g" fpga_overview.dox
+	sed -i "s/\\\version.*/\\\version ${VERSION}/g" host_overview.dox
 	touch .configured
 
 install:
-	mkdir -p ${DOCDIR}
-	cp -a ../doc/html ${DOCDIR}
+	mkdir -p ${DOCDIR}/host ${DOCDIR}/fpga
+	cp -a ../doc/host/html ${DOCDIR}/host
+	cp -a ../doc/fpga/html ${DOCDIR}/fpga
 	cp -a ../doc/*.pdf ${DOCDIR}
 
 clean:
 
 distclean: clean
-	rm -fr ../doc/*
+	rm -fr ../doc/host ../doc/fpga
 	rm -f .configured
 	
 release:
 
 docs:
-	doxygen doxygen.dox
+	doxygen host_doxygen.dox
+	doxygen fpga_doxygen.dox
 	soffice --headless --convert-to pdf --outdir ../doc Readme.odt
 
 docspdf: docs
-	(cd ../doc/latex; make)
-	cp ../doc/latex/refman.pdf ../doc/${PROJECT}.pdf
+	(cd ../doc/host/latex; make)
+	cp ../doc/host/latex/refman.pdf ../doc/${PROJECT}_host.pdf
+	(cd ../doc/fpga/latex; make)
+	cp ../doc/fpga/latex/refman.pdf ../doc/${PROJECT}_fpga.pdf

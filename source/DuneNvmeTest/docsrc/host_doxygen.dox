@@ -4,9 +4,9 @@ PROJECT_NAME           = "DuneNvmeTest"
 PROJECT_NUMBER		= 0.1.1
 PROJECT_BRIEF          = "This is a simple NVMe test environment that allows experimentation with the low level PCIe NVMe interfaces as available on a Xilinx FPGA environment."
 PROJECT_LOGO           =
-INPUT                  = overview.dox ../src
-OUTPUT_DIRECTORY       = ../doc
-OPTIMIZE_OUTPUT_VHDL   = YES
+INPUT                  = host_overview.dox ../test
+OUTPUT_DIRECTORY       = ../doc/host
+OPTIMIZE_OUTPUT_VHDL   = NO
 
 #---------------------------------------------------------------------------
 # Project related configuration options
