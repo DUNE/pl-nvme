@@ -1,0 +1,50 @@
+/*******************************************************************************
+ *	host_overview.doc	Main overview page for code
+ *******************************************************************************
+ */
+/**
+\author Dr Terry Barnaby
+\version 0.1.1
+\date 2020-04-26
+
+\mainpage
+
+\section Introduction
+This directory contains a simple NVMe test environment that allows experimentation with the low level PCIe NVMe interfaces as available on a Xilinx FPGA environment.
+The directory contains the source code, simulation environment and build environment for the NVME test FPGA firmware as well as the nvme_test host software.
+
+See the Readme.pdf file for more information.
+
+\section Directories
+<table>
+<tr><td>src</td><td>The main VHDL source code</td></tr>
+<tr><td>ip-core</td><td>IP cores generated with Vivado</td></tr>
+<tr><td>sim</td><td>The simulation environment</td></tr>
+<tr><td>vivado</td><td>The build environment</td></tr>
+<tr><td>test</td><td>Host test programs accessing the FPGA firmware</td></tr>
+<tr><td>docsrc</td><td>Source for the documentation</td></tr>
+<tr><td>doc</td><td>Output for the documentation</td></tr>
+</table>
+
+\section The Test Program
+The test Linux host program is in the test directory and is called nvme_test. This program communicates with an NVMe device through the FPGA connected to the host machines PCIe
+bus. This program allows experimentation with the NVMe low level PCIe interface.
+
+\section Building the FPGA bit file and programming
+<ol>
+<li>cd vivado </li>
+<li><make clean/li>
+<li><make all/li>
+<li>make program</li>
+</ol>
+
+\section To Simulate FPGA
+
+<ol>
+<li>cd sim</li>
+<li>Edit Makefile and testbench files for simulation required</li>
+<li>make</li>
+<li>make view</li>
+</ol>
+
+*/

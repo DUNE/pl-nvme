@@ -1,0 +1,49 @@
+#!/bin/sh
+##################################################################################
+#	pciAction	Removes a PCI device
+##################################################################################
+#
+findDevice()
+{
+	for d in /sys/bus/pci/devices/*
+	do
+		if [ "$1" = `cat $d/device` ]; then
+			echo $d;
+		fi
+	done
+	echo "";
+}
+
+removeDevice()
+{
+	dev=`findDevice $1`
+	echo "1" > $dev/remove
+}
+
+rescan()
+{
+	echo "1" > /sys/bus/pci/rescan
+}
+
+pciEnable()
+{
+	dev=`findDevice $1`
+	echo "1" > $dev/enable
+}
+
+usage(){
+	echo >&2 "Usage: $0 <command> <arg>"
+	echo >&2 "	<remove> <arg>	- Removes device with gicen hex id"
+	echo >&2 "	<rescan>	- Rescans PCI bus"
+	exit 1
+}
+
+if [ "$1" = "remove" ]; then
+	removeDevice $2
+elif [ "$1" = "rescan" ]; then
+	rescan
+elif [ "$1" = "enable" ]; then
+	pciEnable $2
+else
+	usage
+fi

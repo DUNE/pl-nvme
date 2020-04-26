@@ -1,0 +1,40 @@
+[*]
+[*] GTKWave Analyzer v3.3.102 (w)1999-2019 BSI
+[*] Fri Feb 28 13:14:29 2020
+[*]
+[dumpfile] "/src/dune/FpgaPlay/test007-axi/sim/simu/test.ghw"
+[dumpfile_mtime] "Fri Feb 28 12:49:20 2020"
+[dumpfile_size] 3404
+[savefile] "/src/dune/FpgaPlay/test007-axi/sim/testbench/test002-axil.sav"
+[timestart] 0
+[size] 1730 871
+[pos] -1 -1
+*-26.000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] top.
+[treeopen] top.test.
+[treeopen] top.test.axil.
+[treeopen] top.test.axil.tomaster.
+[treeopen] top.test.axil.toslave.
+[sst_width] 299
+[signals_width] 230
+[sst_expanded] 1
+[sst_vpaned_height] 339
+@28
+top.test.clk
+top.test.reset
+top.test.axil.toslave.awvalid
+top.test.axil.tomaster.awready
+@22
+#{top.test.axil.toslave.awaddr[31:0]} top.test.axil.toslave.awaddr[31] top.test.axil.toslave.awaddr[30] top.test.axil.toslave.awaddr[29] top.test.axil.toslave.awaddr[28] top.test.axil.toslave.awaddr[27] top.test.axil.toslave.awaddr[26] top.test.axil.toslave.awaddr[25] top.test.axil.toslave.awaddr[24] top.test.axil.toslave.awaddr[23] top.test.axil.toslave.awaddr[22] top.test.axil.toslave.awaddr[21] top.test.axil.toslave.awaddr[20] top.test.axil.toslave.awaddr[19] top.test.axil.toslave.awaddr[18] top.test.axil.toslave.awaddr[17] top.test.axil.toslave.awaddr[16] top.test.axil.toslave.awaddr[15] top.test.axil.toslave.awaddr[14] top.test.axil.toslave.awaddr[13] top.test.axil.toslave.awaddr[12] top.test.axil.toslave.awaddr[11] top.test.axil.toslave.awaddr[10] top.test.axil.toslave.awaddr[9] top.test.axil.toslave.awaddr[8] top.test.axil.toslave.awaddr[7] top.test.axil.toslave.awaddr[6] top.test.axil.toslave.awaddr[5] top.test.axil.toslave.awaddr[4] top.test.axil.toslave.awaddr[3] top.test.axil.toslave.awaddr[2] top.test.axil.toslave.awaddr[1] top.test.axil.toslave.awaddr[0]
+@29
+top.test.axil.toslave.wvalid
+@28
+top.test.axil.tomaster.wready
+top.test.axiltocfg0.cfg_mgmt_write
+@22
+#{top.test.cfg_mgmt_addr[18:0]} top.test.cfg_mgmt_addr[18] top.test.cfg_mgmt_addr[17] top.test.cfg_mgmt_addr[16] top.test.cfg_mgmt_addr[15] top.test.cfg_mgmt_addr[14] top.test.cfg_mgmt_addr[13] top.test.cfg_mgmt_addr[12] top.test.cfg_mgmt_addr[11] top.test.cfg_mgmt_addr[10] top.test.cfg_mgmt_addr[9] top.test.cfg_mgmt_addr[8] top.test.cfg_mgmt_addr[7] top.test.cfg_mgmt_addr[6] top.test.cfg_mgmt_addr[5] top.test.cfg_mgmt_addr[4] top.test.cfg_mgmt_addr[3] top.test.cfg_mgmt_addr[2] top.test.cfg_mgmt_addr[1] top.test.cfg_mgmt_addr[0]
+#{top.test.cfg_mgmt_write_data[31:0]} top.test.cfg_mgmt_write_data[31] top.test.cfg_mgmt_write_data[30] top.test.cfg_mgmt_write_data[29] top.test.cfg_mgmt_write_data[28] top.test.cfg_mgmt_write_data[27] top.test.cfg_mgmt_write_data[26] top.test.cfg_mgmt_write_data[25] top.test.cfg_mgmt_write_data[24] top.test.cfg_mgmt_write_data[23] top.test.cfg_mgmt_write_data[22] top.test.cfg_mgmt_write_data[21] top.test.cfg_mgmt_write_data[20] top.test.cfg_mgmt_write_data[19] top.test.cfg_mgmt_write_data[18] top.test.cfg_mgmt_write_data[17] top.test.cfg_mgmt_write_data[16] top.test.cfg_mgmt_write_data[15] top.test.cfg_mgmt_write_data[14] top.test.cfg_mgmt_write_data[13] top.test.cfg_mgmt_write_data[12] top.test.cfg_mgmt_write_data[11] top.test.cfg_mgmt_write_data[10] top.test.cfg_mgmt_write_data[9] top.test.cfg_mgmt_write_data[8] top.test.cfg_mgmt_write_data[7] top.test.cfg_mgmt_write_data[6] top.test.cfg_mgmt_write_data[5] top.test.cfg_mgmt_write_data[4] top.test.cfg_mgmt_write_data[3] top.test.cfg_mgmt_write_data[2] top.test.cfg_mgmt_write_data[1] top.test.cfg_mgmt_write_data[0]
+@28
+top.test.axiltocfg0.cfg_mgmt_read
+[pattern_trace] 1
+[pattern_trace] 0

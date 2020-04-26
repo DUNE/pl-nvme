@@ -1,0 +1,27 @@
+[*]
+[*] GTKWave Analyzer v3.3.102 (w)1999-2019 BSI
+[*] Tue Feb 18 14:23:01 2020
+[*]
+[dumpfile] "/src/dune/FpgaPlay/test002-leds/sim/simu/test.ghw"
+[dumpfile_mtime] "Tue Feb 18 14:22:44 2020"
+[dumpfile_size] 79311
+[savefile] "/src/dune/FpgaPlay/test002-leds/sim/testbench/test001-leds.sav"
+[timestart] 0
+[size] 1920 1019
+[pos] 3 0
+*-25.929588 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] top.
+[treeopen] top.test.
+[treeopen] top.test.ledcount0.
+[treeopen] top.vcomponents.
+[sst_width] 230
+[signals_width] 174
+[sst_expanded] 1
+[sst_vpaned_height] 290
+@28
+top.test.ledcount0.clk_i
+top.test.ledcount0.reset_i
+@22
+#{top.test.leds[7:0]} top.test.leds[7] top.test.leds[6] top.test.leds[5] top.test.leds[4] top.test.leds[3] top.test.leds[2] top.test.leds[1] top.test.leds[0]
+[pattern_trace] 1
+[pattern_trace] 0
