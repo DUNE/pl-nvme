@@ -34,7 +34,11 @@ library work;
 use work.NvmeStoragePkg.all;
 
 package NvmeStorageIntPkg is
-	--! Generalaly useful functions
+	--! System constants
+	constant DataWriteQueueNum	: integer := 8;		--! The number of data write queue entries
+	constant PcieMaxPayloadSize	: integer := 32;	--! The maximum Pcie packet size in 32bit DWords
+	
+	--! Generaly useful functions
 	function to_stl(v: integer; b: integer) return std_logic_vector;
 	function to_stl(v: unsigned; b: integer) return std_logic_vector;
 	function log2(v: integer) return integer;

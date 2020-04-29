@@ -9,9 +9,10 @@
 --! @version	0.0.1
 --!
 --! @brief
---! This module provides the data input fifo for the NvmeStorage module.
+--! This module provides a data input fifo for the NvmeWrite module.
 --!
 --! @details
+--! This FIFO will store a complete DataWiteChunk's worth of data, 32 kBytes.
 --! 
 --!
 --! @copyright GNU GPL License
@@ -40,64 +41,82 @@ use work.NvmeStorageIntPkg.all;
 
 entity DataFifo is
 generic(
-	DataWriteQueueNum	: integer := 4;			--! The number of DataWrite queue entries
-	ChunkSize		: integer := 8192;		--! The chunk size in Bytes.
-	FifoSize		: integer := 4 * ChunkSize	--! The Fifo size in Bytes
+	FifoSize	: integer := 2048			--! The Fifo size
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 
-	dataInEnable	: in std_logic;				--! Allow data input to particular Fifo
-	dataInQueue	: in std_logic_vector(log2(DataWriteQueueNum)-1 downto 0);	--! The ingest Fifo number
+	full		: out std_logic;			--! The fifo is full (Has Fifo size words)
+	empty		: out std_logic;			--! The fifo is empty
+
 	dataIn		: inout AxisStreamType := AxisInput;	--! Input data stream
-	
-	dataOutQueue	: in std_logic_vector(log2(DataWriteQueueNum)-1 downto 0);	--! The output Fifo number
 	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end;
 
 architecture Behavioral of DataFifo is
 
-component fifo32k
-port(
-	s_aclk : in std_logic;
-	s_aresetn : in std_logic;
-	s_axis_tvalid : in std_logic;
-	s_axis_tready : out std_logic;
-	s_axis_tdata : in std_logic_vector(127 downto 0);
-	s_axis_tlast : in std_logic;
-	m_axis_tvalid : out std_logic;
-	m_axis_tready : in std_logic;
-	m_axis_tdata : out std_logic_vector(127 downto 0);
-	m_axis_tlast : out std_logic;
-	axis_prog_full : out std_logic
+component Fifo4k
+port (
+	clk : in std_logic;
+	srst : in std_logic;
+	din : in std_logic_vector(127 downto 0);
+	wr_en : in std_logic;
+	rd_en : in std_logic;
+	dout : out std_logic_vector(127 downto 0);
+	full : out std_logic;
+	empty : out std_logic;
+	valid : out std_logic;
+	wr_rst_busy : out std_logic;
+	rd_rst_busy : out std_logic;
+	data_count : out std_logic_vector(8 downto 0)
+);
+end component;
+
+component Fifo32k
+port (
+	clk : in std_logic;
+	srst : in std_logic;
+	din : in std_logic_vector(127 downto 0);
+	wr_en : in std_logic;
+	rd_en : in std_logic;
+	dout : out std_logic_vector(127 downto 0);
+	full : out std_logic;
+	empty : out std_logic;
+	valid : out std_logic;
+	wr_rst_busy : out std_logic;
+	rd_rst_busy : out std_logic;
+	data_count : out std_logic_vector(11 downto 0)
 );
 end component;
 
 constant TCQ		: time := 1 ns;
-signal hasBlock		: std_logic;
+signal fifo_full	: std_logic:= '0';
+signal fifo_empty	: std_logic:= '0';
+signal fifo_count	: std_logic_vector(11 downto 0) := (others => '0');
 
 begin
-	-- Output data stream
-	dataOut.valid <= dataIn.valid;
-	dataOut.last <= dataIn.last;
-	dataIn.ready <= dataOut.ready;
-	dataOut.data <= dataIn.data;
+	-- Stream signals
+	dataIn.ready <= not fifo_full when(reset = '0') else '0';
+	full <= '1' when((reset = '0') and (unsigned(fifo_count) >=  FifoSize)) else '0';
+	empty <= fifo_empty;
+	dataOut.valid <= not fifo_empty;
+	dataOut.last <= '0';
 	
-	fifo32k0 : Fifo32k
+	fifo0: Fifo32k
 	port map (
-		s_aclk		=> clk,
-		s_aresetn	=> not reset,
-		s_axis_tready	=> dataIn.ready,
-		s_axis_tvalid	=> dataIn.valid,
-		s_axis_tlast	=> dataIn.last,
-		s_axis_tdata	=> dataIn.data,
-		
-		m_axis_tready	=> dataOut.ready,
-		m_axis_tvalid	=> dataOut.valid,
-		m_axis_tlast	=> dataOut.last,
-		m_axis_tdata	=> dataOut.data,
-		axis_prog_full	=> hasBlock
+		clk		=> clk,
+		srst		=> reset,
+		din		=> dataIn.data,
+		wr_en		=> dataIn.valid,
+		rd_en		=> dataOut.ready,
+		dout		=> dataOut.data,
+		full		=> fifo_full,
+		empty		=> fifo_empty,
+		--valid		=> dataOut.valid,
+		--wr_rst_busy	=>
+		--rd_rst_busy	=>
+		data_count	=> fifo_count
 	);
 end;

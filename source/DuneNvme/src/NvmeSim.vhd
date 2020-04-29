@@ -214,7 +214,7 @@ begin
 
 				when STATE_READ_QUEUE_START =>
 					-- Perform bus master read request for queue data
-					nvmeRequestHead.address	<= x"050" & to_unsigned(queue, 4) & x"0000";
+					nvmeRequestHead.address	<= x"020" & to_unsigned(queue, 4) & x"0000";
 					nvmeRequestHead.tag	<= x"44";
 					nvmeRequestHead.requesterId	<= to_unsigned(0, nvmeRequestHead.requesterId'length);
 					nvmeRequestHead.request	<= "0000";
@@ -262,7 +262,7 @@ begin
 								-- Writes an entry into the Admin reply queue. Simply uses info in that last queued request. So only one request at a time.
 								-- Note data sent to queue is just the header reapeated so junk data ATM.
 								-- Perform bus master read request for data to write to NVMe
-								nvmeRequestHead.address	<= to_unsigned(16#05100000#, nvmeRequestHead.address'length);
+								nvmeRequestHead.address	<= to_unsigned(16#02100000#, nvmeRequestHead.address'length);
 								nvmeRequestHead.tag	<= x"44";
 								nvmeRequestHead.request	<= "0001";
 								nvmeRequestHead.count	<= to_unsigned(16#0004#, nvmeRequestHead.count'length);	-- 16 Byte queue entry
@@ -290,25 +290,28 @@ begin
 
 				when STATE_READ_DATA_START =>
 					-- Perform bus master read request for data to write to NVMe
-					nvmeRequestHead.address	<= to_unsigned(16#03000000#, nvmeRequestHead.address'length);
+					-- Hardcoded to address 0x04000000
+					nvmeRequestHead.address	<= to_unsigned(16#04000000#, nvmeRequestHead.address'length);
 					nvmeRequestHead.tag	<= x"44";
 					nvmeRequestHead.request	<= "0000";
-					nvmeRequestHead.count	<= to_unsigned(16#0020#, nvmeRequestHead.count'length);	-- Test size of 32 DWords
+					nvmeRequestHead.count	<= to_unsigned(16#0040#, nvmeRequestHead.count'length);	-- Test size of 64 DWords
 					
 					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
-						count		<= nvmeRequestHead.count + 1;	-- Note ignoring 1 DWord in first 128 bits
+						count		<= nvmeRequestHead.count;	-- Note ignoring 1 DWord in first 128 bits
+						nvmeReq.last 	<= '0';
 						nvmeReq.valid 	<= '0';
 						nvmeReply.ready <= '1';
 						state		<= STATE_READ_DATA_RECV_START;
 					else
 						nvmeReq.keep 	<= ones(16);
+						nvmeReq.last 	<= '1';
 						nvmeReq.valid 	<= '1';
 					end if;
 
 				when STATE_READ_DATA_RECV_START =>
 					-- Read in write data ignoring it
 					if(nvmeReply.valid = '1' and nvmeReply.ready = '1') then
-						chunkCount 	<= nvmeReplyHead.count + 1;
+						chunkCount 	<= nvmeReplyHead.count;
 						state		<= STATE_READ_DATA_RECV;
 					end if;
 
@@ -319,6 +322,7 @@ begin
 							if(count = 4) then
 								nvmeReply.ready	<= '0';
 								state		<= STATE_IDLE;
+								--state		<= STATE_READ_DATA_START;
 							else
 								state		<= STATE_READ_DATA_RECV_START;
 							end if;

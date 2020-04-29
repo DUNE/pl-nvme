@@ -65,7 +65,7 @@ architecture Behavioral of NvmeConfig is
 --! Set the fields in the PCIe TLP header
 function setHeader(request: integer; address: integer; count: integer; tag: integer) return std_logic_vector is
 begin
-	return to_stl(set_PcieRequestHeadType(2, request, address, count, tag));
+	return to_stl(set_PcieRequestHeadType(3, request, address, count, tag));
 end function;
 
 
@@ -87,15 +87,15 @@ constant rom	: RomType(0 to 27) := (
 	setHeader(1, 16#0024#, 1, 0), to_stl(x"00070007", 128),
 
 	-- Admin request queue base address
-	setHeader(1, 16#0028#, 1, 0), to_stl(x"05000000", 128),
+	setHeader(1, 16#0028#, 1, 0), to_stl(x"02000000", 128),
 
 	-- Admin reply queue base address
-	setHeader(1, 16#0030#, 1, 0), to_stl(x"05100000", 128),
+	setHeader(1, 16#0030#, 1, 0), to_stl(x"02100000", 128),
 
 	-- Create DataWrite reply queue (8 entries)  by sending 64byte request to Admin queue
-	setHeader(12, 16#05000000#, 16, 0),
+	setHeader(12, 16#02000000#, 16, 0),
 		concat('0', 96) & x"02000005",				-- Dwords 3, 2, 1, 0
-		concat('0', 32) & x"05110000" & concat('0', 64), 	-- DWords 7, 6, 5, 4
+		concat('0', 32) & x"02110000" & concat('0', 64), 	-- DWords 7, 6, 5, 4
 		x"00000001" & x"00070001" & concat('0', 64),		-- DWords 11, 10, 9, 8
 		concat('0', 128),					-- DWords 15, 14, 13, 12
 
@@ -105,9 +105,9 @@ constant rom	: RomType(0 to 27) := (
 	-- Wait for reply in queue, how to do this ???
 
 	-- Create DataWrite request queue by sending 64byte request to Admin queue
-	setHeader(12, 16#05000000#, 16, 0),
+	setHeader(12, 16#02000000#, 16, 0),
 		concat('0', 96) & x"02000001",				-- Dwords 3, 2, 1, 0
-		concat('0', 32) & x"05010000" & concat('0', 64), 	-- DWords 7, 6, 5, 4
+		concat('0', 32) & x"02010000" & concat('0', 64), 	-- DWords 7, 6, 5, 4
 		x"00000001" & x"00070001" & concat('0', 64),		-- DWords 11, 10, 9, 8
 		concat('0', 128),					-- DWords 15, 14, 13, 12
 
@@ -123,28 +123,6 @@ constant rom	: RomType(0 to 27) := (
 	(others => '0')
 	);
 
-constant rom1	: RomType(0 to 12) := (
-	-- Set PCIe configuration command word
-	setHeader(10, 16#0004#, 1, 0),	to_stl(16#00000006#, 128),
-	
-	-- Disable interrupts
-	setHeader(1, 16#000C#, 1, 0), to_stl(x"FFFFFFFF", 128),
-
-	-- Admin queue lengths to 8 entries each
-	setHeader(1, 16#0024#, 1, 0), to_stl(x"00070007", 128),
-
-	-- Admin request queue base address
-	setHeader(1, 16#0028#, 1, 0), to_stl(x"05000000", 128),
-
-	-- Admin reply queue base address
-	setHeader(1, 16#0030#, 1, 0), to_stl(x"05100000", 128),
-
-	-- Start controller
-	setHeader(1, 16#0014#, 1, 0), to_stl(x"00460001", 128),
-
-	--(others => '0'),
-	(others => '0')
-	);
 
 signal requestHead	: PcieRequestHeadType;			--! The PCIe TLP request header fields
 signal tag		: unsigned(7 downto 0);

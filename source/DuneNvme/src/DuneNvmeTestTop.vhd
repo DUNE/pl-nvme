@@ -191,7 +191,7 @@ port (
 	hostRecv	: inout AxisStreamType := AxisOutput;                        
 	
 	-- AXIS data stream input
-	--dataRx	: inout AxisStreamType	:= AxisInput;
+	dataIn		: inout AxisStreamType	:= AxisInput;
 	
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;
@@ -204,6 +204,22 @@ port (
 
 	-- Debug
 	leds		: out std_logic_vector(3 downto 0)
+);
+end component;
+
+component TestData is
+generic(
+	BlockSize	: integer := 4096			--! The block size in Bytes.
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+
+	-- Control and status interface
+	enable		: in std_logic;				--! Enable production of data
+
+	-- AXIS data output
+	dataStream	: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end component;
 
@@ -233,6 +249,7 @@ signal hostSend			: AxisStreamType;
 signal hostRecv			: AxisStreamType;
 signal nvmeReq			: AxisStreamType;
 signal nvmeReply		: AxisStreamType;
+signal dataIn			: AxisStreamType;
 
 begin
 	-- System clock just used for a boot reset
@@ -411,7 +428,7 @@ begin
 		hostRecv	=> hostRecv,
 
 		-- AXIS data stream input
-		--dataRx	=> dataRx,
+		dataIn	=> dataIn,
 
 		-- NVMe interface
 		nvme_clk_p	=> nvme_clk_p,
@@ -433,7 +450,19 @@ begin
 	nvmeReply.data	<= nvmeReq.data;  
 	nvmeReq.ready	<= nvmeReply.ready;
 
+	-- The test data interface
+	testData0 : TestData
+	port map (
+		clk		=> axil_clk,
+		reset		=> axil_reset,
+
+		enable		=> '1',
+
+		dataStream	=> dataIn
+	);
 	end generate;
+	
+
 
 	-- Led buffers
 	obuf_leds: for i in 0 to 7 generate

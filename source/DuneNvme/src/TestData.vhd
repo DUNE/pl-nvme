@@ -60,12 +60,12 @@ architecture Behavioral of TestData is
 constant TCQ		: time := 1 ns;
 constant BytesPerWord	: integer := 16;	-- Number of bytes per Axis data word
 
-signal data		: std_logic_vector(31 downto 0) := (others => '0');
-signal countBlock	: std_logic_vector(log2(BlockSize/BytesPerWord)-1 downto 0) := (others => '0');
+signal data		: unsigned(31 downto 0) := (others => '0');
+signal countBlock	: unsigned(log2(BlockSize/BytesPerWord)-1 downto 0) := (others => '0');
 
 begin
 	-- Output incrementing data stream
-	dataStream.data <= (data + 3) & (data + 2) & (data + 1) & data;
+	dataStream.data <= std_logic_vector((data + 3) & (data + 2) & (data + 1) & data);
 		
 	-- Generate data stream
 	process(clk)

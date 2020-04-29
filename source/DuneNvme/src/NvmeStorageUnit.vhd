@@ -58,7 +58,7 @@ port (
 	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
 
 	-- AXIS data stream input
-	--dataRx	: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
@@ -293,6 +293,43 @@ port (
 );
 end component;
 
+component NvmeWrite is
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+
+	enable		: in std_logic;				--! Enable the data writing process
+	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+
+	-- To Nvme Request/reply streams
+	requestOut	: inout AxisStreamType := AxisOutput;	--! To Nvme request stream (3)
+	replyIn		: inout AxisStreamType := AxisInput;	--! from Nvme reply stream
+
+	-- From Nvme Request/reply streams
+	memReqIn	: inout AxisStreamType := AxisInput;	--! From Nvme request stream (4)
+	memReplyOut	: inout AxisStreamType := AxisOutput;	--! To Nvme reply stream
+	
+	regAddress	: in unsigned(1 downto 0);		--! Status register to read
+	regData		: out std_logic_vector(31 downto 0)	--! Status register contents
+);
+end component;
+
+component TestData is
+generic(
+	BlockSize	: integer := 4096			--! The block size in Bytes.
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+
+	-- Control and status interface
+	enable		: in std_logic;				--! Enable production of data
+
+	-- AXIS data output
+	dataStream	: inout AxisStreamType := AxisOutput	--! Output data stream
+);
+end component;
+
 signal reset_local_run		: std_logic := '0';
 signal reset_local_done		: std_logic := '0';
 signal reset_local_active	: std_logic := '0';
@@ -309,11 +346,17 @@ alias nvmeSend			is streamSend(0);
 alias nvmeRecv			is streamRecv(0);
 alias hostSend1			is streamSend(1);
 alias hostRecv1			is streamRecv(1);
-alias configSend		is streamSend(2);
-alias configRecv		is streamRecv(2);
-alias queueSend			is streamSend(5);
-alias queueRecv			is streamRecv(5);
+alias queueSend			is streamSend(2);
+alias queueRecv			is streamRecv(2);
+alias configSend		is streamSend(3);
+alias configRecv		is streamRecv(3);
+alias writeSend			is streamSend(4);
+alias writeRecv			is streamRecv(4);
+alias writeMemSend		is streamSend(5);
+alias writeMemRecv		is streamRecv(5);
 
+signal dataIn1			: AxisStreamType;
+signal dataIn2			: AxisStreamType;
 signal streamNone		: AxisStreamType := AxisOutput;
 signal streamSink		: AxisStreamType := AxisSink;
 
@@ -346,11 +389,16 @@ signal address			: std_logic_vector(3 downto 0) := (others => '0');
 signal reg_id			: RegDataType := x"56010200";
 signal reg_control		: RegDataType := (others => '0');
 signal reg_status		: RegDataType := (others => '0');
+signal reg_nvmeWrite		: RegDataType := (others => '0');
 
 -- Nvme configuration signals
 signal configStart		: std_logic := 'U';
 signal configStartDone		: std_logic := 'U';
 signal configComplete		: std_logic := 'U';
+
+-- Nvme data write signals
+signal writeEnable		: std_logic := 'U';
+
 
 -- Pcie_nvme signals
 signal nvme_clk			: std_logic := 'U';
@@ -415,16 +463,29 @@ begin
 		streamTx	=> hostRecv
 	);
 	
+	axisClockConverter2 :  AxisClockConverter
+	port map (
+		clkRx		=> clk,
+		resetRx		=> reset,
+		streamRx	=> dataIn,
+
+		clkTx		=> nvme_user_clk,
+		resetTx		=> nvme_user_reset,
+		streamTx	=> dataIn1
+	);
+
+	
 	-- Register access
 	axil1Out.rdata <=	reg_id when address = "0000" else
 				reg_control when address = "0001" else
 				reg_status when address = "0010" else
+				reg_nvmeWrite when(address(3 downto 2) = "10") else
 				x"FFFFFFFF";
 	
 	-- Status register bits
 	reg_status(0)		<= reset_local_run;
-	reg_status(1)		<= nvme_user_reset;
-	reg_status(2)		<= configComplete;
+	reg_status(1)		<= configComplete;
+	reg_status(2)		<= '0';
 	reg_status(31 downto 3)	<= (others => '0');
 		
 	-- Always return OK to read and write requests
@@ -724,10 +785,6 @@ begin
 	
 	-- Full switched communications
 	gen03: if true generate
-	set0: for i in 3 to 4 generate
-		streamSend(i).valid	<= '0';
-		streamRecv(i).ready	<= '1';
-	end generate;
 	set1: for i in 6 to 7 generate
 		streamSend(i).valid	<= '0';
 		streamRecv(i).ready	<= '1';
@@ -771,8 +828,8 @@ begin
 				configStart	<= '0';
 				configStartDone	<= '0';
 			else
-				--if((configStartDone = '0') and (configComplete = '0') and (reg_control(1) = '1')) then
-				if(configStartDone = '0') then
+				if((configStartDone = '0') and (configComplete = '0') and (reg_control(1) = '1')) then
+				--if(configStartDone = '0') then
 					configStart	<= '1' after TCQ;	-- Start the Nvme configuration
 					configStartDone	<= '1';
 				else
@@ -781,6 +838,39 @@ begin
 			end if;
 		end if;
 	end process;
+	
+	-- The Data write processing
+	writeEnable <= reg_control(2);
+	
+	nvmeWrite0: NvmeWrite
+	port map (
+		clk		=> nvme_user_clk,
+		reset		=> nvme_user_reset,
+
+		enable		=> writeEnable,
+		dataIn		=> dataIn2,
+
+		requestOut	=> writeSend,
+		replyIn		=> writeRecv,
+
+		memReqIn	=> writeMemRecv,
+		memReplyOut	=> writeMemSend,
+		
+		regAddress	=> unsigned(address(1 downto 0)),
+		regData		=> reg_nvmeWrite
+	);
+
+	-- The test data interface
+	testData0 : TestData
+	port map (
+		clk		=> nvme_user_clk,
+		reset		=> nvme_user_reset,
+
+		enable		=> writeEnable,
+
+		dataStream	=> dataIn2
+	);
+
 	end generate;
 	
 end;

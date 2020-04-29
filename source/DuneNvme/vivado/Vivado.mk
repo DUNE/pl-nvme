@@ -56,6 +56,7 @@ ${PROJECT}.xpr: Makefile $(XCI_FILES)
 
 # Synthesis run
 ${PROJECT}.runs/synth_1/${PROJECT}.dcp: ${PROJECT}.xpr $(SYN_FILES) $(INC_FILES) $(XDC_FILES)
+	rm -f $(PROJECT).bit
 	echo "open_project ${PROJECT}.xpr" > run_synth.tcl
 	echo "reset_run synth_1" >> run_synth.tcl
 	echo "launch_runs synth_1 -jobs 4" >> run_synth.tcl
@@ -70,6 +71,7 @@ ${PROJECT}.runs/synth_1/${PROJECT}.dcp: ${PROJECT}.xpr $(SYN_FILES) $(INC_FILES)
 
 # Implementation run
 ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}.dcp
+	rm -f $(PROJECT).bit
 	echo "open_project ${PROJECT}.xpr" > run_impl.tcl
 	echo "reset_run impl_1" >> run_impl.tcl
 	echo "launch_runs impl_1 -jobs 4" >> run_impl.tcl
@@ -86,6 +88,7 @@ ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}
 
 # Bit file
 ${PROJECT}.bit: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
+	rm -f $(PROJECT).bit
 	echo "open_project ${PROJECT}.xpr" > generate_bit.tcl
 	echo "open_run impl_1" >> generate_bit.tcl
 	echo "write_bitstream -force ${PROJECT}.bit" >> generate_bit.tcl

@@ -58,6 +58,8 @@
 #include <bfpga_driver/bfpga.h>
 
 const Bool	UseQueueEngine = 1;		///< Use the FPGA queue engine implementation
+const Bool	UseConfigEngine = 0;		///< Use the FPGA configuration engine
+const BUInt	PcieMaxPayloadSize = 32;	///< The Pcie maximim packet payload in 32bit DWords
 
 class NvmeRequestPacket {
 public:
@@ -78,7 +80,7 @@ public:
 	BUInt32		completerId:16;		///< The completers ID
 	BUInt32		requesterIdEnable:1;	///< Enable the manual use of the requestorId field.
 	BUInt32		fill3:7;		///< 
-	BUInt32		data[32];		///< The data words (Max of 128 bytes but can be increased)
+	BUInt32		data[PcieMaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
 };
 
 class NvmeReplyPacket {
@@ -102,7 +104,7 @@ public:
 	BUInt32		tag:8;			///< The requests tag
 	BUInt32		fill3:23;		///< 
 	BUInt32		reply:1;		///< This bit indicates a reply (we have used an unused bit for this)
-	BUInt32		data[32];		///< The data words (Max of 128 bytes but can be increased)
+	BUInt32		data[PcieMaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
 };
 
 /// Nvme access class

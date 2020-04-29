@@ -20,12 +20,17 @@
 #TEST	= test012-hostnvme
 #TEST	= test013-hostnvme
 #TEST	= test014-queueram
-TEST	= test015-hostnvme
+#TEST	= test015-hostnvme
+#TEST	= test016-fifo
+TEST	= test017-write
 
 # VHDL source files
 FILES_BASE	+= testbench/TestPkg.vhd ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd ../src/AxilClockConverter.vhd ../src/AxisClockConverter.vhd 
 FILES_BASE	+= ../src/NvmeStreamMux.vhd
+FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo4k/Fifo4k_sim_netlist.vhdl
+FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo32k/Fifo32k_sim_netlist.vhdl
 FILES_SYSTEM	= ../src/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd ../src/StreamSwitch.vhd ../src/NvmeQueues.vhd
+FILES_SYSTEM	+= ../src/TestData.vhd ../src/DataFifo.vhd ../src/NvmeWrite.vhd
 
 # Test files
 FILES_test001-leds += testbench/${TEST}.vhd ${FILES_BASE} ../src/LedCount.vhd
@@ -43,6 +48,8 @@ FILES_test012-hostnvme += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test013-hostnvme += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test014-queueram += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeQueues.vhd
 FILES_test015-hostnvme += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
+FILES_test016-fifo += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
+FILES_test017-write += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 
 # VHDL testbench files
 STOP	= test

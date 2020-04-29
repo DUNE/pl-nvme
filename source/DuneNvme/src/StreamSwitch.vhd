@@ -1,18 +1,25 @@
 --------------------------------------------------------------------------------
---	StreamSwitch.vhd Multiplex/De-multiplex a stream into two using header
+--	StreamSwitch.vhd Send PCIe packets between separate streams.
 --	T.Barnaby, Beam Ltd. 2020-04-08
 -------------------------------------------------------------------------------
 --!
 --! @class	StreamSwitch
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-04-08
---! @version	0.0.1
+--! @version	0.2
 --!
 --! @brief
---! This module Multiplex/De-multiplex a stream a 128bit Axis stream into two stream using the 128bit header
+--! This module implements a PCIe packet switch transfering packets between streams.
 --!
 --! @details
---! 
+--! This switch sends PCIe packets between streams. There are two AXI streams per logical stream
+--! one is for input packets and one for output packets. Streams are numbered 0 to NumStreams-1.
+--! It expects Xilinx PCIe Gen3 PCIe packet headers to be used.
+--! Packets are switched based on the address fields bits 27 downto 24 in the case of request packets
+--! and on the requesterId field in the case of replies.
+--! The switch uses a priority based on the input stream number, with 0 being the highest priority.
+--! When the switch sees a valid signal on one of the streams and its desitation stream is ready then
+--! the switch will send a complete packet, using the "last" signal to denote the end of packet.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -61,9 +68,16 @@ signal switchState	: StateType := SWITCH_STATE_IDLE;
 signal switchIn		: integer range 0 to NumStreams-1 := 0;
 signal switchOut	: integer range 0 to NumStreams-1 := 0;
 
-function streamFromAddress(address: unsigned) return integer is
+function streamOutNum(header: std_logic_vector) return integer is
+variable num: integer;
 begin
-	return to_integer(address(27 downto 24));
+	if(to_PcieReplyHeadType(header).reply = '1') then
+		num := to_integer(to_PcieReplyHeadType(header).requesterId);
+	else
+		num := to_integer(to_PcieRequestHeadType(header).address(27 downto 24));
+	end if;
+
+	return num;
 end function;
 
 begin
@@ -75,7 +89,6 @@ begin
 		streamOut(i).data	<= streamIn(switchIn).data when((switchState = SWITCH_STATE_TRANSFER) and (i = switchOut)) else (others => '0');
 	end generate;
 
-
 	-- Process stream
 	process(clk)
 	begin
@@ -85,16 +98,12 @@ begin
 			else
 				case(switchState) is
 				when SWITCH_STATE_IDLE =>
-					--! *** We should realy check ready status on output stream to reduce lockups ***
+					-- Decide on which swtream to send to based on valid and ready signals in stream number priority order (stream 0 highest)
 					for i in 0 to NumStreams-1 loop
-						if(streamIn(i).valid = '1') then
-							switchIn <= i;
-							if(to_PcieReplyHeadType(streamIn(i).data).reply = '1') then
-								switchOut <= to_integer(to_PcieReplyHeadType(streamIn(i).data).requesterId);
-							else
-								switchOut <= streamFromAddress(to_PcieRequestHeadType(streamIn(i).data).address);
-							end if;
-							switchState <= SWITCH_STATE_TRANSFER;
+						if((streamIn(i).valid = '1') and (streamOut(streamOutNum(streamIn(i).data)).ready = '1')) then
+							switchIn	<= i;
+							switchOut	<= streamOutNum(streamIn(i).data);
+							switchState	<= SWITCH_STATE_TRANSFER;
 							exit;
 						end if;
 					end loop;

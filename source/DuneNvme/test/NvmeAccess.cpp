@@ -199,21 +199,26 @@ void NvmeAccess::reset(){
 	}
 	te = getTime();
 	printf("Reset time was: %f ms\n", (te - ts) * 1000);
-
-	printf("Last status was: %8.8x\n", data);
-	data = 0;
-	while((data & 4) == 0){
-		readNvmeStorageReg(8, data);
-		usleep(1000);
-	}
-	te = getTime();
-	printf("Full Reset time was: %f ms\n", (te - ts) * 1000);
-		
 	usleep(100000);
-	printf("Last status was: %8.8x\n", data);
 
-	data = 0x06;
-	pcieWrite(10, 4, 1, &data);			///< Set PCIe config command for memory accesses
+	printf("Last status was: %8.8x\n", data);
+	
+	if(UseConfigEngine){
+		data = 0;
+		while((data & 4) == 0){
+			readNvmeStorageReg(8, data);
+			usleep(1000);
+		}
+		te = getTime();
+		printf("Full Reset time was: %f ms\n", (te - ts) * 1000);
+
+		usleep(100000);
+		printf("Last status was: %8.8x\n", data);
+	}
+	else {
+		data = 0x06;
+		pcieWrite(10, 4, 1, &data);			///< Set PCIe config command for memory accesses
+	}
 }
 #endif
 
@@ -240,8 +245,8 @@ int NvmeAccess::nvmeRequest(int queue, int opcode, BUInt32 address, BUInt32 arg1
 	printf("nvmeRequest:\n"); bhd32(cmd, 16);
 	if(UseQueueEngine){
 		// Send message to queue engine
-		printf("Write to queue: %8.8x\n", 0x05000000 | (queue << 16));
-		if(e = pcieWrite(1, 0x05000000 | (queue << 16), 16, cmd))
+		printf("Write to queue: %8.8x\n", 0x02000000 | (queue << 16));
+		if(e = pcieWrite(1, 0x02000000 | (queue << 16), 16, cmd))
 			return e;
 	}
 	else {
@@ -301,24 +306,9 @@ int NvmeAccess::nvmeProcess(){
 
 		dl3printf("NvmeAccess::nvmeProcess: awoken with: %d bytes\n", nt);
 		//dl3hd32(obufRx, nt / 4);
+		printf("NvmeAccess::nvmeProcess: awoken with: %d bytes\n", nt);
+		bhd32(obufRx, nt / 4);
 
-#ifdef ZAP		
-		// Determine if packet is a reply or an Nvme request from the source number in the header
-		if(obufRx[0] == 1){
-			memcpy(&opacketReply, obufRx, sizeof(opacketReply));
-			dl3printf("NvmeAccess::nvmeProcess: Reply id: %x\n", opacketReply.requesterId);
-			dl3hd32(&opacketReply, nt / 4);
-			opacketReplySem.set();
-			continue;
-		}
-		else if(obufRx[0] == 2){
-			memcpy(&request, obufRx, sizeof(request));
-		}
-		else {
-			printf("NvmeAccess::nvmeProcess: Error packet with unknown stream\n");
-			continue;
-		}
-#else
 		// Determine if packet is a reply or an Nvme request from the reply bit in the header
 		if(obufRx[2] & 0x80000000){
 			memcpy(&opacketReply, obufRx, sizeof(opacketReply));
@@ -330,7 +320,6 @@ int NvmeAccess::nvmeProcess(){
 		else {
 			memcpy(&request, obufRx, sizeof(request));
 		}
-#endif
 		
 		dl3printf("NvmeAccess::nvmeProcess: recvNum: %d Req: %d nWords: %d address: 0x%8.8x\n", nt, request.request, request.numWords, request.address);
 		dl3hd32(&request, nt / 4);
@@ -356,10 +345,11 @@ int NvmeAccess::nvmeProcess(){
 			nWordsRet = request.numWords;
 			while(nWordsRet){
 				nWords = nWordsRet;
-				if(nWords > 32)
-					nWords = 32;
+				if(nWords > PcieMaxPayloadSize)
+					nWords = PcieMaxPayloadSize;
 
 				reply.reply = 1;
+				reply.address = request.address & 0x0FFF;
 				reply.numBytes = (nWordsRet * 4);
 				reply.numWords = nWords;
 				reply.tag = request.tag;
@@ -373,6 +363,7 @@ int NvmeAccess::nvmeProcess(){
 				}
 					
 				nWordsRet -= nWords;
+				request.address += (4 * nWords);
 			}
 		}
 		else if(request.request == 1){
@@ -416,8 +407,9 @@ int NvmeAccess::nvmeProcess(){
 					return 1;
 				}
 			}
-			else if((request.address & 0x00FF0000) == 0x00800000){
-				dl3printf("NvmeAccess::nvmeProcess: IoBlockWrite: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), nWords);
+			else if((request.address & 0x00FF0000) == 0x000800000){
+				dl3printf("NvmeAccess::nvmeProcess: IoBlockWrite: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), request.numWords);
+				printf("NvmeAccess::nvmeProcess: IoBlockWrite: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), request.numWords);
 
 				memcpy(&odataBlockMem[(request.address & 0x0000FFFF) / 4], request.data, request.numWords * 4);
 			}
@@ -608,14 +600,15 @@ int NvmeAccess::packetSend(const NvmeReplyPacket& packet){
 
 
 void NvmeAccess::dumpRegs(){
-	printf("Id   : %8.8x\n", oregs[0]);
-	//printf("Address1: %8.8x\n", oregs[1]);
-	//printf("Address2: %8.8x\n", oregs[2]);
-	printf("Test0: %8.8x\n", oregs[3]);
-	printf("Test1: %8.8x\n", oregs[4]);
-	printf("Test2: %8.8x\n", oregs[5]);
-	printf("Test3: %8.8x\n", oregs[6]);
-	printf("Test4: %8.8x\n", oregs[7]);
+	int	r;
+	
+	printf("Id:       %8.8x\n", oregs[0]);
+	printf("Control:  %8.8x\n", oregs[1]);
+	printf("Status:   %8.8x\n", oregs[2]);
+	
+	for(r = 3; r < 16; r++){
+		printf("Reg%2.2d:    %8.8x\n", r, oregs[r]);
+	}
 }
 
 void  NvmeAccess::dumpDmaRegs(bool c2h, int chan){

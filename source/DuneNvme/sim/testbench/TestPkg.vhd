@@ -39,6 +39,7 @@ package TestPkg is
 	procedure pcieRequestRead(signal clk: std_logic; signal stream: inout AxisStreamType; requesterId: in integer; request: in integer; address: in integer; tag: in integer; count: in integer);
 	procedure pcieReply(signal clk: std_logic; signal stream: inout AxisStreamType; requesterId: in integer; status: in integer; address: in integer; tag: in integer; count: in integer; data: in integer);
 	procedure busWrite(signal clk: std_logic; signal toSlave: out AxilToSlaveType; signal toMaster: in AxilToMasterType; address: in integer; data: in integer);
+	procedure busRead(signal clk: std_logic; signal toSlave: out AxilToSlaveType; signal toMaster: in AxilToMasterType; address: in integer);
 end;
 
 package body TestPkg is
@@ -156,5 +157,22 @@ package body TestPkg is
 
 		wait until rising_edge(clk) and (toMaster.wready = '1');
 		toSlave.wvalid <= '0';
+	end procedure;
+
+	procedure busRead(signal clk: std_logic; signal toSlave: out AxilToSlaveType; signal toMaster: in AxilToMasterType; address: in integer) is
+	begin
+		-- Write address
+		wait until rising_edge(clk);
+		toSlave.araddr <= to_AxilAddress(address);
+		toSlave.arvalid <= '1';
+
+		wait until rising_edge(clk) and (toMaster.arready = '1');
+		toSlave.arvalid <= '0';
+
+		-- Read data
+		toSlave.rready <= '1';
+
+		wait until rising_edge(clk) and (toMaster.rvalid = '1');
+		toSlave.rready <= '0';
 	end procedure;
 end;

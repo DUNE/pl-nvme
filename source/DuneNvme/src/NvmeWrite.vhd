@@ -43,12 +43,19 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 
-	dataAvailable	: in std_logic;				--! At least 1 x 8k chunk of data is available to write
-	dataRx		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	enable		: in std_logic;				--! Enable the data writing process
+	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
 
-	-- From host to NVMe request/reply streams
-	nvmeSend	: inout AxisStreamType := AxisOutput;	--! Nvme request stream
-	nvmeRecv	: inout AxisStreamType := AxisInput		--! Nvme reply stream
+	-- To Nvme Request/reply streams
+	requestOut	: inout AxisStreamType := AxisOutput;	--! To Nvme request stream (3)
+	replyIn		: inout AxisStreamType := AxisInput;	--! from Nvme reply stream
+
+	-- From Nvme Request/reply streams
+	memReqIn	: inout AxisStreamType := AxisInput;	--! From Nvme request stream (4)
+	memReplyOut	: inout AxisStreamType := AxisOutput;	--! To Nvme reply stream
+	
+	regAddress	: in unsigned(1 downto 0);		--! Status register to read
+	regData		: out std_logic_vector(31 downto 0)	--! Status register contents
 );
 end;
 
@@ -57,45 +64,243 @@ architecture Behavioral of NvmeWrite is
 --! Set the fields in the PCIe TLP header
 function setHeader(request: integer; address: integer; count: integer; tag: integer) return std_logic_vector is
 begin
-	return set_PcieRequestHeadType(request, address, count, tag);
+	return to_stl(set_PcieRequestHeadType(3, request, address, count, tag));
 end function;
 
 constant TCQ		: time := 1 ns;
 
-type StateType		is (STATE_IDLE, STATE_NEXT_ITEM, STATE_NEXT_DATA, STATE_ITEM_COMPLETE);
+component DataFifo is
+generic(
+	--FifoSize	: integer := 2048			--! The Fifo size
+	FifoSize	: integer := 16				--! The Fifo size
+	--FifoSize	: integer := 1024			--! The Fifo size in 128bit words
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+
+	full		: out std_logic;			--! The fifo is full (Has Fifo size words)
+	empty		: out std_logic;			--! The fifo is empty
+
+	dataIn		: inout AxisStreamType := AxisInput;	--! Input data stream
+	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
+);
+end component;
+
+type StateType		is (STATE_IDLE,
+				STATE_QUEUE_HEAD, STATE_QUEUE_0, STATE_QUEUE_1, STATE_QUEUE_2, STATE_QUEUE_3,
+				STATE_QUEUE_REPLY1, STATE_QUEUE_REPLY2,
+				STATE_COMPLETE);
 signal state		: StateType := STATE_IDLE;
 
+signal fifo_full	: std_logic := '0';
+signal fifo_empty	: std_logic := '0';
+signal dataOut		: AxisStreamType;
+signal blockNumber	: unsigned(63 downto 0) := (others => '0');
+
+type MemStateType	is (MEMSTATE_IDLE, MEMSTATE_READHEAD, MEMSTATE_READDATA);
+signal memState		: MemStateType := MEMSTATE_IDLE;
+signal memRequestHead	: PcieRequestHeadType;
+signal memRequestHead1	: PcieRequestHeadType;
+signal memReplyHead	: PcieReplyHeadType;
+signal memCount		: unsigned(10 downto 0);			-- DWord data send count
+signal memChunkCount	: unsigned(10 downto 0);			-- DWord data send within a chunk count
+signal memData		: std_logic_vector(127 downto 0);
+
+-- Status information
+signal status		: unsigned(31 downto 0) := (others => '0');	-- The system status
+signal numBlocks	: unsigned(31 downto 0) := (others => '0');	-- The number of blocks written
+signal timeUs		: unsigned(31 downto 0) := (others => '0');	-- The time in us
+signal timeCounter	: integer range 0 to 125 := 0;
+
 begin
-	-- Process register access
+	-- Input data FIFO's, one per WriteQueue entry. Just the one for now.
+	dataFifo0 : DataFifo
+	port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		full		=> fifo_full,
+		empty		=> fifo_empty,
+
+		dataIn		=> dataIn,
+		dataOut		=> dataOut
+	);
+	
+	-- Regsiter access
+	regData	<= std_logic_vector(status) when(regAddress = 0)
+			else std_logic_vector(numBlocks) when(regAddress = 1)
+			else std_logic_vector(timeUs);
+	
+	-- Process data input
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				nvmeSend.valid 		<= '0';
-				nvmeSend.last 		<= '0';
-				nvmeSend.keep 		<= (others => '1');
+				requestOut.valid 	<= '0';
+				requestOut.last 	<= '0';
+				requestOut.keep 	<= (others => '1');
+				replyIn.ready		<= '1';
+				blockNumber		<= (others => '0');
+				numBlocks		<= (others => '0');
+				timeUs			<= (others => '0');
+				status			<= (others => '0');
+				timeCounter		<= 0;
 				state			<= STATE_IDLE;
 			else
 				case(state) is
 				when STATE_IDLE =>
-					if(dataAvailable = '1') then
-						state	<= STATE_NEXT_ITEM;
+					if((enable = '1') and (fifo_full = '1') and (numBlocks < 4)) then
+						requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
+						requestOut.valid	<= '1';
+						state			<= STATE_QUEUE_HEAD;
 					end if;
 
-				when STATE_NEXT_ITEM =>
-					state	<= STATE_NEXT_DATA;
-					
-
-				when STATE_NEXT_DATA =>
-					if(nvmeSend.valid = '1' and nvmeSend.ready = '1') then
-						nvmeSend.data	<= (others => '0');
-						state		<= STATE_ITEM_COMPLETE;
+				when STATE_QUEUE_HEAD =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.data	<= zeros(64) & x"00000001" & x"04000001";	-- Namespace 1, From stream4, opcode 1
+						state		<= STATE_QUEUE_0;
 					end if;
 
-				when STATE_ITEM_COMPLETE =>
-					nvmeSend.valid 	<= '0';
-					nvmeSend.last 	<= '0';
+				when STATE_QUEUE_0 =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.data	<= zeros(32) & x"05000000" & zeros(64);	-- Data source address
+						--requestOut.data	<= zeros(32) & x"01800000" & zeros(64);	-- Data source address
+						state		<= STATE_QUEUE_1;
+					end if;
+
+				when STATE_QUEUE_1 =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.data	<= std_logic_vector(blockNumber) & zeros(64);
+						state		<= STATE_QUEUE_2;
+					end if;
+
+				when STATE_QUEUE_2 =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						--requestOut.data	<= zeros(96) & x"00000000";	-- WriteMethod, NumBlocks (0 is 1 block)
+						requestOut.data	<= zeros(96) & x"00000003";	-- WriteMethod, NumBlocks (0 is 1 block)
+						requestOut.last	<= '1';
+						state		<= STATE_QUEUE_3;
+					end if;
+
+				when STATE_QUEUE_3 =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.last		<= '0';
+						requestOut.valid	<= '0';
+						numBlocks		<= numBlocks + 1;
+						replyIn.ready		<= '1';
+						state			<= STATE_QUEUE_REPLY1;
+					end if;
+
+				when STATE_QUEUE_REPLY1 =>
+					if(replyIn.valid = '1' and replyIn.ready = '1') then
+						state	<= STATE_QUEUE_REPLY2;
+					end if;
+
+				when STATE_QUEUE_REPLY2 =>
+					if(replyIn.valid = '1' and replyIn.ready = '1') then
+						--replyIn.ready	<= '0';
+						--state		<= STATE_IDLE;
+					end if;
+
+				when STATE_COMPLETE =>
+					requestOut.valid <= '0';
+					requestOut.last 	<= '0';
 					state		<= STATE_IDLE;
+
+				end case;
+				
+				if(timeCounter = 125) then
+					timeUs		<= timeUs + 1;
+					timeCounter	<= 0;
+				else
+					timeCounter	<= timeCounter + 1;
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	-- Process Nvme read data requests
+	dataOut.ready <= memReplyOut.ready and not memReplyOut.last when((memState = MEMSTATE_READHEAD) or (memState = MEMSTATE_READDATA)) else '0';
+	memRequestHead	<= to_PcieRequestHeadType(memReqIn.data);
+	memReplyOut.data <= dataOut.data(31 downto 0) & to_stl(memReplyHead) when(memState = MEMSTATE_READHEAD)
+		else dataOut.data(31 downto 0) & memData(127 downto 32);
+
+	process(clk)
+	begin
+		if(rising_edge(clk)) then
+			if(reset = '1') then
+				memReqIn.ready	<= '0';
+				memState	<= MEMSTATE_IDLE;
+			else
+				case(MEMSTATE) is
+				when MEMSTATE_IDLE =>
+					if((memReqIn.ready = '1') and (memReqIn.valid = '1')) then
+						memRequestHead1	<= memRequestHead;
+						memCount	<= memRequestHead.count;
+
+						if(memRequestHead.request = 0) then
+							memReqIn.ready	<= '0';
+							memState	<= MEMSTATE_READHEAD;
+						end if;
+					else
+						memReqIn.ready <= '1';
+					end if;
+
+				when MEMSTATE_READHEAD =>
+					if(dataOut.valid = '1') then
+						memReplyHead.byteCount		<= memCount & "00";
+						memReplyHead.address		<= memRequestHead1.address(memReplyHead.address'length - 1 downto 0);
+						memReplyHead.error		<= (others => '0');
+						memReplyHead.status		<= (others => '0');
+						memReplyHead.tag		<= memRequestHead1.tag;
+						memReplyHead.requesterId	<= memRequestHead1.requesterId;
+
+						if(memCount > PcieMaxPayloadSize) then
+							memReplyHead.count	<= to_unsigned(PcieMaxPayloadSize, memReplyHead.count'length);
+							memChunkCount		<= to_unsigned(PcieMaxPayloadSize, memReplyHead.count'length);
+						else
+							memReplyHead.count	<= memCount;
+							memChunkCount		<= memCount;
+						end if;
+
+						memData			<= dataOut.data;
+						memReplyOut.keep 	<= (others => '1');
+						memReplyOut.valid 	<= '1';
+
+						if(memReplyOut.ready = '1' and memReplyOut.valid = '1') then
+							memState	<= MEMSTATE_READDATA;
+						end if;
+					end if;
+				
+				when MEMSTATE_READDATA =>
+					if(memReplyOut.ready = '1' and memReplyOut.valid = '1') then
+						-- Should we also check dataOut.valid ?
+						memData		<= dataOut.data;
+
+						if(memChunkCount = 4) then
+							if(memCount = 4) then
+								memReplyOut.last	<= '0';
+								memReplyOut.valid	<= '0';
+								memState		<= MEMSTATE_IDLE;
+							else
+								memReplyOut.last	<= '0';
+								memReplyOut.valid	<= '0';
+								memState		<= MEMSTATE_READHEAD;
+							end if;
+
+						elsif(memChunkCount = 8) then
+							memReplyOut.keep <= zeros(4) & ones(12);
+							memReplyOut.last <= '1';
+
+						else
+							memReplyOut.last <= '0';
+						end if;
+
+						memChunkCount		<= memChunkCount - 4;
+						memCount		<= memCount - 4;
+						memRequestHead1.address	<= memRequestHead1.address + 16;
+					end if;
 
 				end case;
 			end if;

@@ -208,7 +208,7 @@ begin
 							-- Perform bus master write request to doorbell register on Nvme (0x1000, 0x1008, 0x1010 ...)
 							doorbellReqHead.address	<= to_unsigned(16#000010#, doorbellReqHead.address'length - 8) & to_unsigned(queueIn * 8, 8);
 							doorbellReqHead.tag	<= x"44";
-							doorbellReqHead.requesterId	<= to_unsigned(5, doorbellReqHead.requesterId'length);
+							doorbellReqHead.requesterId	<= to_unsigned(2, doorbellReqHead.requesterId'length);
 							doorbellReqHead.request	<= "0001";
 							doorbellReqHead.count	<= to_unsigned(16#0001#, doorbellReqHead.count'length);
 
@@ -239,7 +239,7 @@ begin
 					if((streamIn.ready = '1') and (streamIn.valid = '1')) then
 						data1					<= streamIn.data;
 						requestHead1.address(31 downto 24)	<= unsigned(streamIn.data(111 downto 104));
-						requestHead1.requesterId		<= to_unsigned(5, requestHead1.requesterId'length);
+						requestHead1.requesterId		<= to_unsigned(2, requestHead1.requesterId'length);
 
 						streamIn.ready				<= '0';
 						streamOut.keep 				<= ones(16);
