@@ -107,6 +107,16 @@ public:
 	BUInt32		data[PcieMaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
 };
 
+const BUInt NvmeSglTypeData	= 0;
+
+class NvmeSgl {
+	BUInt64		address;
+	BUInt32		length;
+	BUInt8		fill0[2];
+	BUInt8		subtype:4;
+	BUInt8		type:4;
+};
+
 /// Nvme access class
 class NvmeAccess {
 public:
@@ -176,5 +186,5 @@ protected:
 	BUInt32			oqueueDataRx;
 	BUInt32			oqueueDataTx;
 
-	BUInt32			odataBlockMem[4096];
+	BUInt32			odataBlockMem[8192];
 };

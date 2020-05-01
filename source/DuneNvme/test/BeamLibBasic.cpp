@@ -111,7 +111,7 @@ void bhd8(void* data, BUInt32 n){
 	printf("\n");
 }
 
-void bhd32(void* data,BUInt32 n){
+void bhd32(void* data, BUInt32 n){
 	BUInt32*	d = (BUInt32*)data;
 	BUInt32		i;
 	
@@ -121,6 +121,25 @@ void bhd32(void* data,BUInt32 n){
 			printf("\n");
 	}
 	printf("\n");
+}
+
+void bhd32a(void* data, BUInt32 n){
+	BUInt32*	d = (BUInt32*)data;
+	BUInt32		i;
+	BUInt32		a = 0;
+	
+	for(i = 0; i < n; i++){
+		if((i & 0x7) == 0)
+			printf("%8.8x: %8.8x ", a, *d++);
+		else if((i & 0x7) == 0x7)
+			printf("%8.8x\n", *d++);
+		else
+			printf("%8.8x ", *d++);
+		a += 4;
+	}
+	
+	if(n % 16)
+		printf("\n");
 }
 
 // Get current time in seconds

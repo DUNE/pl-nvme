@@ -236,11 +236,20 @@ int NvmeAccess::nvmeRequest(int queue, int opcode, BUInt32 address, BUInt32 arg1
 	cmd[5] = 0x00;
 	cmd[6] = address;		// PRP1
 	cmd[7] = 0x00000000;
-	cmd[8] = 0x00000000;		// PRP2
+	cmd[8] = address + 4096;	// PRP2
 	cmd[9] = 0x00000000;
 	cmd[10] = arg10;	// The argument CMD10
 	cmd[11] = arg11;	// The argument CMD11
 	cmd[12] = arg12;	// The argument CMD12
+
+#ifdef ZAP
+	// Scatter gather lists are only supported on some Nvme's	
+	if(queue){
+		// Use SGL
+		cmd[0] |= (1 << 14);
+		cmd[8] = 0x10000;		// Length of data
+	}
+#endif
 
 	printf("nvmeRequest:\n"); bhd32(cmd, 16);
 	if(UseQueueEngine){

@@ -41,6 +41,7 @@ use work.NvmeStorageIntPkg.all;
 
 entity DataFifo is
 generic(
+	Simulate	: boolean := False;			--! Generate simulation core
 	FifoSize	: integer := 2048			--! The Fifo size
 );
 port (
@@ -56,23 +57,6 @@ port (
 end;
 
 architecture Behavioral of DataFifo is
-
-component Fifo4k
-port (
-	clk : in std_logic;
-	srst : in std_logic;
-	din : in std_logic_vector(127 downto 0);
-	wr_en : in std_logic;
-	rd_en : in std_logic;
-	dout : out std_logic_vector(127 downto 0);
-	full : out std_logic;
-	empty : out std_logic;
-	valid : out std_logic;
-	wr_rst_busy : out std_logic;
-	rd_rst_busy : out std_logic;
-	data_count : out std_logic_vector(8 downto 0)
-);
-end component;
 
 component Fifo32k
 port (
@@ -96,27 +80,86 @@ signal fifo_full	: std_logic:= '0';
 signal fifo_empty	: std_logic:= '0';
 signal fifo_count	: std_logic_vector(11 downto 0) := (others => '0');
 
+-- Simulation signals
+type RamType		is array(0 to FifoSize) of std_logic_vector(127 downto 0);
+signal ram		: RamType := (others => zeros(128));
+signal fifoInPos	: integer range 0 to FifoSize := 0;
+signal fifoOutPos	: integer range 0 to FifoSize := 0;
+
+function nextPos(pos: integer) return integer is
 begin
-	-- Stream signals
-	dataIn.ready <= not fifo_full when(reset = '0') else '0';
-	full <= '1' when((reset = '0') and (unsigned(fifo_count) >=  FifoSize)) else '0';
-	empty <= fifo_empty;
-	dataOut.valid <= not fifo_empty;
-	dataOut.last <= '0';
-	
-	fifo0: Fifo32k
-	port map (
-		clk		=> clk,
-		srst		=> reset,
-		din		=> dataIn.data,
-		wr_en		=> dataIn.valid,
-		rd_en		=> dataOut.ready,
-		dout		=> dataOut.data,
-		full		=> fifo_full,
-		empty		=> fifo_empty,
-		--valid		=> dataOut.valid,
-		--wr_rst_busy	=>
-		--rd_rst_busy	=>
-		data_count	=> fifo_count
-	);
+	if((pos + 1) > FifoSize) then
+		return 0;
+	else
+		return pos + 1;
+	end if;
+end;
+
+begin
+	synth: if Simulate = false generate
+		-- Stream signals
+		dataIn.ready	<= not fifo_full when(reset = '0') else '0';
+		full		<= '1' when((reset = '0') and (unsigned(fifo_count) >=  FifoSize)) else '0';
+		empty		<= fifo_empty;
+		dataOut.valid	<= not fifo_empty;
+		dataOut.last	<= '0';
+
+		fifo0: Fifo32k
+		port map (
+			clk		=> clk,
+			srst		=> reset,
+			din		=> dataIn.data,
+			wr_en		=> dataIn.valid,
+			rd_en		=> dataOut.ready,
+			dout		=> dataOut.data,
+			full		=> fifo_full,
+			empty		=> fifo_empty,
+			--valid		=> dataOut.valid,
+			--wr_rst_busy	=>
+			--rd_rst_busy	=>
+			data_count	=> fifo_count
+		);
+	end generate;
+
+	sim: if Simulate = true generate
+		-- Fifo input
+		dataIn.ready	<= '1' when(nextPos(fifoInPos) /= fifoOutPos) else '0';
+		full		<= not dataIn.ready;
+
+		fifoPos: process(clk)
+		begin
+		end process;
+
+		fifoIn: process(clk)
+		begin
+			if(rising_edge(clk)) then
+				if(reset = '1') then
+					fifoInPos	<= 0;
+				else
+					if((dataIn.valid = '1') and (dataIn.ready = '1')) then
+						ram(fifoInPos)	<= dataIn.data;
+						fifoInPos <= nextPos(fifoInPos);
+					end if;
+				end if;
+			end if;
+		end process;
+
+		-- Fifo output
+		dataOut.valid	<= '1' when(fifoOutPos /= fifoInPos) else '0';
+		empty		<= not dataOut.valid;
+
+		fifoOut: process(clk)
+		begin
+			if(rising_edge(clk)) then
+				if(reset = '1') then
+					fifoOutPos	<= 0;
+				else
+					if((dataOut.valid = '1') and (dataOut.ready = '1')) then
+						dataOut.data <= ram(fifoOutPos);
+						fifoOutPos <= nextPos(fifoOutPos);
+					end if;
+				end if;
+			end if;
+		end process;
+	end generate;
 end;

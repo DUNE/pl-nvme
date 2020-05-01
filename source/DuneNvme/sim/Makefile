@@ -27,8 +27,9 @@ TEST	= test017-write
 # VHDL source files
 FILES_BASE	+= testbench/TestPkg.vhd ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd ../src/AxilClockConverter.vhd ../src/AxisClockConverter.vhd 
 FILES_BASE	+= ../src/NvmeStreamMux.vhd
-FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo4k/Fifo4k_sim_netlist.vhdl
-FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo32k/Fifo32k_sim_netlist.vhdl
+#FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo4k/Fifo4k_sim_netlist.vhdl
+#FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo32k/Fifo32k_sim_netlist.vhdl
+
 FILES_SYSTEM	= ../src/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd ../src/StreamSwitch.vhd ../src/NvmeQueues.vhd
 FILES_SYSTEM	+= ../src/TestData.vhd ../src/DataFifo.vhd ../src/NvmeWrite.vhd
 

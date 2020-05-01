@@ -302,7 +302,8 @@ int Control::test3(){
 		return e;
 
 	printf("Get info\n");
-	nvmeRequest(0, 0x06, 0x01F00000, 0x00000001);
+	//nvmeRequest(0, 0x06, 0x01F00000, 0x00000000);		// Namespace info
+	nvmeRequest(0, 0x06, 0x01F00000, 0x00000001);		// Controller info
 	printf("\n");
 	sleep(2);
 
@@ -311,20 +312,21 @@ int Control::test3(){
 
 int Control::test4(){
 	int	e;
-	int	numBlocks = 4;
+	int	numBlocks = 8;
 	
-	printf("Test4: Read block\n");
+	printf("Test4: Read blocks\n");
 	
 	if(e = configureNvme())
 		return e;
 
 	printf("Perform block read\n");
 	memset(odataBlockMem, 0x01, sizeof(odataBlockMem));
+
 	nvmeRequest(1, 0x02, 0x01800000, 0x0000000, 0x00000000, numBlocks-1);	// Perform read
 	usleep(100000);
 
 	printf("DataBlock:\n");
-	bhd32(odataBlockMem, numBlocks*512/4);
+	bhd32a(odataBlockMem, numBlocks*512/4);
 
 	return 0;
 }
@@ -333,8 +335,9 @@ int Control::test5(){
 	int	e;
 	int	a;
 	BUInt32	r;
+	int	numBlocks = 8;
 	
-	printf("Test5: Write block\n");
+	printf("Test5: Write blocks\n");
 	
 	if(e = configureNvme())
 		return e;
@@ -342,10 +345,10 @@ int Control::test5(){
 	srand(time(0));
 	r = rand();
 	printf("Perform block write with: 0x%2.2x\n", r & 0xFF);
-	for(a = 0; a < 4096; a++)
+	for(a = 0; a < 8192; a++)
 		odataBlockMem[a] = ((r & 0xFF) << 24) + a;
 
-	nvmeRequest(1, 0x01, 0x01800000, 0x00000000, 0x00000000, 3);	// Four blocks
+	nvmeRequest(1, 0x01, 0x01800000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
 
 	return 0;
 }
@@ -353,8 +356,10 @@ int Control::test5(){
 int Control::test6(){
 	int	e;
 	int	a;
-	BUInt32	r = 0xAA;
 	BUInt32	v;
+	BUInt32	n;
+	BUInt32	t;
+	double	r;
 
 	printf("Test6: Enable FPGA write blocks\n");
 	
@@ -367,30 +372,36 @@ int Control::test6(){
 	readNvmeStorageReg(32, v);
 	printf("NvmeWrite: status:    %8.8x\n", v);
 	readNvmeStorageReg(36, v);
-	printf("NvmeWrite: numBlocks: %8.8x\n", v);
+	printf("NvmeWrite: numBlocks: %u\n", v);
 	readNvmeStorageReg(40, v);
-	printf("NvmeWrite: timeUs:    %8.8x\n", v);
+	printf("NvmeWrite: timeUs:    %u\n", v);
 
 	// Start off NvmeWrite engine
 	printf("\nStart NvmeWrite engine\n");
 	writeNvmeStorageReg(4, 0x00000004);
 	usleep(1000000);
+	sleep(4);
 
+#ifdef ZAP
 	printf("\nPerform block read\n");
 	memset(odataBlockMem, 0x0, sizeof(odataBlockMem));
 	nvmeRequest(1, 0x02, 0x01800000, 0x0000000, 0x00000000, 3);	// Four blocks
 	usleep(100000);
 
 	printf("DataBlock:\n");
-	bhd32(odataBlockMem, 2*512/4);
+	bhd32(odataBlockMem, 1*512/4);
+#endif
 	
 	printf("Stats\n");
 	readNvmeStorageReg(32, v);
 	printf("NvmeWrite: status:    %8.8x\n", v);
-	readNvmeStorageReg(36, v);
-	printf("NvmeWrite: numBlocks: %8.8x\n", v);
-	readNvmeStorageReg(40, v);
-	printf("NvmeWrite: timeUs:    %8.8x\n", v);
+	readNvmeStorageReg(36, n);
+	printf("NvmeWrite: numBlocks: %u\n", n);
+	readNvmeStorageReg(40, t);
+	printf("NvmeWrite: timeUs:    %u\n", t);
+	
+	r = (4096.0 * n / (1e-6 * t));
+	printf("NvmeWrite: rate:      %f MBytes/s\n", r / (1024 * 1024));
 
 	return 0;
 }

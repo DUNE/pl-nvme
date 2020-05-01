@@ -58,6 +58,7 @@ port (
 	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
 
 	-- AXIS data stream input
+	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
 	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
 
 	-- NVMe interface
@@ -294,6 +295,9 @@ port (
 end component;
 
 component NvmeWrite is
+generic(
+	Simulate	: boolean := Simulate			--! Generate simulation core
+);
 port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
@@ -311,22 +315,6 @@ port (
 	
 	regAddress	: in unsigned(1 downto 0);		--! Status register to read
 	regData		: out std_logic_vector(31 downto 0)	--! Status register contents
-);
-end component;
-
-component TestData is
-generic(
-	BlockSize	: integer := 4096			--! The block size in Bytes.
-);
-port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
-
-	-- Control and status interface
-	enable		: in std_logic;				--! Enable production of data
-
-	-- AXIS data output
-	dataStream	: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end component;
 
@@ -356,7 +344,6 @@ alias writeMemSend		is streamSend(5);
 alias writeMemRecv		is streamRecv(5);
 
 signal dataIn1			: AxisStreamType;
-signal dataIn2			: AxisStreamType;
 signal streamNone		: AxisStreamType := AxisOutput;
 signal streamSink		: AxisStreamType := AxisSink;
 
@@ -840,7 +827,8 @@ begin
 	end process;
 	
 	-- The Data write processing
-	writeEnable <= reg_control(2);
+	writeEnable	<= reg_control(2);
+	dataEnabledOut	<= writeEnable;
 	
 	nvmeWrite0: NvmeWrite
 	port map (
@@ -848,7 +836,7 @@ begin
 		reset		=> nvme_user_reset,
 
 		enable		=> writeEnable,
-		dataIn		=> dataIn2,
+		dataIn		=> dataIn1,
 
 		requestOut	=> writeSend,
 		replyIn		=> writeRecv,
@@ -858,17 +846,6 @@ begin
 		
 		regAddress	=> unsigned(address(1 downto 0)),
 		regData		=> reg_nvmeWrite
-	);
-
-	-- The test data interface
-	testData0 : TestData
-	port map (
-		clk		=> nvme_user_clk,
-		reset		=> nvme_user_reset,
-
-		enable		=> writeEnable,
-
-		dataStream	=> dataIn2
 	);
 
 	end generate;

@@ -71,12 +71,13 @@ signal muxStream2Data	: std_logic_vector(127 downto 0);
 begin
 	-- De-multiplex host -> nvme streams. Expects 128 bit header word providing destination stream number
 	demuxReply <= stream1In.data(95);
-	stream1In.ready <= stream3Out.ready when((demuxState = DEMUX_STATE_START) and (demuxReply = '1'))
-		else stream2Out.ready when((demuxState = DEMUX_STATE_START) and (demuxReply = '0'))
+
+	stream1In.ready <= stream3Out.ready when((demuxState = DEMUX_STATE_START) and (stream1In.valid = '1') and (demuxReply = '1'))
+		else stream2Out.ready when((demuxState = DEMUX_STATE_START) and (stream1In.valid = '1') and (demuxReply = '0'))
 		else stream2Out.ready when(demuxState = DEMUX_STATE_SENDPACKET2)
 		else stream3Out.ready when(demuxState = DEMUX_STATE_SENDPACKET3)
-		else '0';
-
+		else stream2Out.ready and stream3Out.ready;
+		
 	stream2Out.valid <= stream1In.valid when((demuxState = DEMUX_STATE_SENDPACKET2) or ((demuxState = DEMUX_STATE_START) and (demuxReply = '0'))) else '0';
 	stream2Out.last <= stream1In.last;
 	stream2Out.keep <= stream1In.keep;

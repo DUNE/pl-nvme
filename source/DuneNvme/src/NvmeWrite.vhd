@@ -39,6 +39,9 @@ use work.NvmeStoragePkg.all;
 use work.NvmeStorageIntPkg.all;
 
 entity NvmeWrite is
+generic(
+	Simulate	: boolean := False			--! Generate simulation core
+);
 port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
@@ -68,12 +71,15 @@ begin
 end function;
 
 constant TCQ		: time := 1 ns;
+--constant NumBlocksRun	: integer := 2;				--! The total number of blocks in a run
+constant NumBlocksRun	: integer := 262144;			--! The total number of blocks in a run
+constant NvmeBlocks	: integer := NvmeStorageBlockSize / 512;--! The number of Nvme blocks per NvmeStorage system block
 
 component DataFifo is
 generic(
-	--FifoSize	: integer := 2048			--! The Fifo size
-	FifoSize	: integer := 16				--! The Fifo size
-	--FifoSize	: integer := 1024			--! The Fifo size in 128bit words
+	Simulate	: boolean := Simulate;			--! Generate simulation core
+	FifoSize	: integer := NvmeStorageBlockSize/16	--! The Fifo size in 128 bit words
+	--FifoSize	: integer := 16				--! The Fifo size for simple simulations
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -87,10 +93,10 @@ port (
 );
 end component;
 
-type StateType		is (STATE_IDLE,
+type StateType		is (STATE_IDLE, STATE_RUN, STATE_COMPLETE,
 				STATE_QUEUE_HEAD, STATE_QUEUE_0, STATE_QUEUE_1, STATE_QUEUE_2, STATE_QUEUE_3,
-				STATE_QUEUE_REPLY1, STATE_QUEUE_REPLY2,
-				STATE_COMPLETE);
+				STATE_QUEUE_REPLY1, STATE_QUEUE_REPLY2);
+
 signal state		: StateType := STATE_IDLE;
 
 signal fifo_full	: std_logic := '0';
@@ -103,6 +109,7 @@ signal memState		: MemStateType := MEMSTATE_IDLE;
 signal memRequestHead	: PcieRequestHeadType;
 signal memRequestHead1	: PcieRequestHeadType;
 signal memReplyHead	: PcieReplyHeadType;
+signal nvmeReplyHead	: NvmeReplyHeadType;
 signal memCount		: unsigned(10 downto 0);			-- DWord data send count
 signal memChunkCount	: unsigned(10 downto 0);			-- DWord data send within a chunk count
 signal memData		: std_logic_vector(127 downto 0);
@@ -132,6 +139,8 @@ begin
 			else std_logic_vector(numBlocks) when(regAddress = 1)
 			else std_logic_vector(timeUs);
 	
+	nvmeReplyHead <= to_NvmeReplyHeadType(replyIn.data);
+	
 	-- Process data input
 	process(clk)
 	begin
@@ -150,10 +159,33 @@ begin
 			else
 				case(state) is
 				when STATE_IDLE =>
-					if((enable = '1') and (fifo_full = '1') and (numBlocks < 4)) then
-						requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
-						requestOut.valid	<= '1';
-						state			<= STATE_QUEUE_HEAD;
+					if(enable = '1') then
+						-- Initialise for next run
+						blockNumber	<= (others => '0');
+						numBlocks	<= (others => '0');
+						timeUs		<= (others => '0');
+						status		<= (others => '0');
+						timeCounter	<= 0;
+						state		<= STATE_RUN;
+					end if;
+					
+				when STATE_RUN =>
+					if(enable = '1') then
+						if(numBlocks >= NumBlocksRun) then
+							state <= STATE_COMPLETE;
+
+						elsif(fifo_full = '1') then
+							requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
+							requestOut.valid	<= '1';
+							state			<= STATE_QUEUE_HEAD;
+						end if;
+					else
+						state <= STATE_COMPLETE;
+					end if;
+				
+				when STATE_COMPLETE =>
+					if(enable = '0') then
+						state <= STATE_IDLE;
 					end if;
 
 				when STATE_QUEUE_HEAD =>
@@ -177,8 +209,7 @@ begin
 
 				when STATE_QUEUE_2 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						--requestOut.data	<= zeros(96) & x"00000000";	-- WriteMethod, NumBlocks (0 is 1 block)
-						requestOut.data	<= zeros(96) & x"00000003";	-- WriteMethod, NumBlocks (0 is 1 block)
+						requestOut.data	<= zeros(96) & to_stl(NvmeBlocks-1, 32);	-- WriteMethod, NumBlocks (0 is 1 block)
 						requestOut.last	<= '1';
 						state		<= STATE_QUEUE_3;
 					end if;
@@ -187,34 +218,37 @@ begin
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.last		<= '0';
 						requestOut.valid	<= '0';
-						numBlocks		<= numBlocks + 1;
 						replyIn.ready		<= '1';
 						state			<= STATE_QUEUE_REPLY1;
 					end if;
 
 				when STATE_QUEUE_REPLY1 =>
 					if(replyIn.valid = '1' and replyIn.ready = '1') then
-						state	<= STATE_QUEUE_REPLY2;
+						state			<= STATE_QUEUE_REPLY2;
 					end if;
 
 				when STATE_QUEUE_REPLY2 =>
 					if(replyIn.valid = '1' and replyIn.ready = '1') then
-						--replyIn.ready	<= '0';
-						--state		<= STATE_IDLE;
-					end if;
+						if(status = 0) then
+							status(15 downto 0) <= '0' & nvmeReplyHead.status;
+						end if;
 
-				when STATE_COMPLETE =>
-					requestOut.valid <= '0';
-					requestOut.last 	<= '0';
-					state		<= STATE_IDLE;
+						status(31 downto 16)	<= status(31 downto 16) + 1;
+						blockNumber		<= blockNumber + NvmeBlocks;
+						numBlocks		<= numBlocks + 1;
+						replyIn.ready		<= '0';
+						state			<= STATE_RUN;
+					end if;
 
 				end case;
 				
 				if(timeCounter = 125) then
-					timeUs		<= timeUs + 1;
-					timeCounter	<= 0;
+					if(state /= STATE_COMPLETE) then
+						timeUs <= timeUs + 1;
+					end if;
+					timeCounter <= 0;
 				else
-					timeCounter	<= timeCounter + 1;
+					timeCounter <= timeCounter + 1;
 				end if;
 			end if;
 		end if;

@@ -35,6 +35,7 @@ use work.NvmeStoragePkg.all;
 
 package NvmeStorageIntPkg is
 	--! System constants
+	constant NvmeStorageBlockSize	: integer := 4096;	--! System block size
 	constant DataWriteQueueNum	: integer := 8;		--! The number of data write queue entries
 	constant PcieMaxPayloadSize	: integer := 32;	--! The maximum Pcie packet size in 32bit DWords
 	
@@ -94,6 +95,17 @@ package NvmeStorageIntPkg is
 	end record;
 
 	function to_stl(v: NvmeRequestHeadType; word: integer) return std_logic_vector;
+
+	--! Nvme reply queue entry
+	type NvmeReplyHeadType is record
+		dw0		: unsigned(31 downto 0);
+		sqptr		: unsigned(15 downto 0);
+		sqid		: unsigned(15 downto 0);
+		cmd		: unsigned(15 downto 0);
+		status		: unsigned(14 downto 0);
+	end record;
+
+	function to_NvmeReplyHeadType(v: std_logic_vector) return NvmeReplyHeadType;
 
 end;
 
@@ -239,4 +251,16 @@ package body NvmeStorageIntPkg is
 	begin
 		return to_stl(0, 128);
 	end function;
+	
+	function to_NvmeReplyHeadType(v: std_logic_vector) return NvmeReplyHeadType is
+	variable ret: NvmeReplyHeadType;
+	begin
+		ret.dw0 := unsigned(v(31 downto 0));
+		ret.sqptr := unsigned(v(79 downto 64));
+		ret.sqid := unsigned(v(95 downto 80));
+		ret.cmd := unsigned(v(111 downto 96));
+		ret.status := unsigned(v(127 downto 113));
+		return ret;
+	end;
+
 end;

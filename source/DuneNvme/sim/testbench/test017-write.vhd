@@ -37,6 +37,7 @@ port (
 	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
 
 	-- AXIS data stream input
+	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
 	dataIn		: inout AxisStreamType	:= AxisInput;	--! Raw data to save stream
 
 	-- NVMe interface
@@ -330,7 +331,8 @@ begin
 
 	stop : process
 	begin
-		wait for 2000 ns;
+		--wait for 2000 ns;
+		wait for 10000 ns;
 		assert false report "simulation ended ok" severity failure;
 	end process;
 end;
