@@ -1,0 +1,8 @@
+/* Beam doxygen CSS overrides for WebSys */
+ul {
+	overflow: visible;	/* Reverted this: Fixed: list item bullets overlap floating elements*/
+}
+
+a:hover {
+	text-decoration: none;
+}
