@@ -67,6 +67,8 @@ SFLAGS	= --assert-level=error
 #SFLAGS += --stop-time=300ns
 SFLAGS += --stop-time=30us
 
+#GFLAGS	+= --std=93
+#GFLAGS	+= --std=02
 #GFLAGS	+= --std=08
 
 .PHONY: isim

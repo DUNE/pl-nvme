@@ -83,6 +83,8 @@ ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}
 	#echo 'if { $${runStatus} != "write_bitstream Complete!"} {' >> run_impl.tcl
 	echo "	exit 1" >> run_impl.tcl
 	echo "}" >> run_impl.tcl
+
+	echo "report_utilization -hierarchical -file utilisation.txt" >> run_impl.tcl
 	echo "exit 0" >> run_impl.tcl
 	vivado -nojournal -nolog -mode batch -source run_impl.tcl
 

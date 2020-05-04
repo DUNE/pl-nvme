@@ -60,7 +60,8 @@ port (
 	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
 
 	-- AXIS data stream input
-	--dataRx	: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
+	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve

@@ -93,9 +93,12 @@ port (
 );
 end component;
 
-type StateType		is (STATE_IDLE, STATE_RUN, STATE_COMPLETE,
+type StateType		is (STATE_IDLE, STATE_INIT, STATE_RUN, STATE_COMPLETE,
 				STATE_QUEUE_HEAD, STATE_QUEUE_0, STATE_QUEUE_1, STATE_QUEUE_2, STATE_QUEUE_3,
-				STATE_QUEUE_REPLY1, STATE_QUEUE_REPLY2);
+				STATE_WAIT_REPLY);
+
+type ReplyStateType	is (REPLY_STATE_QUEUE_REPLY1, REPLY_STATE_QUEUE_REPLY2);
+signal replyState	: ReplyStateType := REPLY_STATE_QUEUE_REPLY1;
 
 signal state		: StateType := STATE_IDLE;
 
@@ -113,6 +116,10 @@ signal nvmeReplyHead	: NvmeReplyHeadType;
 signal memCount		: unsigned(10 downto 0);			-- DWord data send count
 signal memChunkCount	: unsigned(10 downto 0);			-- DWord data send within a chunk count
 signal memData		: std_logic_vector(127 downto 0);
+
+signal num		: integer := 0;
+signal numReply		: integer := 0;
+signal cmdId		: unsigned(7 downto 0) := (others => '0');	-- The command Id
 
 -- Status information
 signal status		: unsigned(31 downto 0) := (others => '0');	-- The system status
@@ -149,29 +156,31 @@ begin
 				requestOut.valid 	<= '0';
 				requestOut.last 	<= '0';
 				requestOut.keep 	<= (others => '1');
-				replyIn.ready		<= '1';
 				blockNumber		<= (others => '0');
-				numBlocks		<= (others => '0');
 				timeUs			<= (others => '0');
-				status			<= (others => '0');
 				timeCounter		<= 0;
+				num			<= 0;
+				cmdId			<= (others => '0');
 				state			<= STATE_IDLE;
 			else
 				case(state) is
 				when STATE_IDLE =>
 					if(enable = '1') then
-						-- Initialise for next run
-						blockNumber	<= (others => '0');
-						numBlocks	<= (others => '0');
-						timeUs		<= (others => '0');
-						status		<= (others => '0');
-						timeCounter	<= 0;
-						state		<= STATE_RUN;
+						state <= STATE_INIT;
 					end if;
+				
+				when STATE_INIT =>
+					-- Initialise for next run
+					blockNumber	<= (others => '0');
+					timeUs		<= (others => '0');
+					timeCounter	<= 0;
+					num		<= 0;
+					cmdId		<= (others => '0');
+					state		<= STATE_RUN;
 					
 				when STATE_RUN =>
 					if(enable = '1') then
-						if(numBlocks >= NumBlocksRun) then
+						if(num >= NumBlocksRun) then
 							state <= STATE_COMPLETE;
 
 						elsif(fifo_full = '1') then
@@ -190,7 +199,7 @@ begin
 
 				when STATE_QUEUE_HEAD =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						requestOut.data	<= zeros(64) & x"00000001" & x"04000001";	-- Namespace 1, From stream4, opcode 1
+						requestOut.data	<= zeros(64) & x"00000001" & x"04" & to_stl(cmdId) & x"0001";	-- Namespace 1, From stream4, opcode 1
 						state		<= STATE_QUEUE_0;
 					end if;
 
@@ -218,26 +227,21 @@ begin
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.last		<= '0';
 						requestOut.valid	<= '0';
-						replyIn.ready		<= '1';
-						state			<= STATE_QUEUE_REPLY1;
-					end if;
-
-				when STATE_QUEUE_REPLY1 =>
-					if(replyIn.valid = '1' and replyIn.ready = '1') then
-						state			<= STATE_QUEUE_REPLY2;
-					end if;
-
-				when STATE_QUEUE_REPLY2 =>
-					if(replyIn.valid = '1' and replyIn.ready = '1') then
-						if(status = 0) then
-							status(15 downto 0) <= '0' & nvmeReplyHead.status;
-						end if;
-
-						status(31 downto 16)	<= status(31 downto 16) + 1;
 						blockNumber		<= blockNumber + NvmeBlocks;
-						numBlocks		<= numBlocks + 1;
-						replyIn.ready		<= '0';
-						state			<= STATE_RUN;
+						num			<= num + 1;
+						cmdId			<= cmdId + 1;
+						if(num > numReply + 4) then
+							state <= STATE_WAIT_REPLY;
+						else
+							state <= STATE_RUN;
+						end if;
+					end if;
+
+				when STATE_WAIT_REPLY =>
+					if(num > numReply + 4) then
+						state <= STATE_WAIT_REPLY;
+					else
+						state <= STATE_RUN;
 					end if;
 
 				end case;
@@ -250,6 +254,46 @@ begin
 				else
 					timeCounter <= timeCounter + 1;
 				end if;
+			end if;
+		end if;
+	end process;
+	
+	-- Process replies
+	process(clk)
+	begin
+		if(rising_edge(clk)) then
+			if(reset = '1') then
+				replyIn.ready		<= '1';
+				numBlocks		<= (others => '0');
+				status			<= (others => '0');
+				numReply		<= 0;
+				replyState		<= REPLY_STATE_QUEUE_REPLY1;
+			else
+				case(replyState) is
+				when REPLY_STATE_QUEUE_REPLY1 =>
+					if(state = STATE_INIT) then
+						numBlocks	<= (others => '0');
+						status		<= (others => '0');
+						numReply	<= 0;
+					end if;
+					
+					if(replyIn.valid = '1' and replyIn.ready = '1') then
+						replyState <= REPLY_STATE_QUEUE_REPLY2;
+					end if;
+
+				when REPLY_STATE_QUEUE_REPLY2 =>
+					if(replyIn.valid = '1' and replyIn.ready = '1') then
+						if(status = 0) then
+							status(15 downto 0) <= '0' & nvmeReplyHead.status;
+						end if;
+
+						status(31 downto 16)	<= status(31 downto 16) + 1;
+						numBlocks		<= numBlocks + 1;
+						numReply		<= numReply + 1;
+						replyState		<= REPLY_STATE_QUEUE_REPLY1;
+					end if;
+				
+				end case;
 			end if;
 		end if;
 	end process;

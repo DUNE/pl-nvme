@@ -65,6 +65,7 @@ public:
 	int		test4();				///< Run test4
 	int		test5();				///< Run test5
 	int		test6();				///< Run test6
+	int		test7();				///< Run test7
 
 	int		test_misc();				///< Collection of misc tests
 
@@ -360,6 +361,7 @@ int Control::test6(){
 	BUInt32	n;
 	BUInt32	t;
 	double	r;
+	double	ts;
 
 	printf("Test6: Enable FPGA write blocks\n");
 	
@@ -379,8 +381,18 @@ int Control::test6(){
 	// Start off NvmeWrite engine
 	printf("\nStart NvmeWrite engine\n");
 	writeNvmeStorageReg(4, 0x00000004);
-	usleep(1000000);
-	sleep(4);
+
+#ifdef ZAP	
+	ts = getTime();
+	n = 0;
+	while(n != 262144){
+		readNvmeStorageReg(36, n);
+		printf("NvmeWrite: numBlocks: %u\n", n);
+	}
+	printf("Time was: %f\n", getTime() - ts);
+#else
+	sleep(2);
+#endif
 
 #ifdef ZAP
 	printf("\nPerform block read\n");
@@ -403,6 +415,33 @@ int Control::test6(){
 	r = (4096.0 * n / (1e-6 * t));
 	printf("NvmeWrite: rate:      %f MBytes/s\n", r / (1024 * 1024));
 
+	return 0;
+}
+
+int Control::test7(){
+	int	e;
+	int	a;
+	BUInt32	r;
+	int	numBlocks = 8;
+	
+	printf("Test7: Write blocks, 4 at a time\n");
+	
+	if(e = configureNvme())
+		return e;
+
+	srand(time(0));
+	r = rand();
+	printf("Perform block write with: 0x%2.2x\n", r & 0xFF);
+	for(a = 0; a < 8192; a++)
+		odataBlockMem[a] = ((r & 0xFF) << 24) + a;
+
+	nvmeRequest(1, 0x01, 0x01800000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
+	nvmeRequest(1, 0x01, 0x01801000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
+	nvmeRequest(1, 0x01, 0x01802000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
+	nvmeRequest(1, 0x01, 0x01803000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
+
+	sleep(2);
+	
 	return 0;
 }
 
@@ -547,6 +586,9 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(test, "test6")){
 			err = control.test6();
+		}
+		else if(!strcmp(test, "test7")){
+			err = control.test7();
 		}
 		else if(!strcmp(test, "test_misc")){
 			err = control.test_misc();

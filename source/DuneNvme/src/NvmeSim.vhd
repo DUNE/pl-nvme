@@ -75,6 +75,8 @@ architecture Behavioral of NvmeSim is
 
 constant TCQ			: time := 1 ns;
 constant RegWidth		: integer := 32;
+--constant NumWordsRead		: integer := 1024;			--! Normal 4k Block
+constant NumWordsRead		: integer := 64;			--! Simulation short "block"
 
 subtype RegDataType		is std_logic_vector(RegWidth-1 downto 0);
 type StateType			is (STATE_IDLE, STATE_WRITE, STATE_REPLY, STATE_READ, STATE_READ_QUEUE_START, STATE_READ_QUEUE,
@@ -240,7 +242,7 @@ begin
 					end if;
 
 				when STATE_READ_QUEUE =>
-					-- Read in queue data ignoring it
+					-- Read in queue data, generally ignoring it
 					if(nvmeReply1.valid = '1' and nvmeReply1.ready = '1') then
 						if(count = 16) then
 							queueRequest(queueRequestPos)	<= nvmeReply1.data(127 downto 96);
@@ -302,8 +304,7 @@ begin
 					nvmeRequestHead.address	<= to_unsigned(16#05000000#, nvmeRequestHead.address'length);
 					nvmeRequestHead.tag	<= x"44";
 					nvmeRequestHead.request	<= "0000";
-					--nvmeRequestHead.count	<= to_unsigned(16#0040#, nvmeRequestHead.count'length);	-- Test size of 64 DWords
-					nvmeRequestHead.count	<= to_unsigned(16#0400#, nvmeRequestHead.count'length);	-- Test size of 1024 DWords
+					nvmeRequestHead.count	<= to_unsigned(NumWordsRead, nvmeRequestHead.count'length);				-- Test size of 32 DWords
 					
 					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
 						count		<= nvmeRequestHead.count;	-- Note ignoring 1 DWord in first 128 bits

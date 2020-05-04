@@ -155,6 +155,7 @@ static spinlock_t		nextDevLock;
 static struct pci_device_id bfpga_ids[] = {
 	{ PCI_VENDOR_ID_XILINX, 0x8014, PCI_VENDOR_ID_XILINX, 0x0007 },
 	{ PCI_VENDOR_ID_XILINX, 0x8024, PCI_VENDOR_ID_XILINX, 0x0007 },
+	{ PCI_VENDOR_ID_XILINX, 0x8034, PCI_VENDOR_ID_XILINX, 0x0007 },
 	{ 0, }
 };
 MODULE_DEVICE_TABLE(pci, bfpga_ids);

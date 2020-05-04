@@ -98,7 +98,7 @@ begin
 			else
 				case(switchState) is
 				when SWITCH_STATE_IDLE =>
-					-- Decide on which swtream to send to based on valid and ready signals in stream number priority order (stream 0 highest)
+					-- Decide on which stream to send to based on valid and ready signals in stream number priority order (stream 0 highest)
 					for i in 0 to NumStreams-1 loop
 						if((streamIn(i).valid = '1') and (streamOut(streamOutNum(streamIn(i).data)).ready = '1')) then
 							switchIn	<= i;

@@ -36,12 +36,13 @@ use work.NvmeStoragePkg.all;
 package NvmeStorageIntPkg is
 	--! System constants
 	constant NvmeStorageBlockSize	: integer := 4096;	--! System block size
-	constant DataWriteQueueNum	: integer := 8;		--! The number of data write queue entries
+	constant NvmeWriteQueueNum	: integer := 8;		--! The number of data write queue entries
 	constant PcieMaxPayloadSize	: integer := 32;	--! The maximum Pcie packet size in 32bit DWords
 	
 	--! Generaly useful functions
 	function to_stl(v: integer; b: integer) return std_logic_vector;
 	function to_stl(v: unsigned; b: integer) return std_logic_vector;
+	function to_stl(v: unsigned) return std_logic_vector;
 	function log2(v: integer) return integer;
 	function concat(v: std_logic; n: integer) return std_logic_vector;
 	function zeros(n: integer) return std_logic_vector;
@@ -106,7 +107,6 @@ package NvmeStorageIntPkg is
 	end record;
 
 	function to_NvmeReplyHeadType(v: std_logic_vector) return NvmeReplyHeadType;
-
 end;
 
 package body NvmeStorageIntPkg is
@@ -119,6 +119,11 @@ package body NvmeStorageIntPkg is
 	function to_stl(v: unsigned; b: integer) return std_logic_vector is
 	begin
 		return concat('0', b - v'length) & std_logic_vector(v);
+	end function;
+
+	function to_stl(v: unsigned) return std_logic_vector is
+	begin
+		return std_logic_vector(v);
 	end function;
 
 	function log2(v: integer) return integer is
@@ -262,5 +267,4 @@ package body NvmeStorageIntPkg is
 		ret.status := unsigned(v(127 downto 113));
 		return ret;
 	end;
-
 end;

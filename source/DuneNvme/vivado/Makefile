@@ -29,7 +29,7 @@ SYN_FILES	+= ../src/NvmeQueues.vhd
 SYN_FILES	+= ../src/NvmeStorageUnit.vhd
 SYN_FILES	+= ../src/DuneNvmeTestTop.vhd
 SYN_FILES	+= ../src/TestData.vhd ../src/DataFifo.vhd ../src/NvmeWrite.vhd
-#SYN_FILES	+= ../src/NvmeSim.vhd
+SYN_FILES	+= ../src/NvmeSim.vhd
 
 # IP cores
 XCI_FILES	= ../src/ip/Clk_core.xci

@@ -78,11 +78,21 @@ package NvmeStoragePkg is
 
 
 	--! AXI Stream interface
-	--! This implemtation makes it easy to pass and manipulate streams in VHDL. It's not not nice as it uses inout
-	--! to acheive this as VHDL is limited when using records and module in's and out's.
 	constant AxisDataWidth	: integer := 128;
 	constant AxisKeepWidth	: integer := 16;
 
+	type AxisType is record
+		valid		: std_logic;
+		last		: std_logic;
+		data		: std_logic_vector(AxisDataWidth-1 downto 0);
+		keep		: std_logic_vector(AxisKeepWidth-1 downto 0);
+	end record;
+
+	constant AxisInit	: AxisType := ('0', '0', (others => '0'), (others => '0'));
+
+	--! This implemtation makes it easy to pass and manipulate streams in VHDL. It's not not nice as it uses inout
+	--! to acheive this as VHDL is very limited when using records especialy as module in's and out's.
+	--! However this scheme simplifies the code syntax a lot at the expense of less in/out validation in initial compilation stages.
 	type AxisStreamType is record
 		ready		: std_logic;
 		valid		: std_logic;
@@ -91,15 +101,16 @@ package NvmeStoragePkg is
 		keep		: std_logic_vector(AxisKeepWidth-1 downto 0);
 	end record;
 
-	type AxisArrayType	is array (natural range <>) of AxisStreamType;
-	constant AxisInput	: AxisStreamType	:= ('0', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
-	constant AxisOutput	: AxisStreamType	:= ('Z', '0', '0', (others => '0'), (others => '0'));
-	constant AxisInOut	: AxisStreamType	:= ('Z', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
-	constant AxisSink	: AxisStreamType	:= ('1', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
+	constant AxisInput	: AxisStreamType := ('0', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
+	constant AxisOutput	: AxisStreamType := ('Z', '0', '0', (others => '0'), (others => '0'));
+	constant AxisInOut	: AxisStreamType := ('Z', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
+	constant AxisSink	: AxisStreamType := ('1', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
+	type AxisArrayType is array (natural range <>) of AxisStreamType;
 
 	function to_AxisData(v: integer) return std_logic_vector;
 
 	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: inout AxisStreamType);
+
 
 
 	--! The NvmeStorage module's interface
@@ -120,7 +131,8 @@ package NvmeStoragePkg is
 		hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
 
 		-- AXIS data stream input
-		--dataRx	: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+		dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
+		dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
 
 		-- NVMe interface
 		nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
