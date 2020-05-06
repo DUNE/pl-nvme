@@ -55,7 +55,8 @@ use work.NvmeStorageIntPkg.all;
 
 entity NvmeSim is
 generic(
-	Simulate	: boolean	:= True
+	Simulate	: boolean := True;
+	BlockSize	: integer := NvmeStorageBlockSize	--! System block size
 );
 port (
 	clk		: in std_logic;					--! The input clock
@@ -75,8 +76,7 @@ architecture Behavioral of NvmeSim is
 
 constant TCQ			: time := 1 ns;
 constant RegWidth		: integer := 32;
---constant NumWordsRead		: integer := 1024;			--! Normal 4k Block
-constant NumWordsRead		: integer := 64;			--! Simulation short "block"
+constant NumWordsRead		: integer := BlockSize/4;		--! Number of 32bit Dwords in a block
 
 subtype RegDataType		is std_logic_vector(RegWidth-1 downto 0);
 type StateType			is (STATE_IDLE, STATE_WRITE, STATE_REPLY, STATE_READ, STATE_READ_QUEUE_START, STATE_READ_QUEUE,
@@ -94,6 +94,7 @@ signal hostReplyHead1		: PcieReplyHeadType := set_PcieReplyHeadType(0, 0, 0, 0, 
 signal nvmeRequestHead		: PcieRequestHeadType;
 signal nvmeReply1Head		: PcieReplyHeadType;
 signal reg_pci_command		: RegDataType := (others => '0');
+signal queue_pos		: unsigned(2 downto 0);				-- Hardcoded for 8 queue entries
 signal reg_admin_queue		: RegDataType := (others => '0');
 signal reg_io1_queue		: RegDataType := (others => '0');
 signal reg_io2_queue		: RegDataType := (others => '0');
@@ -134,6 +135,7 @@ begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
 				reg_pci_command	<= (others => '0');
+				queue_pos	<= (others => '0');
 				reg_admin_queue	<= (others => '0');
 				reg_io1_queue	<= (others => '0');
 				reg_io2_queue	<= (others => '0');
@@ -169,14 +171,17 @@ begin
 							state <= STATE_REPLY;
 						else 
 							if(hostRequestHead1.address = x"1000") then
+								queue_pos	<= unsigned(hostReq.data(2 downto 0)) - 1;
 								reg_admin_queue <= hostReq.data(31 downto 0);
 								queue		<= 0;
 								state		<= STATE_READ_QUEUE_START;
 							elsif(hostRequestHead1.address = x"1008") then
+								queue_pos	<= unsigned(hostReq.data(2 downto 0)) - 1;
 								reg_io1_queue	<= hostReq.data(31 downto 0);
 								queue		<= 1;
 								state		<= STATE_READ_QUEUE_START;
 							elsif(hostRequestHead1.address = x"1010") then
+								queue_pos	<= unsigned(hostReq.data(2 downto 0)) - 1;
 								reg_io2_queue	<= hostReq.data(31 downto 0);
 								queue		<= 2;
 								state		<= STATE_READ_QUEUE_START;
@@ -222,7 +227,7 @@ begin
 
 				when STATE_READ_QUEUE_START =>
 					-- Perform bus master read request for queue data
-					nvmeRequestHead.address	<= x"020" & to_unsigned(queue, 4) & x"0000";
+					nvmeRequestHead.address	<= x"020" & to_unsigned(queue, 4) & zeros(7) & queue_pos & zeros(6);
 					nvmeRequestHead.tag	<= x"44";
 					nvmeRequestHead.requesterId	<= to_unsigned(0, nvmeRequestHead.requesterId'length);
 					nvmeRequestHead.request	<= "0000";
@@ -267,6 +272,7 @@ begin
 
 							if(queue = 1) then
 								state		<= STATE_READ_DATA_START;
+								--state		<= STATE_REPLY_QUEUE;		-- For testing, ignore actual reading of data across Pcie
 							elsif(queue = 2) then
 								state		<= STATE_READ_DATA_START;
 							else
@@ -300,8 +306,8 @@ begin
 
 				when STATE_READ_DATA_START =>
 					-- Perform bus master read request for data to write to NVMe
-					-- Hardcoded to address 0x04000000
-					nvmeRequestHead.address	<= to_unsigned(16#05000000#, nvmeRequestHead.address'length);
+					nvmeRequestHead.address	<= unsigned(queueRequest(6));
+					--nvmeRequestHead.address	<= to_unsigned(16#05000000#, nvmeRequestHead.address'length);
 					nvmeRequestHead.tag	<= x"44";
 					nvmeRequestHead.request	<= "0000";
 					nvmeRequestHead.count	<= to_unsigned(NumWordsRead, nvmeRequestHead.count'length);				-- Test size of 32 DWords

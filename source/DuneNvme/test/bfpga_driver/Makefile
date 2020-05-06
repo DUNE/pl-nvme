@@ -11,7 +11,7 @@ obj-m	:= bfpga.o
 
 TARGET			= 
 KERNELVERSION		?= $(shell uname -r)
-KERNELVERSION		?= 5.5.15-200.fc31.x86_64
+#KERNELVERSION		?= 5.5.15-200.fc31.x86_64
 
 ifeq ("$(TARGET)", "")
 DEST_DIR 		=

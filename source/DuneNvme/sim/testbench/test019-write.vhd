@@ -19,7 +19,8 @@ end;
 
 architecture sim of Test is
 
-constant BlockSize	: integer := 512;			--! For simple testing should be 4096
+--constant BlockSize	: integer := 512;			--! For simple testing should be 4096
+constant BlockSize	: integer := 4096;			--! Proper block size
 
 component NvmeStorageUnit is
 generic(
@@ -335,7 +336,7 @@ begin
 	stop : process
 	begin
 		--wait for 2000 ns;
-		wait for 10000 ns;
+		wait for 14000 ns;
 		assert false report "simulation ended ok" severity failure;
 	end process;
 end;

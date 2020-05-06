@@ -66,6 +66,7 @@ public:
 	int		test5();				///< Run test5
 	int		test6();				///< Run test6
 	int		test7();				///< Run test7
+	int		test8();				///< Run test8
 
 	int		test_misc();				///< Collection of misc tests
 
@@ -382,7 +383,7 @@ int Control::test6(){
 	printf("\nStart NvmeWrite engine\n");
 	writeNvmeStorageReg(4, 0x00000004);
 
-#ifdef ZAP	
+#ifndef ZAP	
 	ts = getTime();
 	n = 0;
 	while(n != 262144){
@@ -445,6 +446,37 @@ int Control::test7(){
 	return 0;
 }
 
+int Control::test8(){
+	int	e;
+	int	a;
+	BUInt32	v;
+	BUInt32	i;
+	int	n;
+	int	numBlocks = 1000;
+	
+	printf("Test8: Validate 4k blocks\n");
+	
+	if(e = configureNvme())
+		return e;
+
+	v = 0;
+	for(n = 0; n < numBlocks; n++){
+		printf("Test Block: %u\n", n);
+		memset(odataBlockMem, 0x01, sizeof(odataBlockMem));
+		nvmeRequest(1, 0x02, 0x01800000, n * 8, 0x00000000, 7);	// Perform read
+		usleep(100000);
+
+		for(a = 0; a < 4096 / 4; a++, v++){
+			if(odataBlockMem[a] != v){
+				printf("Error in Block: %u\n", n);
+				bhd32a(odataBlockMem, 8*512/4);
+				exit(1);
+			}
+		}
+	}
+	
+	return 0;
+}
 
 int Control::test_misc(){
 	BUInt32	address = 0;
@@ -589,6 +621,9 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(test, "test7")){
 			err = control.test7();
+		}
+		else if(!strcmp(test, "test8")){
+			err = control.test8();
 		}
 		else if(!strcmp(test, "test_misc")){
 			err = control.test_misc();

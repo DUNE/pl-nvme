@@ -30,6 +30,7 @@ SYN_FILES	+= ../src/NvmeStorageUnit.vhd
 SYN_FILES	+= ../src/DuneNvmeTestTop.vhd
 SYN_FILES	+= ../src/TestData.vhd ../src/DataFifo.vhd ../src/NvmeWrite.vhd
 SYN_FILES	+= ../src/NvmeSim.vhd
+SYN_FILES	+= ../src/DataBuffer.vhd
 
 # IP cores
 XCI_FILES	= ../src/ip/Clk_core.xci
@@ -37,9 +38,9 @@ XCI_FILES	+= ../src/ip/Pcie_host.xci
 XCI_FILES	+= ../src/ip/Axil_clock_converter.xci
 XCI_FILES	+= ../src/ip/Axis_clock_converter.xci
 XCI_FILES	+= ../src/ip/Pcie_nvme0.xci
-XCI_FILES	+= ../src/ip/Fifo32k.xci
-XCI_FILES	+= ../src/ip/Fifo4k.xci
-XCI_FILES	+= ../src/ip/blk_mem_gen_0.xci
+#XCI_FILES	+= ../src/ip/Fifo32k.xci
+#XCI_FILES	+= ../src/ip/Fifo4k.xci
+#XCI_FILES	+= ../src/ip/blk_mem_gen_0.xci
 
 # XDC files
 XDC_FILES	= ../src/DuneNvmeTestTop.xdc

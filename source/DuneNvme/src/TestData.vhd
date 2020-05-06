@@ -41,7 +41,7 @@ use work.NvmeStorageIntPkg.all;
 
 entity TestData is
 generic(
-	BlockSize	: integer := 4096			--! The block size in Bytes.
+	BlockSize	: integer := NvmeStorageBlockSize	--! The block size in Bytes.
 );
 port (
 	clk		: in std_logic;				--! The interface clock line

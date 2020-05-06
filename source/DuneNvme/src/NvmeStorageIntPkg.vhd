@@ -46,6 +46,7 @@ package NvmeStorageIntPkg is
 	function log2(v: integer) return integer;
 	function concat(v: std_logic; n: integer) return std_logic_vector;
 	function zeros(n: integer) return std_logic_vector;
+	function zeros(n: integer) return unsigned;
 	function ones(n: integer) return std_logic_vector;
 	function truncate(v: unsigned; n: integer) return unsigned;
 	function keepBits(numWords: unsigned) return std_logic_vector;
@@ -84,7 +85,7 @@ package NvmeStorageIntPkg is
 	--! Nvme request queue entry
 	type NvmeRequestHeadType is record
 		opcode		: unsigned(15 downto 0);
-		id		: unsigned(15 downto 0);
+		cid		: unsigned(15 downto 0);
 		namespace	: unsigned(31 downto 0);
 		address		: unsigned(31 downto 0);
 		cdw10		: unsigned(31 downto 0);
@@ -102,7 +103,7 @@ package NvmeStorageIntPkg is
 		dw0		: unsigned(31 downto 0);
 		sqptr		: unsigned(15 downto 0);
 		sqid		: unsigned(15 downto 0);
-		cmd		: unsigned(15 downto 0);
+		cid		: unsigned(15 downto 0);
 		status		: unsigned(14 downto 0);
 	end record;
 
@@ -146,6 +147,11 @@ package body NvmeStorageIntPkg is
 	function zeros(n: integer) return std_logic_vector is
 	begin
 		return concat('0', n);
+	end function;
+
+	function zeros(n: integer) return unsigned is
+	begin
+		return unsigned(concat('0', n));
 	end function;
 
 	function ones(n: integer) return std_logic_vector is
@@ -254,6 +260,7 @@ package body NvmeStorageIntPkg is
 
 	function to_stl(v: NvmeRequestHeadType; word: integer) return std_logic_vector is
 	begin
+		--! *** Needs work ! ****
 		return to_stl(0, 128);
 	end function;
 	
@@ -263,7 +270,7 @@ package body NvmeStorageIntPkg is
 		ret.dw0 := unsigned(v(31 downto 0));
 		ret.sqptr := unsigned(v(79 downto 64));
 		ret.sqid := unsigned(v(95 downto 80));
-		ret.cmd := unsigned(v(111 downto 96));
+		ret.cid := unsigned(v(111 downto 96));
 		ret.status := unsigned(v(127 downto 113));
 		return ret;
 	end;

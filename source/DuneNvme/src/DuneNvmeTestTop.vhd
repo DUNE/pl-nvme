@@ -176,7 +176,8 @@ end component;
 component NvmeStorageUnit is
 generic(
 	Simulate	: boolean	:= False;		--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns			--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -210,7 +211,7 @@ end component;
 
 component TestData is
 generic(
-	BlockSize	: integer := 4096			--! The block size in Bytes.
+	BlockSize	: integer := NvmeStorageBlockSize	--! The block size in Bytes.
 );
 port (
 	clk		: in std_logic;				--! The interface clock line

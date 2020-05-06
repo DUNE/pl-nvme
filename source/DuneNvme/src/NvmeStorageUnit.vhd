@@ -43,7 +43,8 @@ use work.NvmeStorageIntPkg.all;
 entity NvmeStorageUnit is
 generic(
 	Simulate	: boolean	:= False;		--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns			--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -265,7 +266,8 @@ end component;
 
 component NvmeSim is
 generic(
-	Simulate	: boolean	:= True
+	Simulate	: boolean := True;
+	BlockSize	: integer := BlockSize			--! System block size
 );
 port (
 	clk		: in std_logic;
@@ -296,7 +298,8 @@ end component;
 
 component NvmeWrite is
 generic(
-	Simulate	: boolean := Simulate			--! Generate simulation core
+	Simulate	: boolean := Simulate;			--! Generate simulation core
+	BlockSize	: integer := BlockSize			--! System block size
 );
 port (
 	clk		: in std_logic;				--! The interface clock line

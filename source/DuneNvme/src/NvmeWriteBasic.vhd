@@ -40,8 +40,7 @@ use work.NvmeStorageIntPkg.all;
 
 entity NvmeWrite is
 generic(
-	Simulate	: boolean := False;			--! Generate simulation core
-	BlockSize	: integer := NvmeStorageBlockSize	--! System block size
+	Simulate	: boolean := False			--! Generate simulation core
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -72,78 +71,42 @@ begin
 end function;
 
 constant TCQ		: time := 1 ns;
-constant SimDelay	: boolean := False;			--! Input data delay after each packet for simulation tests
 --constant NumBlocksRun	: integer := 2;				--! The total number of blocks in a run
 constant NumBlocksRun	: integer := 262144;			--! The total number of blocks in a run
+constant NvmeBlocks	: integer := NvmeStorageBlockSize / 512;--! The number of Nvme blocks per NvmeStorage system block
 
-constant NvmeBlocks	: integer := BlockSize / 512;		--! The number of Nvme blocks per NvmeStorage system block
-constant RamSize	: integer := (NvmeWriteQueueNum * BlockSize) / 16;	-- One block per write buffer
-constant AddressWidth	: integer := log2(RamSize);
-constant BlockSizeWidth	: integer := log2(BlockSize);
-
-component DataBuffer is
+component DataFifo is
 generic(
 	Simulate	: boolean := Simulate;			--! Generate simulation core
-	Size		: integer := RamSize;			--! The Buffer size in 128 bit words
-	AddressWidth	: integer := AddressWidth
+	FifoSize	: integer := NvmeStorageBlockSize/16	--! The Fifo size in 128 bit words
+	--FifoSize	: integer := 16				--! The Fifo size for simple simulations
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 
-	writeEnable	: in std_logic;
-	writeAddress	: in unsigned(AddressWidth-1 downto 0);	
-	writeData	: in std_logic_vector(127 downto 0);	
+	full		: out std_logic;			--! The fifo is full (Has Fifo size words)
+	empty		: out std_logic;			--! The fifo is empty
 
-	readEnable	: in std_logic;
-	readAddress	: in unsigned(AddressWidth-1 downto 0);	
-	readData	: out std_logic_vector(127 downto 0)	
+	dataIn		: inout AxisStreamType := AxisInput;	--! Input data stream
+	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end component;
 
---! Input buffer status
-type BufferType is record
-	inUse1		: std_logic;				--! inUse1 and inUse2 are used to indicate buffer is in use when different
-	inUse2		: std_logic;
-	full		: std_logic;				--! The buffer is full
-	process1	: std_logic;				--! process1 and process2 are used to indicate buffer is being sent to Nvme
-	process2	: std_logic;
-	blockNumber	: unsigned(63 downto 0);		--! The first block number in the buffer
-end record;
-
-type BufferArrayType	is array (0 to NvmeWriteQueueNum-1) of BufferType;
-
-type InStateType	is (INSTATE_IDLE, INSTATE_INIT, INSTATE_CHOOSE, INSTATE_INPUT_BLOCK, INSTATE_DELAY);
 type StateType		is (STATE_IDLE, STATE_INIT, STATE_RUN, STATE_COMPLETE,
 				STATE_QUEUE_HEAD, STATE_QUEUE_0, STATE_QUEUE_1, STATE_QUEUE_2, STATE_QUEUE_3,
 				STATE_WAIT_REPLY);
-type ReplyStateType	is (REPLY_STATE_QUEUE_REPLY1, REPLY_STATE_QUEUE_REPLY2);
 
-signal inState		: InStateType := INSTATE_IDLE;
-signal state		: StateType := STATE_IDLE;
+type ReplyStateType	is (REPLY_STATE_QUEUE_REPLY1, REPLY_STATE_QUEUE_REPLY2);
 signal replyState	: ReplyStateType := REPLY_STATE_QUEUE_REPLY1;
 
+signal state		: StateType := STATE_IDLE;
+
+signal fifo_full	: std_logic := '0';
+signal fifo_empty	: std_logic := '0';
+signal dataOut		: AxisStreamType;
 signal blockNumber	: unsigned(63 downto 0) := (others => '0');
-signal numIn		: integer := 0;
-signal num		: integer := 0;
-signal numReply		: integer := 0;
 
-
--- Input buffers
-signal writeEnable	: std_logic := '0';
-signal writeAddress	: unsigned(AddressWidth-1 downto 0) := (others => '0');
-signal readEnable	: std_logic := '0';
-signal readAddress	: unsigned(AddressWidth-1 downto 0) := (others => '0');
-signal readData		: std_logic_vector(127 downto 0) := (others => '0');
-
-signal buffers		: BufferArrayType := (others => ('Z', 'Z', 'Z', 'Z', 'Z', (others => 'Z')));
-signal bufferInNum	: integer range 0 to NvmeWriteQueueNum-1 := 0;
-signal bufferInNumNext	: integer range 0 to NvmeWriteQueueNum-1 := 0;
-signal bufferOutNum	: integer range 0 to NvmeWriteQueueNum-1 := 0;
-signal bufferOutNumNext	: integer range 0 to NvmeWriteQueueNum-1 := 0;
-
-
--- Buffer read
 type MemStateType	is (MEMSTATE_IDLE, MEMSTATE_READHEAD, MEMSTATE_READDATA);
 signal memState		: MemStateType := MEMSTATE_IDLE;
 signal memRequestHead	: PcieRequestHeadType;
@@ -154,136 +117,30 @@ signal memCount		: unsigned(10 downto 0);			-- DWord data send count
 signal memChunkCount	: unsigned(10 downto 0);			-- DWord data send within a chunk count
 signal memData		: std_logic_vector(127 downto 0);
 
+signal num		: integer := 0;
+signal numReply		: integer := 0;
+signal cmdId		: unsigned(7 downto 0) := (others => '0');	-- The command Id
+
 -- Status information
 signal status		: unsigned(31 downto 0) := (others => '0');	-- The system status
 signal numBlocks	: unsigned(31 downto 0) := (others => '0');	-- The number of blocks written
 signal timeUs		: unsigned(31 downto 0) := (others => '0');	-- The time in us
 signal timeCounter	: integer range 0 to 125 := 0;
 
-function addPos(v: integer; a: integer) return integer is
 begin
-	if(v + a > NvmeWriteQueueNum-1) then
-		return v + a - NvmeWriteQueueNum;
-	else
-		return v + a;
-	end if;
-end;
-
-function bufferAddress(bufferNum: integer) return unsigned is
-begin
-	return to_unsigned(bufferNum, 3) & to_unsigned(0, AddressWidth-3);
-end;
-
-function pcieAddress(bufferNum: integer) return std_logic_vector is
-begin
-	return x"05" & zeros(32-8-3-(BlockSizeWidth)) & to_stl(bufferNum, 3) & zeros(BlockSizeWidth);
-end;
-
-begin
-	-- Input buffers in BlockRAM
-	dataBuffer0 : DataBuffer
+	-- Input data FIFO's, one per WriteQueue entry. Just the one for now.
+	dataFifo0 : DataFifo
 	port map (
 		clk		=> clk,
 		reset		=> reset,
 
-		writeEnable	=> writeEnable,
-		writeAddress	=> writeAddress,
-		writeData	=> dataIn.data,
+		full		=> fifo_full,
+		empty		=> fifo_empty,
 
-		readEnable	=> readEnable,
-		readAddress	=> readAddress,
-		readData	=> readData
+		dataIn		=> dataIn,
+		dataOut		=> dataOut
 	);
-
-	-- Input data process. Accepts data from input stream and stores it into NvmeWriteQueueNum buffers
-	dataIn.ready <= writeEnable;
-
-	process(clk)
-	variable p: integer range 0 to NvmeWriteQueueNum-1;
-	variable c: integer;
-	begin
-		if(rising_edge(clk)) then
-			if(reset = '1') then
-				for i in 0 to NvmeWriteQueueNum-1 loop
-					buffers(i).inUse1 <= '0';
-					buffers(i).full <= '0';
-					buffers(i).blockNumber <= (others => '0');
-				end loop;
-
-				blockNumber	<= (others => '0');
-				writeEnable	<= '0';
-				numIn		<= 0;
-				inState		<= INSTATE_IDLE;
-			else
-				case(inState) is
-				when INSTATE_IDLE =>
-					if(enable = '1') then
-						inState <= INSTATE_INIT;
-					end if;
-
-				when INSTATE_INIT =>
-					-- Initialise for next run
-					for i in 0 to NvmeWriteQueueNum-1 loop
-						buffers(i).inUse1 <= '0';
-						buffers(i).full <= '0';
-					end loop;
-
-					blockNumber	<= (others => '0');
-					writeEnable	<= '0';
-					numIn		<= 0;
-					inState		<= INSTATE_CHOOSE;
-
-				when INSTATE_CHOOSE =>
-					if(enable = '1') then
-						-- Decide on which buffer to use based on inuse state.
-						for i in 0 to NvmeWriteQueueNum-1 loop
-							p := addPos(bufferInNumNext, i);
-							if(buffers(p).inUse1 = buffers(p).inUse2) then
-								bufferInNum		<= p;
-								bufferInNumNext		<= addPos(p, 1);
-								buffers(p).blockNumber	<= blockNumber;
-								buffers(p).full		<= '0';
-								buffers(p).inUse1	<= not buffers(p).inUse2;
-								writeAddress		<= bufferAddress(p);
-								writeEnable		<= '1';
-								numIn			<= numIn + 1;
-								inState			<= INSTATE_INPUT_BLOCK;
-								exit;
-							end if;
-						end loop;
-					else
-						inState <= INSTATE_IDLE;
-					end if;
-
-				when INSTATE_INPUT_BLOCK =>
-					-- Could check for buffer full status here ...
-					if((dataIn.valid = '1') and (dataIn.ready = '1')) then
-						if(dataIn.last = '1') then
-							writeEnable			<= '0';
-							buffers(bufferInNum).full	<= '1';
-							blockNumber			<= blockNumber + NvmeBlocks;
-							if(SimDelay) then
-								c	:= 400;
-								inState	<= INSTATE_DELAY;
-							else
-								inState	<= INSTATE_CHOOSE;
-							end if;
-						else
-							writeAddress <= writeAddress + 1;
-						end if;
-					end if;
-
-				when INSTATE_DELAY =>
-					c := c - 1;
-					if(numIn = numReply) then
-					--if(c = 0) then
-						inState				<= INSTATE_CHOOSE;
-					end if;
-				end case;
-			end if;
-		end if;
-	end process;
-
+	
 	-- Regsiter access
 	regData	<= std_logic_vector(status) when(regAddress = 0)
 			else std_logic_vector(numBlocks) when(regAddress = 1)
@@ -291,23 +148,19 @@ begin
 	
 	nvmeReplyHead <= to_NvmeReplyHeadType(replyIn.data);
 	
-	-- Process data write. This takes the input buffers and sends a write request to the Nvme for each one that is full.
-	-- It waits for replices if there are more than NvmeWriteQueueNum-1 writes in progress.
+	-- Process data input
 	process(clk)
-	variable p: integer range 0 to NvmeWriteQueueNum-1;
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
 				requestOut.valid 	<= '0';
 				requestOut.last 	<= '0';
 				requestOut.keep 	<= (others => '1');
+				blockNumber		<= (others => '0');
 				timeUs			<= (others => '0');
 				timeCounter		<= 0;
-				bufferOutNum		<= 0;
 				num			<= 0;
-				for i in 0 to NvmeWriteQueueNum-1 loop
-					buffers(i).process1 <= '0';
-				end loop;
+				cmdId			<= (others => '0');
 				state			<= STATE_IDLE;
 			else
 				case(state) is
@@ -318,33 +171,22 @@ begin
 				
 				when STATE_INIT =>
 					-- Initialise for next run
+					blockNumber	<= (others => '0');
 					timeUs		<= (others => '0');
 					timeCounter	<= 0;
 					num		<= 0;
-					for i in 0 to NvmeWriteQueueNum-1 loop
-						buffers(i).process1 <= '0';
-					end loop;
+					cmdId		<= (others => '0');
 					state		<= STATE_RUN;
 					
 				when STATE_RUN =>
 					if(enable = '1') then
 						if(num >= NumBlocksRun) then
 							state <= STATE_COMPLETE;
-						
-						else
-							-- Decide on which buffer to output
-							for i in 0 to NvmeWriteQueueNum-1 loop
-								p := addPos(bufferOutNumNext, i);
-								if((buffers(p).full = '1') and (buffers(p).inUse1 /= buffers(p).inUse2) and (buffers(p).process1 = buffers(p).process2)) then
-									buffers(p).process1	<= not buffers(p).process2;
-									bufferOutNum		<= p;
-									bufferOutNumNext	<= addPos(p, 1);
-									requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
-									requestOut.valid	<= '1';
-									state			<= STATE_QUEUE_HEAD;
-									exit;
-								end if;
-							end loop;
+
+						elsif(fifo_full = '1') then
+							requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
+							requestOut.valid	<= '1';
+							state			<= STATE_QUEUE_HEAD;
 						end if;
 					else
 						state <= STATE_COMPLETE;
@@ -357,21 +199,20 @@ begin
 
 				when STATE_QUEUE_HEAD =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						requestOut.data	<= zeros(64) & x"00000001" & x"04" & to_stl(bufferOutNum, 8) & x"0001";	-- Namespace 1, From stream4, opcode 1
+						requestOut.data	<= zeros(64) & x"00000001" & x"04" & to_stl(cmdId) & x"0001";	-- Namespace 1, From stream4, opcode 1
 						state		<= STATE_QUEUE_0;
 					end if;
 
 				when STATE_QUEUE_0 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						requestOut.data	<= zeros(32) & pcieAddress(bufferOutNum) & zeros(64);
-						--requestOut.data	<= zeros(32) & x"05000000" & zeros(64);	-- Data source address
+						requestOut.data	<= zeros(32) & x"05000000" & zeros(64);	-- Data source address
 						--requestOut.data	<= zeros(32) & x"01800000" & zeros(64);	-- Data source address
 						state		<= STATE_QUEUE_1;
 					end if;
 
 				when STATE_QUEUE_1 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						requestOut.data	<= std_logic_vector(buffers(bufferOutNum).blockNumber) & zeros(64);
+						requestOut.data	<= std_logic_vector(blockNumber) & zeros(64);
 						state		<= STATE_QUEUE_2;
 					end if;
 
@@ -379,7 +220,6 @@ begin
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.data	<= zeros(96) & to_stl(NvmeBlocks-1, 32);	-- WriteMethod, NumBlocks (0 is 1 block)
 						requestOut.last	<= '1';
-						num		<= num + 1;
 						state		<= STATE_QUEUE_3;
 					end if;
 
@@ -387,7 +227,10 @@ begin
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.last		<= '0';
 						requestOut.valid	<= '0';
-						if(num > (numReply + 4)) then
+						blockNumber		<= blockNumber + NvmeBlocks;
+						num			<= num + 1;
+						cmdId			<= cmdId + 1;
+						if(num >= numReply + 4) then
 							state <= STATE_WAIT_REPLY;
 						else
 							state <= STATE_RUN;
@@ -395,7 +238,7 @@ begin
 					end if;
 
 				when STATE_WAIT_REPLY =>
-					if(num > (numReply + 4)) then
+					if(num >= numReply + 4) then
 						state <= STATE_WAIT_REPLY;
 					else
 						state <= STATE_RUN;
@@ -415,9 +258,8 @@ begin
 		end if;
 	end process;
 	
-	-- Process replies. This accepts Write request replies from the Nvme storing any errors and marking the buffer as free.
+	-- Process replies
 	process(clk)
-	variable p: integer range 0 to NvmeWriteQueueNum-1;
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
@@ -425,10 +267,6 @@ begin
 				numBlocks		<= (others => '0');
 				status			<= (others => '0');
 				numReply		<= 0;
-				for i in 0 to NvmeWriteQueueNum-1 loop
-					buffers(i).inUse2	<= '0';
-					buffers(i).process2	<= '0';
-				end loop;
 				replyState		<= REPLY_STATE_QUEUE_REPLY1;
 			else
 				case(replyState) is
@@ -452,10 +290,6 @@ begin
 						status(31 downto 16)	<= status(31 downto 16) + 1;
 						numBlocks		<= numBlocks + 1;
 						numReply		<= numReply + 1;
-						p			:= to_integer(nvmeReplyHead.cid(2 downto 0));
-						buffers(p).inUse2	<= buffers(p).inUse1;
-						buffers(p).process2	<= buffers(p).process1;
-
 						replyState		<= REPLY_STATE_QUEUE_REPLY1;
 					end if;
 				
@@ -465,12 +299,10 @@ begin
 	end process;
 	
 	-- Process Nvme read data requests
-	-- The processes Nvme Pcie memory read requests for the data buffers memory.
-	readEnable <= '1';
-	-- readEnable <= memReplyOut.ready and not memReplyOut.last when((memState = MEMSTATE_READHEAD) or (memState = MEMSTATE_READDATA)) else '0';
+	dataOut.ready <= memReplyOut.ready and not memReplyOut.last when((memState = MEMSTATE_READHEAD) or (memState = MEMSTATE_READDATA)) else '0';
 	memRequestHead	<= to_PcieRequestHeadType(memReqIn.data);
-	memReplyOut.data <= memData(31 downto 0) & to_stl(memReplyHead) when(memState = MEMSTATE_READHEAD)
-		else readData(31 downto 0) & memData(127 downto 32);
+	memReplyOut.data <= dataOut.data(31 downto 0) & to_stl(memReplyHead) when(memState = MEMSTATE_READHEAD)
+		else dataOut.data(31 downto 0) & memData(127 downto 32);
 
 	process(clk)
 	begin
@@ -486,7 +318,6 @@ begin
 						memCount	<= memRequestHead.count;
 
 						if(memRequestHead.request = 0) then
-							readAddress	<= memRequestHead.address(AddressWidth+3 downto 4);
 							memReqIn.ready	<= '0';
 							memState	<= MEMSTATE_READHEAD;
 						end if;
@@ -495,7 +326,7 @@ begin
 					end if;
 
 				when MEMSTATE_READHEAD =>
-					if(memReplyOut.valid = '0') then
+					if(dataOut.valid = '1') then
 						memReplyHead.byteCount		<= memCount & "00";
 						memReplyHead.address		<= memRequestHead1.address(memReplyHead.address'length - 1 downto 0);
 						memReplyHead.error		<= (others => '0');
@@ -511,21 +342,19 @@ begin
 							memChunkCount		<= memCount;
 						end if;
 
-						memReplyOut.valid 	<= '1';
-						memData			<= readData;
-						readAddress		<= readAddress + 1;
-					else
+						memData			<= dataOut.data;
 						memReplyOut.keep 	<= (others => '1');
+						memReplyOut.valid 	<= '1';
 
 						if(memReplyOut.ready = '1' and memReplyOut.valid = '1') then
-							readAddress	<= readAddress + 1;
 							memState	<= MEMSTATE_READDATA;
 						end if;
 					end if;
 				
 				when MEMSTATE_READDATA =>
 					if(memReplyOut.ready = '1' and memReplyOut.valid = '1') then
-						memData		<= readData;
+						-- Should we also check dataOut.valid ?
+						memData		<= dataOut.data;
 
 						if(memChunkCount = 4) then
 							if(memCount = 4) then
@@ -543,8 +372,7 @@ begin
 							memReplyOut.last <= '1';
 
 						else
-							readAddress		<= readAddress + 1;
-							memReplyOut.last	<= '0';
+							memReplyOut.last <= '0';
 						end if;
 
 						memChunkCount		<= memChunkCount - 4;

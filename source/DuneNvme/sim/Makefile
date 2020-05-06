@@ -22,7 +22,9 @@
 #TEST	= test014-queueram
 #TEST	= test015-hostnvme
 #TEST	= test016-fifo
-TEST	= test017-write
+#TEST	= test017-write
+#TEST	= test018-buffer
+TEST	= test019-write
 
 # VHDL source files
 FILES_BASE	+= testbench/TestPkg.vhd ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd ../src/AxilClockConverter.vhd ../src/AxisClockConverter.vhd 
@@ -31,7 +33,7 @@ FILES_BASE	+= ../src/NvmeStreamMux.vhd
 #FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo32k/Fifo32k_sim_netlist.vhdl
 
 FILES_SYSTEM	= ../src/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd ../src/StreamSwitch.vhd ../src/NvmeQueues.vhd
-FILES_SYSTEM	+= ../src/TestData.vhd ../src/DataFifo.vhd ../src/NvmeWrite.vhd
+FILES_SYSTEM	+= ../src/TestData.vhd ../src/DataBuffer.vhd ../src/NvmeWrite.vhd
 
 # Test files
 FILES_test001-leds += testbench/${TEST}.vhd ${FILES_BASE} ../src/LedCount.vhd
@@ -51,6 +53,8 @@ FILES_test014-queueram += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeQueues
 FILES_test015-hostnvme += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test016-fifo += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test017-write += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
+FILES_test018-buffer += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
+FILES_test019-write += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 
 # VHDL testbench files
 STOP	= test
@@ -96,7 +100,7 @@ unisim: simu/unisim-obj93.cf
 
 simu/unisim-obj93.cf:
 	ghdl -i $(GFLAGS) --workdir=simu --work=unisim /opt/Xilinx/Vivado/2019.2/data/vhdl/src/unisims/*.vhd
-	ghdl -i $(GFLAGS) --workdir=simu --work=unisim /opt/Xilinx/Vivado/2019.2/data/vhdl/src/unisims/primitive/*.vhd
+	#ghdl -i $(GFLAGS) --workdir=simu --work=unisim /opt/Xilinx/Vivado/2019.2/data/vhdl/src/unisims/primitive/*.vhd
 	#ghdl -i $(GFLAGS) --workdir=simu --work=xilinxcorelib /opt/Xilinx/13.4/ISE_DS/ISE/vhdl/src/XilinxCoreLib/*.vhd
 
 setup:
