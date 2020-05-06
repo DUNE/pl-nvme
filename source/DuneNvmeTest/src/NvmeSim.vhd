@@ -27,6 +27,7 @@
 --! NVMe requests not pipelined and carried out one at a time, in sequence.
 --! Currently does not perform configuration or NVMe register read operations.
 --! Currently does not handle NVMe read data requests.
+--! Note NvmeSim still pretty basic and hostReq.ready is left high during NvmeWrite operation so host requests would be ignored.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -44,30 +45,30 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
---use ieee.std_logic_unsigned.all;
 
 library unisim;
 use unisim.vcomponents.all;
 
 library work;
-use work.AxiPkg.all;
 use work.NvmeStoragePkg.all;
+use work.NvmeStorageIntPkg.all;
 
 entity NvmeSim is
 generic(
-	Simulate	: boolean	:= True
+	Simulate	: boolean := True;
+	BlockSize	: integer := NvmeStorageBlockSize	--! System block size
 );
 port (
 	clk		: in std_logic;					--! The input clock
 	reset		: in std_logic;					--! The reset line
 
 	-- AXIS Interface to PCIE
-	hostReq		: inout AxisStream := AxisInput;		--! Host request stream
-	hostReply	: inout AxisStream := AxisOutput;		--! Host reply stream
+	hostReq		: inout AxisStreamType := AxisInput;		--! Host request stream
+	hostReply	: inout AxisStreamType := AxisOutput;		--! Host reply stream
 
 	-- From Nvme reqeuest and reply stream
-	nvmeReq		: inout AxisStream := AxisOutput;		--! Nvme request stream (bus master)
-	nvmeReply	: inout AxisStream := AxisInput		--! Nvme reply stream
+	nvmeReq		: inout AxisStreamType := AxisOutput;		--! Nvme request stream (bus master)
+	nvmeReply	: inout AxisStreamType := AxisInput		--! Nvme reply stream
 );
 end;
 
@@ -75,34 +76,58 @@ architecture Behavioral of NvmeSim is
 
 constant TCQ			: time := 1 ns;
 constant RegWidth		: integer := 32;
+constant NumWordsRead		: integer := BlockSize/4;		--! Number of 32bit Dwords in a block
 
 subtype RegDataType		is std_logic_vector(RegWidth-1 downto 0);
-type StateType			is (STATE_IDLE, STATE_WRITE, STATE_READ_QUEUE_START, STATE_READ_QUEUE,
-					STATE_READ_DATA_START, STATE_READ_DATA_RECV_START, STATE_READ_DATA_RECV);
+type StateType			is (STATE_IDLE, STATE_WRITE, STATE_REPLY, STATE_READ, STATE_READ_QUEUE_START, STATE_READ_QUEUE,
+					STATE_QUEUE_REPLY_HEAD, STATE_QUEUE_REPLY_DATA,
+					STATE_READ_DATA_START, STATE_READ_DATA_RECV_START, STATE_READ_DATA_RECV,
+					STATE_REPLY_QUEUE);
+type QueueRequestType		is array(0 to 15) of std_logic_vector(31 downto 0);
 
 signal state			: StateType := STATE_IDLE;
-signal hostRequest		: PcieRequestHead;
-signal nvmeRequest		: PcieRequestHead;
-signal nvmeReplyHead		: PcieReplyHead;
-signal config			: std_logic;
-signal address			: std_logic_vector(15 downto 0);
-signal tag			: std_logic_vector(7 downto 0);
+signal nvmeReply1		: AxisStreamType;			--! Nvme reply stream for valid replies
+signal hostRequestHead		: PcieRequestHeadType;
+signal hostRequestHead1		: PcieRequestHeadType := set_PcieRequestHeadType(0, 0, 0, 0, 0);
+signal hostReplyHead		: PcieReplyHeadType := set_PcieReplyHeadType(0, 0, 0, 0, 0);
+signal hostReplyHead1		: PcieReplyHeadType := set_PcieReplyHeadType(0, 0, 0, 0, 0);
+signal nvmeRequestHead		: PcieRequestHeadType;
+signal nvmeReply1Head		: PcieReplyHeadType;
 signal reg_pci_command		: RegDataType := (others => '0');
+signal queue_pos		: unsigned(2 downto 0);				-- Hardcoded for 8 queue entries
 signal reg_admin_queue		: RegDataType := (others => '0');
 signal reg_io1_queue		: RegDataType := (others => '0');
 signal reg_io2_queue		: RegDataType := (others => '0');
+signal regData			: RegDataType := (others => '0');
+signal streamNum		: integer := 1;
 signal queue			: integer;
 signal count			: unsigned(10 downto 0);
 signal chunkCount		: unsigned(10 downto 0);
+signal queueRequest		: QueueRequestType := (others => (others => '0'));
+signal queueRequestPos		: integer := 0;
+signal waitingForReply		: std_logic := '0';
+
+signal data			: std_logic_vector(127 downto 0);
 
 begin
 	-- Register access
-	hostReply.data(63 downto 32) <=	(others => '0');
-	hostReply.data(31 downto 0) <= reg_pci_command when address = "0000" else x"FFFFFFFF";
+	regData			<= reg_pci_command when hostRequestHead1.address = x"4" else x"FFFFFFFF";
+
+	hostReplyHead.byteCount	<= to_unsigned(4, hostReplyHead.byteCount'length);
+	hostReplyHead.error	<= to_unsigned(0, hostReplyHead.error'length);
+	hostReplyHead.address	<= hostRequestHead1.address(hostReplyHead.address'length-1 downto 0);
+	hostReplyHead.status	<= to_unsigned(0, hostReplyHead.status'length);
+	hostReplyHead.count	<= to_unsigned(1, hostReplyHead.count'length);
+	hostReplyHead.tag	<= hostRequestHead1.tag;
+	hostReplyHead.requesterId	<= hostRequestHead1.requesterId;
+	data			<= concat('0', 32) & to_stl(hostReplyHead);
+	hostReply.data		<= zeros(32) & to_stl(hostReplyHead1) when(state = STATE_REPLY)
+					else regData & data(95 downto 0);
 		
-	hostRequest <= to_PcieRequestHead(hostReq.data);
-	nvmeReq.data <= to_stl(nvmeRequest);
-	nvmeReplyHead <= to_PcieReplyHead(nvmeReply.data);
+	hostRequestHead		<= to_PcieRequestHeadType(hostReq.data);
+	nvmeReq.data		<= zeros(16)  & queueRequest(0)(31 downto 16) & zeros(96) when(state = STATE_QUEUE_REPLY_DATA)
+					else to_stl(nvmeRequestHead);
+	nvmeReply1Head		<= to_PcieReplyHeadType(nvmeReply1.data);
 	
 	-- Process host requests
 	process(clk)
@@ -110,28 +135,28 @@ begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
 				reg_pci_command	<= (others => '0');
+				queue_pos	<= (others => '0');
 				reg_admin_queue	<= (others => '0');
 				reg_io1_queue	<= (others => '0');
 				reg_io2_queue	<= (others => '0');
 				hostReq.ready	<= '0';
 				hostReply.valid <= '0';
-				hostReply.last <= '0';
+				hostReply.last	<= '0';
 				nvmeReq.valid	<= '0';
 				nvmeReq.last	<= '0';
-				nvmeReply.ready <= '0';
+				nvmeReply1.ready <= '0';
+				nvmeRequestHead	<= to_PcieRequestHeadType(concat('0', 128));
 				state		<= STATE_IDLE;
 			else
 				case(state) is
 				when STATE_IDLE =>
 					if(hostReq.ready = '1' and hostReq.valid= '1') then
-						address <= hostRequest.address(15 downto 0);
+						hostRequestHead1 <= hostRequestHead;
 
-						if(hostRequest.request = 10) then
-							config	<= '1';
+						if((hostRequestHead.request = 10) or (hostRequestHead.request = 1)) then
 							state	<= STATE_WRITE;
-						elsif(hostRequest.request = 1) then
-							config	<= '0';
-							state	<= STATE_WRITE;
+						elsif(hostRequestHead.request = 8) then
+							state	<= STATE_READ;
 						end if;
 					else
 						hostReq.ready	<= '1';
@@ -139,95 +164,182 @@ begin
 
 				when STATE_WRITE =>
 					if(hostReq.ready = '1' and hostReq.valid= '1') then
-						if(config = '1') then
-							if(address = x"0004") then
+						if(hostRequestHead1.request = 10) then
+							if(hostRequestHead1.address = x"0004") then
 								reg_pci_command <= hostReq.data(31 downto 0);
 							end if;
-							state <= STATE_IDLE;
+							state <= STATE_REPLY;
 						else 
-							if(address = x"1000") then
+							if(hostRequestHead1.address = x"1000") then
+								queue_pos	<= unsigned(hostReq.data(2 downto 0)) - 1;
 								reg_admin_queue <= hostReq.data(31 downto 0);
+								queue		<= 0;
+								state		<= STATE_READ_QUEUE_START;
+							elsif(hostRequestHead1.address = x"1008") then
+								queue_pos	<= unsigned(hostReq.data(2 downto 0)) - 1;
+								reg_io1_queue	<= hostReq.data(31 downto 0);
 								queue		<= 1;
 								state		<= STATE_READ_QUEUE_START;
-							elsif(address = x"1008") then
-								reg_io1_queue	<= hostReq.data(31 downto 0);
-								queue		<= 2;
-								state		<= STATE_READ_QUEUE_START;
-							elsif(address = x"1010") then
+							elsif(hostRequestHead1.address = x"1010") then
+								queue_pos	<= unsigned(hostReq.data(2 downto 0)) - 1;
 								reg_io2_queue	<= hostReq.data(31 downto 0);
-								queue		<= 3;
+								queue		<= 2;
 								state		<= STATE_READ_QUEUE_START;
 							else
 								state <= STATE_IDLE;
 							end if;
 						end if;
 
-						hostReq.ready	<= '0';
+						-- This should realy turn off, but with the newStreamSwitch waiting for ready
+						--  and the currentNvmeStreamMux.vhd wel need to allow replies.
+						--hostReq.ready	<= '0';
+					end if;
+
+				when STATE_REPLY =>
+					hostReplyHead1.byteCount	<= to_unsigned(0, hostReplyHead1.byteCount'length);
+					hostReplyHead1.address		<= to_unsigned(0, hostReplyHead1.address'length);
+					hostReplyHead1.error		<= to_unsigned(0, hostReplyHead1.error'length);
+					hostReplyHead1.status		<= to_unsigned(0, hostReplyHead1.status'length);
+					hostReplyHead1.tag		<= hostRequestHead1.tag;
+					hostReplyHead1.requesterId	<= hostRequestHead1.requesterId;
+
+					if(hostReply.ready = '1' and hostReply.valid= '1') then
+						hostReply.valid	<= '0';
+						hostReply.last	<= '0';
+						state		<= STATE_IDLE;
+					else
+						hostReply.valid	<= '1';
+						hostReply.last	<= '1';
+						hostReply.keep	<= zeros(4) & ones(12);
+					end if;
+					
+
+				when STATE_READ =>
+					if(hostReply.ready = '1' and hostReply.valid= '1') then
+						hostReply.valid	<= '0';
+						hostReply.last	<= '0';
+						state		<= STATE_IDLE;
+					else
+						hostReply.valid	<= '1';
+						hostReply.last	<= '1';
+						hostReply.keep	<= ones(16);
 					end if;
 
 				when STATE_READ_QUEUE_START =>
 					-- Perform bus master read request for queue data
-					nvmeRequest.nvme	<= to_unsigned(0, nvmeRequest.nvme'length);
-					nvmeRequest.stream	<= to_unsigned(queue, nvmeRequest.stream'length);
-					nvmeRequest.address	<= to_stl(0, nvmeRequest.address'length);
-					nvmeRequest.tag		<= x"44";
-					nvmeRequest.request	<= "0000";
-					nvmeRequest.count	<= to_unsigned(16#000F#, nvmeRequest.count'length);
+					nvmeRequestHead.address	<= x"020" & to_unsigned(queue, 4) & zeros(7) & queue_pos & zeros(6);
+					nvmeRequestHead.tag	<= x"44";
+					nvmeRequestHead.requesterId	<= to_unsigned(0, nvmeRequestHead.requesterId'length);
+					nvmeRequestHead.request	<= "0000";
+					nvmeRequestHead.count	<= to_unsigned(16#0010#, nvmeRequestHead.count'length);
+					nvmeReq.keep 		<= ones(16);
 					nvmeReq.valid 		<= '1';
 					nvmeReq.last 		<= '1';
 					
 					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
-						count		<= nvmeRequest.count + 1;	-- Note ignoring 1 DWord in first 128 bits
+						count		<= nvmeRequestHead.count;
+						queueRequestPos	<= 0;
 						nvmeReq.valid 	<= '0';
 						nvmeReq.last 	<= '0';
-						nvmeReply.ready <= '1';
+						nvmeReply1.ready <= '1';
+						waitingForReply	<= '1';
 						state		<= STATE_READ_QUEUE;
 					end if;
 
 				when STATE_READ_QUEUE =>
-					-- Read in queue data ignoring it
-					if(nvmeReply.valid = '1' and nvmeReply.ready = '1') then
+					-- Read in queue data, generally ignoring it
+					if(nvmeReply1.valid = '1' and nvmeReply1.ready = '1') then
+						if(count = 16) then
+							queueRequest(queueRequestPos)	<= nvmeReply1.data(127 downto 96);
+							queueRequestPos			<= queueRequestPos + 1;
+						elsif(count = 0) then
+							queueRequest(queueRequestPos)	<= nvmeReply1.data(31 downto 0);
+							queueRequest(queueRequestPos+1)	<= nvmeReply1.data(63 downto 32);
+							queueRequest(queueRequestPos+2)	<= nvmeReply1.data(95 downto 64);
+							queueRequestPos			<= queueRequestPos + 3;
+						else
+							queueRequest(queueRequestPos)	<= nvmeReply1.data(31 downto 0);
+							queueRequest(queueRequestPos+1)	<= nvmeReply1.data(63 downto 32);
+							queueRequest(queueRequestPos+2)	<= nvmeReply1.data(95 downto 64);
+							queueRequest(queueRequestPos+3)	<= nvmeReply1.data(127 downto 96);
+							queueRequestPos			<= queueRequestPos + 4;
+						end if;
+
 						count <= count - 4;
 						if(count = 0) then
-							nvmeReply.ready	<= '0';
-							--state		<= STATE_IDLE;
-							state		<= STATE_READ_DATA_START;
+							nvmeReply1.ready	<= '0';
+							waitingForReply		<= '0';
+
+							if(queue = 1) then
+								state		<= STATE_READ_DATA_START;
+								--state		<= STATE_REPLY_QUEUE;		-- For testing, ignore actual reading of data across Pcie
+							elsif(queue = 2) then
+								state		<= STATE_READ_DATA_START;
+							else
+								-- Writes an entry into the Admin reply queue. Simply uses info in that last queued request. So only one request at a time.
+								-- Note data sent to queue is just the header reapeated so junk data ATM.
+								-- Perform bus master read request for data to write to NVMe
+								nvmeRequestHead.address	<= to_unsigned(16#02100000#, nvmeRequestHead.address'length);
+								nvmeRequestHead.tag	<= x"44";
+								nvmeRequestHead.request	<= "0001";
+								nvmeRequestHead.count	<= to_unsigned(16#0004#, nvmeRequestHead.count'length);	-- 16 Byte queue entry
+								count			<= to_unsigned(16#0004#, count'length);	-- 16 Byte queue entry
+								nvmeReq.keep 		<= ones(16);
+								nvmeReq.valid 		<= '1';
+								state			<= STATE_QUEUE_REPLY_HEAD;
+							end if;
 						end if;
+					end if;
+
+				when STATE_QUEUE_REPLY_HEAD =>
+					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
+						nvmeReq.last 	<= '1';
+						state 		<= STATE_QUEUE_REPLY_DATA;
+					end if;
+
+				when STATE_QUEUE_REPLY_DATA =>
+					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
+						nvmeReq.last 	<= '0';
+						nvmeReq.valid 	<= '0';
+						state		<= STATE_IDLE;
 					end if;
 
 				when STATE_READ_DATA_START =>
 					-- Perform bus master read request for data to write to NVMe
-					nvmeRequest.nvme	<= to_unsigned(0, nvmeRequest.nvme'length);
-					nvmeRequest.stream	<= to_unsigned(4, nvmeRequest.stream'length);
-					nvmeRequest.address	<= to_stl(0, nvmeRequest.address'length);
-					nvmeRequest.tag		<= x"44";
-					nvmeRequest.request	<= "0000";
-					--nvmeRequest.count	<= to_unsigned(16#03FF#, nvmeRequest.count'length);	-- 4096 Byte block
-					nvmeRequest.count	<= to_unsigned(16#003F#, nvmeRequest.count'length);	-- Test size of 32 DWords
+					nvmeRequestHead.address	<= unsigned(queueRequest(6));
+					--nvmeRequestHead.address	<= to_unsigned(16#05000000#, nvmeRequestHead.address'length);
+					nvmeRequestHead.tag	<= x"44";
+					nvmeRequestHead.request	<= "0000";
+					nvmeRequestHead.count	<= to_unsigned(NumWordsRead, nvmeRequestHead.count'length);				-- Test size of 32 DWords
 					
 					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
-						count		<= nvmeRequest.count + 1;	-- Note ignoring 1 DWord in first 128 bits
+						count		<= nvmeRequestHead.count;	-- Note ignoring 1 DWord in first 128 bits
+						nvmeReq.last 	<= '0';
 						nvmeReq.valid 	<= '0';
-						nvmeReply.ready <= '1';
+						nvmeReply1.ready <= '1';
+						waitingForReply	<= '1';
 						state		<= STATE_READ_DATA_RECV_START;
 					else
+						nvmeReq.keep 	<= ones(16);
+						nvmeReq.last 	<= '1';
 						nvmeReq.valid 	<= '1';
 					end if;
 
 				when STATE_READ_DATA_RECV_START =>
 					-- Read in write data ignoring it
-					if(nvmeReply.valid = '1' and nvmeReply.ready = '1') then
-						chunkCount 	<= nvmeReplyHead.count + 1;
+					if(nvmeReply1.valid = '1' and nvmeReply1.ready = '1') then
+						chunkCount 	<= nvmeReply1Head.count;
 						state		<= STATE_READ_DATA_RECV;
 					end if;
 
 				when STATE_READ_DATA_RECV =>
 					-- Read in write data ignoring it
-					if(nvmeReply.valid = '1' and nvmeReply.ready = '1') then
+					if(nvmeReply1.valid = '1' and nvmeReply1.ready = '1') then
 						if(chunkCount = 4) then
 							if(count = 4) then
-								nvmeReply.ready	<= '0';
-								state		<= STATE_IDLE;
+								nvmeReply1.ready<= '0';
+								waitingForReply	<= '0';
+								state		<= STATE_REPLY_QUEUE;
 							else
 								state		<= STATE_READ_DATA_RECV_START;
 							end if;
@@ -236,8 +348,39 @@ begin
 						chunkCount <= chunkCount - 4;
 					end if;
 
+				when STATE_REPLY_QUEUE =>
+					-- Send reply queue header
+					-- Writes an entry into the DataWRite reply queue. Simply uses info in that last queued request. So only one request at a time.
+					-- Note data sent to queue is just the header reapeated so junk data ATM.
+					nvmeRequestHead.address	<= to_unsigned(16#02100000#, nvmeRequestHead.address'length);
+					nvmeRequestHead.tag	<= x"44";
+					nvmeRequestHead.request	<= "0001";
+					nvmeRequestHead.count	<= to_unsigned(16#0004#, nvmeRequestHead.count'length);	-- 16 Byte queue entry
+					count			<= to_unsigned(16#0004#, count'length);	-- 16 Byte queue entry
+					nvmeReq.keep 		<= ones(16);
+					nvmeReq.valid 		<= '1';
+					state			<= STATE_QUEUE_REPLY_HEAD;
+
 				end case;
 			end if;
 		end if;
 	end process; 
+
+	-- Process nvme replies. This keeps the nvmeReply stream open for business to allow the stream multiplexor to work
+	-- with the StreamSwitch.
+	nvmeReply1.valid	<= nvmeReply.valid;
+	nvmeReply1.last		<= nvmeReply.last;
+	nvmeReply1.keep		<= nvmeReply.keep;
+	nvmeReply1.data		<= nvmeReply.data;
+	nvmeReply.ready		<= nvmeReply1.ready when(waitingForReply = '1') else '1';
+
+	process(clk)
+	begin
+		if(rising_edge(clk)) then
+			if((nvmeReply.valid = '1') and (waitingForReply = '0')) then
+				assert false report "NvmeSim had unexpected nvmeReply" severity failure;
+			end if;
+		end if;
+	end process;
+
 end;

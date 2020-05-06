@@ -30,18 +30,18 @@
 --!
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 library unisim;
 use unisim.vcomponents.all;
 
 library work;
-use work.AxiPkg.all;
+use work.NvmeStoragePkg.all;
+use work.NvmeStorageIntPkg.all;
 
 entity TestData is
 generic(
-	BlockSize	: integer := 4096			--! The block size in Bytes.
+	BlockSize	: integer := NvmeStorageBlockSize	--! The block size in Bytes.
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -51,7 +51,7 @@ port (
 	enable		: in std_logic;				--! Enable production of data
 
 	-- AXIS data output
-	dataStream	: inout AxisStream := AxisOutput	--! Output data stream
+	dataStream	: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end;
 
@@ -60,12 +60,12 @@ architecture Behavioral of TestData is
 constant TCQ		: time := 1 ns;
 constant BytesPerWord	: integer := 16;	-- Number of bytes per Axis data word
 
-signal data		: std_logic_vector(31 downto 0) := (others => '0');
-signal countBlock	: std_logic_vector(log2(BlockSize/BytesPerWord)-1 downto 0) := (others => '0');
+signal data		: unsigned(31 downto 0) := (others => '0');
+signal countBlock	: unsigned(log2(BlockSize/BytesPerWord)-1 downto 0) := (others => '0');
 
 begin
 	-- Output incrementing data stream
-	dataStream.data <= (data + 3) & (data + 2) & (data + 1) & data;
+	dataStream.data <= std_logic_vector((data + 3) & (data + 2) & (data + 1) & data);
 		
 	-- Generate data stream
 	process(clk)

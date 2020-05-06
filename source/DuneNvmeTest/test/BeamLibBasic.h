@@ -97,3 +97,5 @@ private:
 void tprintf(const char* fmt, ...);
 void bhd8(void* data, BUInt32 n);
 void bhd32(void* data,BUInt32 n);
+void bhd32a(void* data,BUInt32 n);
+double getTime();				///< Get current time in seconds

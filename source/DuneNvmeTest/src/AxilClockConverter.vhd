@@ -28,14 +28,13 @@
 --!
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 library unisim;
 use unisim.vcomponents.all;
 
 library work;
-use work.AxiPkg.all;
+use work.NvmeStoragePkg.all;
 
 entity AxilClockConverter is
 generic(
@@ -46,15 +45,15 @@ port (
 	reset0		: in std_logic;
 
 	-- Bus0
-	axil0In		: in AxilToSlave;
-	axil0Out	: out AxilToMaster;
+	axil0In		: in AxilToSlaveType;
+	axil0Out	: out AxilToMasterType;
 
 	clk1		: in std_logic;
 	reset1		: in std_logic;
 
 	-- Bus1
-	axil1Out	: out AxilToSlave;
-	axil1In		: in AxilToMaster
+	axil1Out	: out AxilToSlaveType;
+	axil1In		: in AxilToMasterType
 );
 end;
 

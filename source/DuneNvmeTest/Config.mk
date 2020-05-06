@@ -3,6 +3,6 @@
 #	T.Barnaby,	Beam Ltd,	2020-02-18
 ################################################################################
 #
-PROJECT		= DuneNvmeStorageTest
+PROJECT		= DuneNvmeTest
 VERSION		= 0.1.1
 DOCDIR		?= ${TOP}/doc/${PROJECT}

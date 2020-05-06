@@ -28,14 +28,13 @@
 --!
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 library unisim;
 use unisim.vcomponents.all;
 
 library work;
-use work.AxiPkg.all;
+use work.NvmeStoragePkg.all;
 
 
 entity AxisClockConverter is
@@ -45,11 +44,11 @@ generic(
 port (
 	clkRx		: in std_logic;
 	resetRx		: in std_logic;
-	streamRx	: inout AxisStream := AxisInput;                        
+	streamRx	: inout AxisStreamType := AxisInput;                        
 
 	clkTx		: in std_logic;
 	resetTx		: in std_logic;
-	streamTx	: inout AxisStream := AxisOutput
+	streamTx	: inout AxisStreamType := AxisOutput
 );
 end;
 

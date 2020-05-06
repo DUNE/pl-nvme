@@ -56,9 +56,10 @@ ${PROJECT}.xpr: Makefile $(XCI_FILES)
 
 # Synthesis run
 ${PROJECT}.runs/synth_1/${PROJECT}.dcp: ${PROJECT}.xpr $(SYN_FILES) $(INC_FILES) $(XDC_FILES)
+	rm -f $(PROJECT).bit
 	echo "open_project ${PROJECT}.xpr" > run_synth.tcl
 	echo "reset_run synth_1" >> run_synth.tcl
-	echo "launch_runs synth_1" >> run_synth.tcl
+	echo "launch_runs synth_1 -jobs 4" >> run_synth.tcl
 	echo "wait_on_run synth_1" >> run_synth.tcl
 	echo "set runStatus [ get_property STATUS [get_runs synth_1] ]" >> run_synth.tcl
 	#echo 'puts stderr "RunStatus: $${runStatus}"' >> run_synth.tcl
@@ -70,25 +71,31 @@ ${PROJECT}.runs/synth_1/${PROJECT}.dcp: ${PROJECT}.xpr $(SYN_FILES) $(INC_FILES)
 
 # Implementation run
 ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}.dcp
+	rm -f $(PROJECT).bit
 	echo "open_project ${PROJECT}.xpr" > run_impl.tcl
 	echo "reset_run impl_1" >> run_impl.tcl
-	echo "launch_runs impl_1" >> run_impl.tcl
+	echo "launch_runs impl_1 -jobs 4" >> run_impl.tcl
+	#echo "launch_runs impl_1 -to_step write_bitstream -jobs 4" >> run_impl.tcl
 	echo "wait_on_run impl_1" >> run_impl.tcl
 	echo "set runStatus [ get_property STATUS [get_runs impl_1] ]" >> run_impl.tcl
-	#echo 'puts stderr "RunStatus: $${runStatus}"' >> run_impl.tcl
+	echo 'puts stderr "RunStatus: $${runStatus}"' >> run_impl.tcl
 	echo 'if { $${runStatus} != "route_design Complete!"} {' >> run_impl.tcl
+	#echo 'if { $${runStatus} != "write_bitstream Complete!"} {' >> run_impl.tcl
 	echo "	exit 1" >> run_impl.tcl
 	echo "}" >> run_impl.tcl
+
+	echo "report_utilization -hierarchical -file utilisation.txt" >> run_impl.tcl
 	echo "exit 0" >> run_impl.tcl
 	vivado -nojournal -nolog -mode batch -source run_impl.tcl
 
 # Bit file
 ${PROJECT}.bit: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
+	rm -f $(PROJECT).bit
 	echo "open_project ${PROJECT}.xpr" > generate_bit.tcl
 	echo "open_run impl_1" >> generate_bit.tcl
 	echo "write_bitstream -force ${PROJECT}.bit" >> generate_bit.tcl
 	echo "exit" >> generate_bit.tcl
-	vivado -nojournal -nolog -mode batch -source generate_bit.tcl
+	time vivado -nojournal -nolog -mode batch -source generate_bit.tcl
 	mkdir -p rev
 	EXT=bit; COUNT=100; \
 	while [ -e rev/${PROJECT}_rev$$COUNT.$$EXT ]; \

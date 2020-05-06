@@ -1,6 +1,6 @@
 # Doxyfile 1.8.15
 
-PROJECT_NAME           = "DuneNvmeTest"
+PROJECT_NAME           = "DuneNvme"
 PROJECT_NUMBER		= 0.1.1
 PROJECT_BRIEF          = "This is a simple NVMe test environment that allows experimentation with the low level PCIe NVMe interfaces as available on a Xilinx FPGA environment."
 PROJECT_LOGO           =

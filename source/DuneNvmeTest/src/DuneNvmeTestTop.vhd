@@ -30,14 +30,14 @@
 --!
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 library unisim;
 use unisim.vcomponents.all;
 
 library work;
-use work.AxiPkg.all;
+use work.NvmeStoragePkg.all;
+use work.NvmeStorageIntPkg.all;
 
 entity DuneNvmeTestTop is
 generic(
@@ -173,36 +173,55 @@ component blk_mem_gen_0
 	);
 end component;
 
-component NvmeStorage is
+component NvmeStorageUnit is
 generic(
-	Simulate	: boolean	:= False
+	Simulate	: boolean	:= False;		--! Generate simulation core
+	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
 );
 port (
-	clk		: in std_logic;
-	reset		: in std_logic;
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
 
 	-- Control and status interface
-	axilIn		: in AxilToSlave;
-	axilOut		: out AxilToMaster;
+	axilIn		: in AxilToSlaveType;			--! Axil bus input signals
+	axilOut		: out AxilToMasterType;			--! Axil bus output signals
 
 	-- From host to NVMe request/reply streams
-	hostSend	: inout AxisStream := AxisInput;
-	hostRecv	: inout AxisStream := AxisOutput;                        
-	
+	hostSend	: inout AxisStreamType := AxisInput;	--! Host request stream
+	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
+
 	-- AXIS data stream input
-	--dataRx	: inout AxisStream	:= AxisInput;
-	
+	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
+	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+
 	-- NVMe interface
-	nvme_clk_p	: in std_logic;
-	nvme_clk_n	: in std_logic;
-	nvme_reset_n	: out std_logic;
-	nvme0_exp_txp	: out std_logic_vector(3 downto 0);
-	nvme0_exp_txn	: out std_logic_vector(3 downto 0);
-	nvme0_exp_rxp	: in std_logic_vector(3 downto 0);
-	nvme0_exp_rxn	: in std_logic_vector(3 downto 0);
+	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
+	nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
+	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
+	nvme_exp_txp	: out std_logic_vector(3 downto 0);	--! nvme PCIe TX plus lanes
+	nvme_exp_txn	: out std_logic_vector(3 downto 0);	--! nvme PCIe TX minus lanes
+	nvme_exp_rxp	: in std_logic_vector(3 downto 0);	--! nvme PCIe RX plus lanes
+	nvme_exp_rxn	: in std_logic_vector(3 downto 0);	--! nvme PCIe RX minus lanes
 
 	-- Debug
 	leds		: out std_logic_vector(3 downto 0)
+);
+end component;
+
+component TestData is
+generic(
+	BlockSize	: integer := NvmeStorageBlockSize	--! The block size in Bytes.
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+
+	-- Control and status interface
+	enable		: in std_logic;				--! Enable production of data
+
+	-- AXIS data output
+	dataStream	: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end component;
 
@@ -227,11 +246,13 @@ signal axil_reset		: std_logic;
 --signal msi_enable		: std_logic;
 --signal msi_vector_width	: std_logic;
 
-signal axil			: AxilBus;
-signal hostSend			: AxisStream;
-signal hostRecv		: AxisStream;
-signal nvmeReq			: AxisStream;
-signal nvmeReply		: AxisStream;
+signal axil			: AxilBusType;
+signal hostSend			: AxisStreamType;
+signal hostRecv			: AxisStreamType;
+signal nvmeReq			: AxisStreamType;
+signal nvmeReply		: AxisStreamType;
+signal dataIn			: AxisStreamType;
+signal dataEnabled		: std_logic;
 
 begin
 	-- System clock just used for a boot reset
@@ -396,7 +417,7 @@ begin
 	-- NVME Storage interface
 	axil_reset <= not axil_reset_n;
 	
-	nvmeStorage0 : NvmeStorage
+	nvmeStorageUnit0 : NvmeStorageUnit
 	port map (
 		clk		=> axil_clk,
 		reset		=> axil_reset,
@@ -410,16 +431,17 @@ begin
 		hostRecv	=> hostRecv,
 
 		-- AXIS data stream input
-		--dataRx	=> dataRx,
+		dataEnabledOut	=> dataEnabled,
+		dataIn		=> dataIn,
 
 		-- NVMe interface
 		nvme_clk_p	=> nvme_clk_p,
 		nvme_clk_n	=> nvme_clk_n,
 		nvme_reset_n	=> nvme_reset_n,
-		nvme0_exp_txp	=> nvme0_exp_txp,
-		nvme0_exp_txn	=> nvme0_exp_txn,
-		nvme0_exp_rxp	=> nvme0_exp_rxp,
-		nvme0_exp_rxn	=> nvme0_exp_rxn,
+		nvme_exp_txp	=> nvme0_exp_txp,
+		nvme_exp_txn	=> nvme0_exp_txn,
+		nvme_exp_rxp	=> nvme0_exp_rxp,
+		nvme_exp_rxn	=> nvme0_exp_rxn,
 
 		-- Debug
 		leds		=> leds_l(3 downto 0)
@@ -432,7 +454,19 @@ begin
 	nvmeReply.data	<= nvmeReq.data;  
 	nvmeReq.ready	<= nvmeReply.ready;
 
+	-- The test data interface
+	testData0 : TestData
+	port map (
+		clk		=> axil_clk,
+		reset		=> axil_reset,
+
+		enable		=> dataEnabled,
+
+		dataStream	=> dataIn
+	);
 	end generate;
+	
+
 
 	-- Led buffers
 	obuf_leds: for i in 0 to 7 generate

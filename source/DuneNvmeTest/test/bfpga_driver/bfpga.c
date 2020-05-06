@@ -155,6 +155,7 @@ static spinlock_t		nextDevLock;
 static struct pci_device_id bfpga_ids[] = {
 	{ PCI_VENDOR_ID_XILINX, 0x8014, PCI_VENDOR_ID_XILINX, 0x0007 },
 	{ PCI_VENDOR_ID_XILINX, 0x8024, PCI_VENDOR_ID_XILINX, 0x0007 },
+	{ PCI_VENDOR_ID_XILINX, 0x8034, PCI_VENDOR_ID_XILINX, 0x0007 },
 	{ 0, }
 };
 MODULE_DEVICE_TABLE(pci, bfpga_ids);
@@ -606,7 +607,7 @@ static int map_region(struct pci_dev* pdev, int region, MemMap* map){
 	}
 
 	dl1printk("map_region: %d address: %llx len: %d\n", region, map->physAddress, map->len);
-	map->address = ioremap_nocache(map->physAddress, map->len);
+	map->address = ioremap(map->physAddress, map->len);
 	if(!map->address){
 		printk(KERN_ERR NAME_PREFIX "Cannot map PCI Region: %d Address: 0x%llx: Len: %u\n", region, map->physAddress, map->len);
 		release_mem_region(map->physAddress, map->len);

@@ -57,21 +57,30 @@
 #include <sys/ioctl.h>
 #include <bfpga_driver/bfpga.h>
 
+const Bool	UseQueueEngine = 1;		///< Use the FPGA queue engine implementation
+const Bool	UseConfigEngine = 0;		///< Use the FPGA configuration engine
+const BUInt	PcieMaxPayloadSize = 32;	///< The Pcie maximim packet payload in 32bit DWords
+
 class NvmeRequestPacket {
 public:
 			NvmeRequestPacket(){
 				memset(this, 0, sizeof(*this));
 			}
 
-	BUInt32		stream;			///< 
+#ifdef ZAP
+	BUInt32		source;			///< 
 	BUInt32		fill0[3];		///< 
-	BUInt64		address;		///< 
-	BUInt32		numWords:11;		///< 
-	BUInt32		request:4;		///< 
-	BUInt32		fill1:17;		///< 
-	BUInt32		tag:8;			///< 
-	BUInt32		fill2:24;		///< 
-	BUInt32		data[32];		///< 
+#endif
+	BUInt64		address;		///< The 64bit read/write address
+	BUInt32		numWords:11;		///< The number of 32bit data words to transfer
+	BUInt32		request:4;		///< The request (0 - read, 1 - write etc.)
+	BUInt32		fill2:1;		///< 
+	BUInt32		requesterId:16;		///< The requestors ID used as the stream ID
+	BUInt32		tag:8;			///< A tag for this request, returned in the reply
+	BUInt32		completerId:16;		///< The completers ID
+	BUInt32		requesterIdEnable:1;	///< Enable the manual use of the requestorId field.
+	BUInt32		fill3:7;		///< 
+	BUInt32		data[PcieMaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
 };
 
 class NvmeReplyPacket {
@@ -80,18 +89,32 @@ public:
 				memset(this, 0, sizeof(*this));
 			}
 
-	BUInt32		stream;			///< 
+#ifdef ZAP
+	BUInt32		source;			///< 
 	BUInt32		fill0[3];		///< 
-	BUInt32		address:12;		///< 
-	BUInt32		error:4;		///< 
-	BUInt32		numBytes:13;		///< 
+#endif
+	BUInt32		address:12;		///< The lower 12 bits of the address
+	BUInt32		error:4;		///< An error number
+	BUInt32		numBytes:13;		///< The total number of bytes to be transfered
 	BUInt32		fill1:3;		///< 
-	BUInt32		numWords:11;		///< 
-	BUInt32		status:3;		///< 
-	BUInt32		fill2:18;		///< 
-	BUInt32		tag:8;			///< 
-	BUInt32		fill3:24;		///< 
-	BUInt32		data[32];		///< 
+	BUInt32		numWords:11;		///< The number of 32bit words in this reply
+	BUInt32		status:3;		///< The status for the request
+	BUInt32		fill2:2;		///< 
+	BUInt32		requesterId:16;		///< The requestors ID
+	BUInt32		tag:8;			///< The requests tag
+	BUInt32		fill3:23;		///< 
+	BUInt32		reply:1;		///< This bit indicates a reply (we have used an unused bit for this)
+	BUInt32		data[PcieMaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
+};
+
+const BUInt NvmeSglTypeData	= 0;
+
+class NvmeSgl {
+	BUInt64		address;
+	BUInt32		length;
+	BUInt8		fill0[2];
+	BUInt8		subtype:4;
+	BUInt8		type:4;
 };
 
 /// Nvme access class
@@ -101,12 +124,19 @@ public:
 			~NvmeAccess();
 	
 	int		init();
+	void		close();
+	
+	void		reset();
 
 	// Send a queued request to the NVMe
 	int		nvmeRequest(int queue, int opcode, BUInt32 address, BUInt32 arg10, BUInt32 arg11 = 0, BUInt32 arg12 = 0);
 	
 	// NVMe process received requests thread
 	int		nvmeProcess();
+	
+	// NvmeStorage units register access
+	int		readNvmeStorageReg(BUInt32 address, BUInt32& data);
+	int		writeNvmeStorageReg(BUInt32 address, BUInt32 data);
 	
 	// NVMe register access
 	int		readNvmeReg32(BUInt32 address, BUInt32& data);
@@ -115,8 +145,8 @@ public:
 	int		writeNvmeReg64(BUInt32 address, BUInt64 data);
 
 	// Perform register access over PCIe both config and NVMe registers
-	int		readRegister(Bool config, BUInt32 address, BUInt32 num, BUInt32* data);
-	int		writeRegister(Bool config, BUInt32 address, BUInt32 num, BUInt32* data);
+	int		pcieWrite(BUInt8 request, BUInt32 address, BUInt32 num, BUInt32* data);
+	int		pcieRead(BUInt8 request, BUInt32 address, BUInt32 num, BUInt32* data);
 
 	// Packet send and receive
 	int		packetSend(const NvmeRequestPacket& packet);
@@ -156,5 +186,5 @@ protected:
 	BUInt32			oqueueDataRx;
 	BUInt32			oqueueDataTx;
 
-	BUInt32			odataBlockMem[4096];
+	BUInt32			odataBlockMem[8192];
 };

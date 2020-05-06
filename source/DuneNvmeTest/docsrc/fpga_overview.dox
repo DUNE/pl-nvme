@@ -5,13 +5,13 @@
 /**
 \author Dr Terry Barnaby
 \version 0.1.1
-\date 2020-04-12
+\date 2020-04-26
 
 \mainpage
 
 \section Introduction
-This directory contains a simple NVMe test environment that allows experimentation with the low level PCIe NVMe interfaces as available on a Xilinx FPGA environment.
-The directory contains the source code, simulation environment and build environment for the NVME test FPGA firmware as well as the nvme_test host software.
+This directory contains the DuneNvme storage system that provides data storage to NVMe devices as available on a Xilinx FPGA.
+The directory contains the source code, simulation environment, build environment and test software for the NVME test FPGA firmware as well as the nvme_test host software.
 
 See the Readme.pdf file for more information.
 
