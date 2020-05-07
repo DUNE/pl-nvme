@@ -581,6 +581,9 @@ static irqreturn_t bfpga_intr_handler(int irq, void *arg){
 			dma_reg_write(dev, dev->dmaChannels[c].registers + DMA_CONTROL, 0);
 			wake_up_interruptible(&dev->dmaChannels[c].event);
 		}
+		else if(status){
+			printk("bfpga_intr_handler: channel: %u had status: 0x%8.8x\n", c, status);
+		}
 	}
 
 	return 0;

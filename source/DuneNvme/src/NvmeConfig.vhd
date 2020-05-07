@@ -84,7 +84,7 @@ constant rom	: RomType(0 to 27) := (
 	setHeader(1, 16#000C#, 1, 0), to_stl(x"FFFFFFFF", 128),
 
 	-- Admin queue lengths to 8 entries each
-	setHeader(1, 16#0024#, 1, 0), to_stl(x"00070007", 128),
+	setHeader(1, 16#0024#, 1, 0), zeros(96) & to_stl(NvmeQueueNum-1, 16) & to_stl(NvmeQueueNum-1, 16),
 
 	-- Admin request queue base address
 	setHeader(1, 16#0028#, 1, 0), to_stl(x"02000000", 128),
@@ -94,10 +94,10 @@ constant rom	: RomType(0 to 27) := (
 
 	-- Create DataWrite reply queue (8 entries)  by sending 64byte request to Admin queue
 	setHeader(12, 16#02000000#, 16, 0),
-		concat('0', 96) & x"02000005",				-- Dwords 3, 2, 1, 0
-		concat('0', 32) & x"02110000" & concat('0', 64), 	-- DWords 7, 6, 5, 4
-		x"00000001" & x"00070001" & concat('0', 64),		-- DWords 11, 10, 9, 8
-		concat('0', 128),					-- DWords 15, 14, 13, 12
+		zeros(96) & x"02000005",					-- Dwords 3, 2, 1, 0
+		zeros(32) & x"02110000" & zeros(64), 				-- DWords 7, 6, 5, 4
+		x"00000001" & to_stl(NvmeQueueNum-1, 16) & x"0001" & zeros(64),	-- DWords 11, 10, 9, 8
+		zeros(128),							-- DWords 15, 14, 13, 12
 
 	-- Notify queue entry to Nvme
 	setHeader(1, 16#1000#, 1, 0), to_stl(1, 128),
@@ -106,10 +106,10 @@ constant rom	: RomType(0 to 27) := (
 
 	-- Create DataWrite request queue by sending 64byte request to Admin queue
 	setHeader(12, 16#02000000#, 16, 0),
-		concat('0', 96) & x"02000001",				-- Dwords 3, 2, 1, 0
-		concat('0', 32) & x"02010000" & concat('0', 64), 	-- DWords 7, 6, 5, 4
-		x"00000001" & x"00070001" & concat('0', 64),		-- DWords 11, 10, 9, 8
-		concat('0', 128),					-- DWords 15, 14, 13, 12
+		zeros(96) & x"02000001",					-- Dwords 3, 2, 1, 0
+		zeros(32) & x"02010000" & zeros(64), 				-- DWords 7, 6, 5, 4
+		x"00000001" & to_stl(NvmeQueueNum-1, 16) & x"0001" & zeros(64),	-- DWords 11, 10, 9, 8
+		zeros(128),							-- DWords 15, 14, 13, 12
 
 	-- Notify queue entry to Nvme
 	setHeader(1, 16#1000#, 1, 0), to_stl(2, 128),

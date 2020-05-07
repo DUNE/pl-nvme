@@ -75,7 +75,8 @@ component Clk_core is
 	port (
 		clk_in1_p	: in std_logic; 
 		clk_in1_n	: in std_logic;
-		clk_out1	: out std_logic
+		clk_out1	: out std_logic;
+		locked		: out std_logic
 	);                                     
 end component;                 
 
@@ -142,8 +143,11 @@ component Pcie_host
 	m_axis_h2c_tlast_1 : out std_logic;
 	m_axis_h2c_tvalid_1 : out std_logic;
 	m_axis_h2c_tready_1 : in std_logic;
-	m_axis_h2c_tkeep_1 : out std_logic_vector(15 downto 0)
+	m_axis_h2c_tkeep_1 : out std_logic_vector(15 downto 0);
 
+	int_qpll1lock_out : out std_logic_vector(0 to 0);
+	int_qpll1outrefclk_out : out std_logic_vector(0 to 0);
+	int_qpll1outclk_out : out std_logic_vector(0 to 0)
 	);
 end component;
 
@@ -221,7 +225,7 @@ port (
 	enable		: in std_logic;				--! Enable production of data
 
 	-- AXIS data output
-	dataStream	: inout AxisStreamType := AxisOutput	--! Output data stream
+	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end component;
 
@@ -251,8 +255,11 @@ signal hostSend			: AxisStreamType;
 signal hostRecv			: AxisStreamType;
 signal nvmeReq			: AxisStreamType;
 signal nvmeReply		: AxisStreamType;
-signal dataIn			: AxisStreamType;
+signal testDataStream		: AxisStreamType;
 signal dataEnabled		: std_logic;
+
+signal hostSend1		: AxisStreamType := AxisInput;
+signal hostRecv1		: AxisStreamType := AxisOutput;
 
 begin
 	-- System clock just used for a boot reset
@@ -413,6 +420,67 @@ begin
 	);	
 	end generate;
 	
+	zap12: if false generate
+	-- NVME Storage interface
+	axil_reset <= not axil_reset_n;
+	
+	hostSend.ready	<= '1';
+
+	hostSend1.valid	<= '0';
+	hostSend1.last	<= '0';
+	hostSend1.keep	<= (others => '0');
+	hostSend1.data	<= (others => '0');
+	hostRecv1.ready	<= '0';
+	
+	nvmeStorageUnit1 : NvmeStorageUnit
+	port map (
+		clk		=> axil_clk,
+		reset		=> axil_reset,
+
+		-- Control and status interface
+		axilIn		=> axil.toSlave,
+		axilOut		=> axil.toMaster,
+
+		-- From host to NVMe request/reply streams
+		hostSend	=> hostSend1,
+		hostRecv	=> hostRecv1,
+
+		-- AXIS data stream input
+		dataEnabledOut	=> dataEnabled,
+		dataIn		=> testDataStream,
+
+		-- NVMe interface
+		nvme_clk_p	=> nvme_clk_p,
+		nvme_clk_n	=> nvme_clk_n,
+		nvme_reset_n	=> nvme_reset_n,
+		nvme_exp_txp	=> nvme0_exp_txp,
+		nvme_exp_txn	=> nvme0_exp_txn,
+		nvme_exp_rxp	=> nvme0_exp_rxp,
+		nvme_exp_rxn	=> nvme0_exp_rxn,
+
+		-- Debug
+		leds		=> leds_l(3 downto 0)
+	);
+
+	-- Echo this stream	
+	nvmeReply.valid	<= nvmeReq.valid;   
+	nvmeReply.last	<= nvmeReq.last;   
+	nvmeReply.keep	<= nvmeReq.keep;   
+	nvmeReply.data	<= nvmeReq.data;  
+	nvmeReq.ready	<= nvmeReply.ready;
+
+	-- The test data interface
+	testData1 : TestData
+	port map (
+		clk		=> axil_clk,
+		reset		=> axil_reset,
+
+		enable		=> '1',
+
+		dataOut		=> hostRecv
+	);
+	end generate;
+
 	zap13: if true generate
 	-- NVME Storage interface
 	axil_reset <= not axil_reset_n;
@@ -432,7 +500,7 @@ begin
 
 		-- AXIS data stream input
 		dataEnabledOut	=> dataEnabled,
-		dataIn		=> dataIn,
+		dataIn		=> testDataStream,
 
 		-- NVMe interface
 		nvme_clk_p	=> nvme_clk_p,
@@ -462,7 +530,7 @@ begin
 
 		enable		=> dataEnabled,
 
-		dataStream	=> dataIn
+		dataOut		=> testDataStream
 	);
 	end generate;
 	

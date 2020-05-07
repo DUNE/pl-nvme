@@ -56,7 +56,7 @@ architecture Behavioral of NvmeQueues is
 
 constant TCQ		: time		:= 1 ns;
 constant NUM_QUEUES	: integer	:= 4;
-constant RAM_SIZE	: integer	:= (NUM_QUEUES * NumQueueEntries * 4);
+constant RAM_SIZE	: integer	:= (NUM_QUEUES * NumQueueEntries * 4);	-- Note uses same size for reply queues which is wasteful
 
 subtype QueueNumRange	is integer range 17 downto 16;
 subtype QueuePosType	is unsigned(log2(NumQueueEntries)-1 downto 0);

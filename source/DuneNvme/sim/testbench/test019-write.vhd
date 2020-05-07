@@ -70,7 +70,7 @@ port (
 	enable		: in std_logic;				--! Enable production of data
 
 	-- AXIS data output
-	dataStream	: inout AxisStreamType := AxisOutput	--! Output data stream
+	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end component;
 
@@ -106,7 +106,7 @@ signal hostReply	: AxisStreamType := AxisInput;
 signal hostReq		: AxisStreamType := AxisOutput;
 signal nvmeReq		: AxisStreamType := AxisInput;
 signal nvmeReply	: AxisStreamType := AxisOutput;
-signal dataIn		: AxisStreamType;
+signal testDataStream	: AxisStreamType;
 
 type NvmeStateType is (NVME_STATE_IDLE, NVME_STATE_WRITEDATA, NVME_STATE_READHEAD, NVME_STATE_READDATA);
 signal nvmeState	: NvmeStateType := NVME_STATE_IDLE;
@@ -134,7 +134,7 @@ begin
 		hostSend	=> hostSend,
 		hostRecv	=> hostRecv,
 		
-		dataIn		=> dataIn,
+		dataIn		=> testDataStream,
 
 		-- NVMe interface
 		nvme_clk_p	=> '0',
@@ -162,22 +162,35 @@ begin
 	
 	run : process
 	begin
+		axil.toSlave <= ((others => '0'), (others => '0'), '0', (others => '0'), (others => '0'), '0', '0', (others => '0'), (others => '0'), '0', '0');
 		wait until reset = '0';
 
-		-- Test NvmeWrite
-		wait for 100 ns;
-		sendData <= '1';
+		if(False) then
+			-- Test Read/Write NvmeWrite registers
+			wait for 100 ns;
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0100#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0104#);
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0100#, 16#00000004#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0100#);
 
-		-- Write to NvmeStorage control register to start NvmeWrite processing
-		wait for 100 ns;
-		busWrite(clk, axil.toSlave, axil.toMaster, 4, 16#00000004#);
+			wait;
+		end if;
+		
+		if(True) then
+			-- Start off TestData source and start writing data to Nvme
+			wait for 100 ns;
+			sendData <= '1';
 
-		-- Read status registers
-		wait for 100 ns;
-		busRead(clk, axil.toSlave, axil.toMaster, 32);
-		busRead(clk, axil.toSlave, axil.toMaster, 36);
+			-- Write to NvmeStorage control register to start NvmeWrite processing
+			wait for 100 ns;
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0100#, 16);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
 
-		wait;		
+			wait for 11000 ns;
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000000#);	-- Stop
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
+			wait;	
+		end if;
 		
 		--wait for 1000 ns;
 		
@@ -217,7 +230,7 @@ begin
 
 		enable		=> sendData,
 
-		dataStream	=> dataIn
+		dataOut		=> testDataStream
 	);	
 
 

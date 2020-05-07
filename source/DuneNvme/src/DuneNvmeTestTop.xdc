@@ -5,7 +5,7 @@
 #
 
 # System timings
-create_clock -period 5.000 -name sys_clk_p -waveform {0.000 2.500} [get_ports sys_clk_p]
+#create_clock -period 5.000 -name sys_clk_p -waveform {0.000 2.500} [get_ports sys_clk_p]
 create_clock -period 10.000 -name pci_clk [get_ports pci_clk_p]
 create_clock -period 10.000 -name nvme_clk [get_ports nvme_clk_p]
 

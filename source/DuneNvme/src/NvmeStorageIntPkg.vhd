@@ -36,7 +36,8 @@ use work.NvmeStoragePkg.all;
 package NvmeStorageIntPkg is
 	--! System constants
 	constant NvmeStorageBlockSize	: integer := 4096;	--! System block size
-	constant NvmeWriteQueueNum	: integer := 8;		--! The number of data write queue entries
+	constant NvmeQueueNum		: integer := 16;	--! The number of queue entries. Has to be greater than NvmeWriteNum
+	constant NvmeWriteNum		: integer := 8;		--! The number of concurrent data write's.
 	constant PcieMaxPayloadSize	: integer := 32;	--! The maximum Pcie packet size in 32bit DWords
 	
 	--! Generaly useful functions

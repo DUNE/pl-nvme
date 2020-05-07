@@ -129,7 +129,7 @@ public:
 	void		reset();
 
 	// Send a queued request to the NVMe
-	int		nvmeRequest(int queue, int opcode, BUInt32 address, BUInt32 arg10, BUInt32 arg11 = 0, BUInt32 arg12 = 0);
+	int		nvmeRequest(Bool wait, int queue, int opcode, BUInt32 address, BUInt32 arg10, BUInt32 arg11 = 0, BUInt32 arg12 = 0);
 	
 	// NVMe process received requests thread
 	int		nvmeProcess();
@@ -173,6 +173,7 @@ protected:
 
 	BSemaphore		opacketReplySem;		///< Semaphore when a reply packet has been received
 	NvmeReplyPacket		opacketReply;			///< Reply to request
+	BSemaphore		oqueueReplySem;			///< Semaphore when a queue reply packet has been received
 
 	pthread_t		othread;
 	BUInt32			oqueueNum;

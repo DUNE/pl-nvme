@@ -112,6 +112,7 @@ int Control::test1(){
 int Control::configureNvme(){
 	int	e;
 	BUInt32	data;
+	BUInt32	cmd0;
 
 	printf("Configure Nvme for operation\n");
 	
@@ -220,6 +221,8 @@ int Control::configureNvme(){
 
 		//dumpNvmeRegisters();
 
+		cmd0 = ((oqueueNum - 1) << 16) | 0x0001;
+
 #ifdef ZAP
 		// Test the queue engine
 		printf("Create/delete IO queue 1 for replies repeatidly\n");
@@ -228,10 +231,10 @@ int Control::configureNvme(){
 			for(int c = 0; c < 10; c++){
 				printf("Do: %d\n", c);
 
-				nvmeRequest(0, 0x05, 0x02110000, 0x00070001, 0x00000001);
+				nvmeRequest(0, 0, 0x05, 0x02110000, cmd0, 0x00000001);
 				sleep(1);
 
-				nvmeRequest(0, 0x04, 0x02110000, 0x00070001, 0x00000001);
+				nvmeRequest(0, 0, 0x04, 0x02110000, cmd0, 0x00000001);
 				sleep(1);
 			}
 		}
@@ -239,10 +242,10 @@ int Control::configureNvme(){
 			for(int c = 0; c < 10; c++){
 				printf("Do: %d\n", c);
 
-				nvmeRequest(0, 0x05, 0x00110000, 0x00070001, 0x00000001);
+				nvmeRequest(0, 0, 0x05, 0x00110000, cmd0, 0x00000001);
 				sleep(1);
 
-				nvmeRequest(0, 0x04, 0x00110000, 0x00070001, 0x00000001);
+				nvmeRequest(0, 0, 0x04, 0x00110000, cmd0, 0x00000001);
 				sleep(1);
 			}
 		}
@@ -254,29 +257,30 @@ int Control::configureNvme(){
 			if(overbose)
 				printf("Create IO queue 1 for replies\n");
 
-			nvmeRequest(0, 0x05, 0x02110000, 0x00070001, 0x00000001);
+			nvmeRequest(1, 0, 0x05, 0x02110000, cmd0, 0x00000001);
 
 			// Create an IO queue
 			if(overbose)
 				printf("Create IO queue 1 for requests\n");
 
-			nvmeRequest(0, 0x01, 0x02010000, 0x00070001, 0x00010001);
+			nvmeRequest(1, 0, 0x01, 0x02010000, cmd0, 0x00010001);
 		}
 		else {
 			// Create an IO queue
 			if(overbose)
 				printf("Create IO queue 1 for replies\n");
 
-			nvmeRequest(0, 0x05, 0x01110000, 0x00070001, 0x00000001);
+			nvmeRequest(1, 0, 0x05, 0x01110000, cmd0, 0x00000001);
 
 			// Create an IO queue
 			if(overbose)
 				printf("Create IO queue 1 for requests\n");
 
-			nvmeRequest(0, 0x01, 0x01010000, 0x00070001, 0x00010001);
+			nvmeRequest(1, 0, 0x01, 0x01010000, cmd0, 0x00010001);
 		}
 	}
 #endif
+	usleep(100000);
 
 	//dumpNvmeRegisters();
 	
@@ -304,10 +308,10 @@ int Control::test3(){
 		return e;
 
 	printf("Get info\n");
-	//nvmeRequest(0, 0x06, 0x01F00000, 0x00000000);		// Namespace info
-	nvmeRequest(0, 0x06, 0x01F00000, 0x00000001);		// Controller info
+	//nvmeRequest(0, 0, 0x06, 0x01F00000, 0x00000000);		// Namespace info
+	nvmeRequest(0, 0, 0x06, 0x01F00000, 0x00000001);		// Controller info
 	printf("\n");
-	sleep(2);
+	sleep(1);
 
 	return 0;
 }
@@ -324,8 +328,7 @@ int Control::test4(){
 	printf("Perform block read\n");
 	memset(odataBlockMem, 0x01, sizeof(odataBlockMem));
 
-	nvmeRequest(1, 0x02, 0x01800000, 0x0000000, 0x00000000, numBlocks-1);	// Perform read
-	usleep(100000);
+	nvmeRequest(1, 1, 0x02, 0x01800000, 0x0000000, 0x00000000, numBlocks-1);	// Perform read
 
 	printf("DataBlock:\n");
 	bhd32a(odataBlockMem, numBlocks*512/4);
@@ -350,7 +353,7 @@ int Control::test5(){
 	for(a = 0; a < 8192; a++)
 		odataBlockMem[a] = ((r & 0xFF) << 24) + a;
 
-	nvmeRequest(1, 0x01, 0x01800000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
+	nvmeRequest(1, 1, 0x01, 0x01800000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
 
 	return 0;
 }
@@ -363,21 +366,29 @@ int Control::test6(){
 	BUInt32	t;
 	double	r;
 	double	ts;
+	BUInt	numBlocks = 262144;
 
+	//numBlocks = 8;
 	printf("Test6: Enable FPGA write blocks\n");
 	
 	if(e = configureNvme())
 		return e;
 
 	//dumpRegs();
+	
+	// Set number of blocks to write
+	writeNvmeStorageReg(256, numBlocks);
 		
 	printf("Stats\n");
-	readNvmeStorageReg(32, v);
-	printf("NvmeWrite: status:    %8.8x\n", v);
-	readNvmeStorageReg(36, v);
-	printf("NvmeWrite: numBlocks: %u\n", v);
-	readNvmeStorageReg(40, v);
-	printf("NvmeWrite: timeUs:    %u\n", v);
+	readNvmeStorageReg(256, v);
+	printf("NvmeWrite: dataChunkSize: %8.8x\n", v);
+	readNvmeStorageReg(256+4, v);
+	printf("NvmeWrite: status:        %8.8x\n", v);
+	readNvmeStorageReg(256+8, v);
+	printf("NvmeWrite: numBlocks:     %u\n", v);
+	readNvmeStorageReg(256+12, v);
+	printf("NvmeWrite: timeUs:        %u\n", v);
+
 
 	// Start off NvmeWrite engine
 	printf("\nStart NvmeWrite engine\n");
@@ -386,9 +397,10 @@ int Control::test6(){
 #ifndef ZAP	
 	ts = getTime();
 	n = 0;
-	while(n != 262144){
-		readNvmeStorageReg(36, n);
+	while(n != numBlocks){
+		readNvmeStorageReg(256+8, n);
 		printf("NvmeWrite: numBlocks: %u\n", n);
+		usleep(100000);
 	}
 	printf("Time was: %f\n", getTime() - ts);
 #else
@@ -398,20 +410,56 @@ int Control::test6(){
 #ifdef ZAP
 	printf("\nPerform block read\n");
 	memset(odataBlockMem, 0x0, sizeof(odataBlockMem));
-	nvmeRequest(1, 0x02, 0x01800000, 0x0000000, 0x00000000, 3);	// Four blocks
+	nvmeRequest(0, 1, 0x02, 0x01800000, 0x0000000, 0x00000000, 7);	// Four blocks
 	usleep(100000);
 
 	printf("DataBlock:\n");
-	bhd32(odataBlockMem, 1*512/4);
+	bhd32(odataBlockMem, 8*512/4);
 #endif
-	
+
+
+#ifdef ZAP
+	// Start off NvmeWrite engine
+	printf("\nStart NvmeWrite engine\n");
+	writeNvmeStorageReg(4, 0x00000000);
+	writeNvmeStorageReg(4, 0x00000004);
+
+#ifndef ZAP	
+	ts = getTime();
+	n = 0;
+	while(n != numBlocks){
+		readNvmeStorageReg(256+8, n);
+		printf("NvmeWrite: numBlocks: %u\n", n);
+		usleep(100000);
+	}
+	printf("Time was: %f\n", getTime() - ts);
+#else
+	sleep(2);
+#endif
+
+#ifndef ZAP
+	printf("\nPerform block read\n");
+	memset(odataBlockMem, 0x0, sizeof(odataBlockMem));
+	nvmeRequest(0, 1, 0x02, 0x01800000, 0x0000000, 0x00000000, 7);	// Four blocks
+	usleep(100000);
+
+	printf("DataBlock:\n");
+	bhd32(odataBlockMem, 8*512/4);
+#endif
+#endif
+
+
+
+
 	printf("Stats\n");
-	readNvmeStorageReg(32, v);
-	printf("NvmeWrite: status:    %8.8x\n", v);
-	readNvmeStorageReg(36, n);
-	printf("NvmeWrite: numBlocks: %u\n", n);
-	readNvmeStorageReg(40, t);
-	printf("NvmeWrite: timeUs:    %u\n", t);
+	readNvmeStorageReg(256, v);
+	printf("NvmeWrite: dataChunkSize: %8.8x\n", v);
+	readNvmeStorageReg(256+4, v);
+	printf("NvmeWrite: status:        %8.8x\n", v);
+	readNvmeStorageReg(256+8, n);
+	printf("NvmeWrite: numBlocks:     %u\n", n);
+	readNvmeStorageReg(256+12, t);
+	printf("NvmeWrite: timeUs:        %u\n", t);
 	
 	r = (4096.0 * n / (1e-6 * t));
 	printf("NvmeWrite: rate:      %f MBytes/s\n", r / (1024 * 1024));
@@ -422,39 +470,13 @@ int Control::test6(){
 int Control::test7(){
 	int	e;
 	int	a;
-	BUInt32	r;
-	int	numBlocks = 8;
-	
-	printf("Test7: Write blocks, 4 at a time\n");
-	
-	if(e = configureNvme())
-		return e;
-
-	srand(time(0));
-	r = rand();
-	printf("Perform block write with: 0x%2.2x\n", r & 0xFF);
-	for(a = 0; a < 8192; a++)
-		odataBlockMem[a] = ((r & 0xFF) << 24) + a;
-
-	nvmeRequest(1, 0x01, 0x01800000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
-	nvmeRequest(1, 0x01, 0x01801000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
-	nvmeRequest(1, 0x01, 0x01802000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
-	nvmeRequest(1, 0x01, 0x01803000, 0x00000000, 0x00000000, numBlocks-1);	// Perform write
-
-	sleep(2);
-	
-	return 0;
-}
-
-int Control::test8(){
-	int	e;
-	int	a;
 	BUInt32	v;
 	BUInt32	i;
 	int	n;
-	int	numBlocks = 1000;
+	//BUInt	numBlocks = 262144;
+	BUInt	numBlocks = 10000;
 	
-	printf("Test8: Validate 4k blocks\n");
+	printf("Test7: Validate 4k blocks\n");
 	
 	if(e = configureNvme())
 		return e;
@@ -463,8 +485,7 @@ int Control::test8(){
 	for(n = 0; n < numBlocks; n++){
 		printf("Test Block: %u\n", n);
 		memset(odataBlockMem, 0x01, sizeof(odataBlockMem));
-		nvmeRequest(1, 0x02, 0x01800000, n * 8, 0x00000000, 7);	// Perform read
-		usleep(100000);
+		nvmeRequest(1, 1, 0x02, 0x01800000, n * 8, 0x00000000, 7);	// Perform read
 
 		for(a = 0; a < 4096 / 4; a++, v++){
 			if(odataBlockMem[a] != v){
@@ -493,28 +514,28 @@ int Control::test_misc(){
 		return e;
 
 	printf("Get info\n");
-	nvmeRequest(0, 0x06, 0x01F00000, 0x00000001);
+	nvmeRequest(0, 0, 0x06, 0x01F00000, 0x00000001);
 	sleep(1);
 
 	printf("\nGet namespace list\n");
-	nvmeRequest(0, 0x06, 0x01F00000, 0x00000002);
+	nvmeRequest(0, 0, 0x06, 0x01F00000, 0x00000002);
 	sleep(1);
 
 	printf("\nSet asynchonous feature\n");
-	nvmeRequest(0, 0x09, 0x01F00000, 0x0000000b, 0xFFFFFFFF);
+	nvmeRequest(0, 0, 0x09, 0x01F00000, 0x0000000b, 0xFFFFFFFF);
 	sleep(1);
 
 	printf("\nGet asynchonous feature\n");
-	nvmeRequest(0, 0x0A, 0x01F00000, 0x0000000b);
+	nvmeRequest(0, 0, 0x0A, 0x01F00000, 0x0000000b);
 	sleep(1);
 
 
 	printf("\nGet log page\n");
-	nvmeRequest(0, 0x02, 0x01F00000, 0x00100001, 0x00000000, 0);
+	nvmeRequest(0, 0, 0x02, 0x01F00000, 0x00100001, 0x00000000, 0);
 	sleep(1);
 
 	printf("\nGet asynchonous event\n");
-	nvmeRequest(0, 0x0C, 0x00000000, 0x00000000, 0x00000000, 0);
+	nvmeRequest(0, 0, 0x0C, 0x00000000, 0x00000000, 0x00000000, 0);
 	sleep(1);
 
 	return 0;
@@ -621,9 +642,6 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(test, "test7")){
 			err = control.test7();
-		}
-		else if(!strcmp(test, "test8")){
-			err = control.test8();
 		}
 		else if(!strcmp(test, "test_misc")){
 			err = control.test_misc();

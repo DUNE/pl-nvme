@@ -213,6 +213,10 @@ component Pcie_nvme0
 	sys_clk : in std_logic;
 	sys_clk_gt : in std_logic;
 	sys_reset : in std_logic;
+	
+	int_qpll1lock_out : out std_logic_vector(0 to 0);
+	int_qpll1outrefclk_out : out std_logic_vector(0 to 0);
+	int_qpll1outclk_out : out std_logic_vector(0 to 0);
 	phy_rdy_out : out std_logic
 	);
 end component;
@@ -236,7 +240,7 @@ end component;
 
 component NvmeQueues is
 generic(
-	NumQueueEntries	: integer	:= 8;			--! The number of entries per queue
+	NumQueueEntries	: integer	:= NvmeQueueNum;	--! The number of entries per queue
 	Simulate	: boolean	:= False
 );
 port (
@@ -316,8 +320,10 @@ port (
 	memReqIn	: inout AxisStreamType := AxisInput;	--! From Nvme request stream (4)
 	memReplyOut	: inout AxisStreamType := AxisOutput;	--! To Nvme reply stream
 	
-	regAddress	: in unsigned(1 downto 0);		--! Status register to read
-	regData		: out std_logic_vector(31 downto 0)	--! Status register contents
+	regWrite	: in std_logic;				--! Enable write to register
+	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
+	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
+	regDataOut	: out std_logic_vector(31 downto 0)	--! Register contents
 );
 end component;
 
@@ -375,11 +381,12 @@ subtype RegDataType		is std_logic_vector(RegWidth-1 downto 0);
 type StateType			is (STATE_START, STATE_IDLE, STATE_WRITE, STATE_READ1, STATE_READ2);
 signal state			: StateType := STATE_START;
 
-signal address			: std_logic_vector(3 downto 0) := (others => '0');
+signal regAddress		: unsigned(7 downto 0) := (others => '0');
 signal reg_id			: RegDataType := x"56010200";
 signal reg_control		: RegDataType := (others => '0');
 signal reg_status		: RegDataType := (others => '0');
 signal reg_nvmeWrite		: RegDataType := (others => '0');
+signal writeNvmeWrite		: std_logic := '0';
 
 -- Nvme configuration signals
 signal configStart		: std_logic := 'U';
@@ -421,10 +428,9 @@ begin
 		axil0In		=> axilIn,
 		axil0Out	=> axilOut,
 
-		--clk1		=> nvme_user_clk,
-		--reset1	=> nvme_user_reset,
 		clk1		=> clk,
 		reset1		=> reset,
+		--clk1		=> nvme_user_clk,
 
 		-- Bus1
 		axil1In		=> axil1Out,
@@ -466,11 +472,13 @@ begin
 
 	
 	-- Register access
-	axil1Out.rdata <=	reg_id when address = "0000" else
-				reg_control when address = "0001" else
-				reg_status when address = "0010" else
-				reg_nvmeWrite when(address(3 downto 2) = "10") else
+	axil1Out.rdata <=	reg_id when(regAddress = 0) else
+				reg_control when(regAddress = 1) else
+				reg_status when(regAddress = 2) else
+				reg_nvmeWrite when((regAddress >= 64) and (regAddress < 128)) else
 				x"FFFFFFFF";
+
+	writeNvmeWrite <= axil1In.wvalid when((regAddress >= 64) and (regAddress < 128)) else '0';
 	
 	-- Status register bits
 	reg_status(0)		<= reset_local_run;
@@ -509,12 +517,12 @@ begin
 
 				when STATE_IDLE =>
 					if(axil1In.awvalid= '1') then
-						address			<= axil1In.awaddr(5 downto 2);
+						regAddress		<= unsigned(axil1In.awaddr(9 downto 2));
 						axil1Out.awready	<= '1';
 						state			<= STATE_WRITE;
 
 					elsif(axil1In.arvalid= '1') then
-						address			<= axil1In.araddr(5 downto 2);
+						regAddress		<= unsigned(axil1In.araddr(9 downto 2));
 						axil1Out.arready	<= '1';
 						state			<= STATE_READ1;
 					end if;
@@ -523,7 +531,7 @@ begin
 					axil1Out.awready	<= '0';
 
 					if(axil1In.wvalid = '1') then
-						if(address = "0001") then
+						if(regAddress = 1) then
 							if(axil1In.wdata(0) = '1') then
 								reg_control	<= (others => '0');
 								reset_local_run	<= '1';
@@ -846,9 +854,11 @@ begin
 
 		memReqIn	=> writeMemRecv,
 		memReplyOut	=> writeMemSend,
-		
-		regAddress	=> unsigned(address(1 downto 0)),
-		regData		=> reg_nvmeWrite
+
+		regWrite	=> writeNvmeWrite,
+		regAddress	=> regAddress(5 downto 0),
+		regDataIn	=> axil1In.wdata,
+		regDataOut	=> reg_nvmeWrite
 	);
 
 	end generate;

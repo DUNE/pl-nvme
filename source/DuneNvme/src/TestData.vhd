@@ -14,6 +14,7 @@
 --! @details
 --! This module provides a sequence of 32bit incrementing values over a 128 bit wide AXI stream.
 --! It sets the Axi streams last signal in the last word transfer of a configurable BlockSize block of data.
+--! the enable signal enables it's operation and when set to 0 clears its state back to intial reset state.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -48,10 +49,10 @@ port (
 	reset		: in std_logic;				--! The active high reset line
 
 	-- Control and status interface
-	enable		: in std_logic;				--! Enable production of data
+	enable		: in std_logic;				--! Enable production of data. Clears to reset state when set to 0.
 
 	-- AXIS data output
-	dataStream	: inout AxisStreamType := AxisOutput	--! Output data stream
+	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end;
 
@@ -65,32 +66,29 @@ signal countBlock	: unsigned(log2(BlockSize/BytesPerWord)-1 downto 0) := (others
 
 begin
 	-- Output incrementing data stream
-	dataStream.data <= std_logic_vector((data + 3) & (data + 2) & (data + 1) & data);
+	dataOut.data <= std_logic_vector((data + 3) & (data + 2) & (data + 1) & data);
+	dataOut.keep <= ones(16);
+	dataOut.last <= '1' when(countBlock = (BlockSize/BytesPerWord) - 1) else '0';
 		
 	-- Generate data stream
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				data			<= (others => '0');
-				dataStream.valid	<= '0';
-				dataStream.last		<= '0';
+				data		<= (others => '0');
+				countBlock	<= (others => '0');
+				dataOut.valid	<= '0';
 			else
 				if(enable = '1') then
-					dataStream.valid <= '1';
+					dataOut.valid <= '1';
+					if((dataOut.valid = '1') and (dataOut.ready = '1')) then
+						data		<= data + 4;
+						countBlock	<= countBlock + 1;
+					end if;
 				else
-					dataStream.valid <= '0';
-				end if;
-				
-				if((enable = '1') and (dataStream.valid = '1') and (dataStream.ready = '1')) then
-					data <= data + 4;
-					countBlock <= countBlock + 1;
-				end if;
-				
-				if(countBlock = (BlockSize/BytesPerWord) - 2) then
-					dataStream.last <= '1';
-				else
-					dataStream.last <= '0';
+					data		<= (others => '0');
+					countBlock	<= (others => '0');
+					dataOut.valid	<= '0';
 				end if;
 			end if;
 		end if;

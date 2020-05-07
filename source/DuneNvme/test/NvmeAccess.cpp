@@ -81,7 +81,7 @@ NvmeAccess::NvmeAccess(){
 	obufTx2 = 0;
 	obufRx = 0;
 	otag = 0;
-	oqueueNum = 8;
+	oqueueNum = 16;
 	oqueueAdminRx = 0;
 	oqueueAdminTx = 0;
 	oqueueAdminId = 0;
@@ -219,11 +219,12 @@ void NvmeAccess::reset(){
 		data = 0x06;
 		pcieWrite(10, 4, 1, &data);			///< Set PCIe config command for memory accesses
 	}
+	usleep(100000);
 }
 #endif
 
 // Send a queued request to the Nvme
-int NvmeAccess::nvmeRequest(int queue, int opcode, BUInt32 address, BUInt32 arg10, BUInt32 arg11, BUInt32 arg12){
+int NvmeAccess::nvmeRequest(Bool wait, int queue, int opcode, BUInt32 address, BUInt32 arg10, BUInt32 arg11, BUInt32 arg12){
 	int	e;
 	BUInt32	cmd[16];
 
@@ -251,10 +252,12 @@ int NvmeAccess::nvmeRequest(int queue, int opcode, BUInt32 address, BUInt32 arg1
 	}
 #endif
 
-	printf("nvmeRequest:\n"); bhd32(cmd, 16);
+	dl1printf("nvmeRequest:\n"); dl1hd32(cmd, 16);
+	oqueueReplySem.wait(0);
+
 	if(UseQueueEngine){
 		// Send message to queue engine
-		printf("Write to queue: %8.8x\n", 0x02000000 | (queue << 16));
+		dl2printf("Write to queue: %8.8x\n", 0x02000000 | (queue << 16));
 		if(e = pcieWrite(1, 0x02000000 | (queue << 16), 16, cmd))
 			return e;
 	}
@@ -290,6 +293,11 @@ int NvmeAccess::nvmeRequest(int queue, int opcode, BUInt32 address, BUInt32 arg1
 			}
 		}
 	}
+	
+	if(wait){
+		// Wait for reply
+		oqueueReplySem.wait();
+	}
 
 	return 0;
 }
@@ -315,8 +323,8 @@ int NvmeAccess::nvmeProcess(){
 
 		dl3printf("NvmeAccess::nvmeProcess: awoken with: %d bytes\n", nt);
 		//dl3hd32(obufRx, nt / 4);
-		printf("NvmeAccess::nvmeProcess: awoken with: %d bytes\n", nt);
-		bhd32(obufRx, nt / 4);
+		//printf("NvmeAccess::nvmeProcess: awoken with: %d bytes\n", nt);
+		//bhd32(obufRx, nt / 4);
 
 		// Determine if packet is a reply or an Nvme request from the reply bit in the header
 		if(obufRx[2] & 0x80000000){
@@ -383,8 +391,8 @@ int NvmeAccess::nvmeProcess(){
 			if((request.address & 0x00FF0000) == 0x00100000){
 				status = request.data[3] >> 17;
 				dl3printf("NvmeAccess::nvmeProcess: NvmeReply: Queue: %d QueueHeadPointer: %d Status: 0x%4.4x Command: 0x%x\n", request.data[2] >> 16, request.data[2] & 0xFFFF, request.data[3] >> 17, request.data[3] & 0xFFFF);
-				printf("NvmeAccess::nvmeProcess: NvmeReply: Queue: %d QueueHeadPointer: %d Status: 0x%4.4x Command: 0x%x\n", request.data[2] >> 16, request.data[2] & 0xFFFF, request.data[3] >> 17, request.data[3] & 0xFFFF);
-				bhd32(&request, nt / 4);
+				//printf("NvmeAccess::nvmeProcess: NvmeReply: Queue: %d QueueHeadPointer: %d Status: 0x%4.4x Command: 0x%x\n", request.data[2] >> 16, request.data[2] & 0xFFFF, request.data[3] >> 17, request.data[3] & 0xFFFF);
+				//bhd32(&request, nt / 4);
 
 				// Write to completion queue doorbell
 				oqueueAdminRx++;
@@ -399,26 +407,30 @@ int NvmeAccess::nvmeProcess(){
 						return 1;
 					}
 				}
+				oqueueReplySem.set();
 			}
 			else if((request.address & 0x00FF0000) == 0x00110000){
 				status = request.data[3] >> 17;
 				dl3printf("NvmeAccess::nvmeProcess: IoCompletion: Queue: %d QueueHeadPointer: %d Status: 0x%4.4x Command: 0x%x\n", request.data[2] >> 16, request.data[2] & 0xFFFF, request.data[3] >> 17, request.data[3] & 0xFFFF);
-				printf("NvmeAccess::nvmeProcess: IoCompletion: Queue: %d QueueHeadPointer: %d Status: 0x%4.4x Command: 0x%x\n", request.data[2] >> 16, request.data[2] & 0xFFFF, request.data[3] >> 17, request.data[3] & 0xFFFF);
+				//printf("NvmeAccess::nvmeProcess: IoCompletion: Queue: %d QueueHeadPointer: %d Status: 0x%4.4x Command: 0x%x\n", request.data[2] >> 16, request.data[2] & 0xFFFF, request.data[3] >> 17, request.data[3] & 0xFFFF);
 
 				// Write to completion queue doorbell
 				oqueueDataRx++;
 				if(oqueueDataRx >= oqueueNum)
 					oqueueDataRx = 0;
 
-				dl3printf("NvmeAccess::nvmeProcess: Write completion queue doorbell: %d\n", oqueueDataRx);
-				if(e = writeNvmeReg32(0x100C, oqueueDataRx)){
-					printf("Error: %d\n", e);
-					return 1;
+				if(!UseQueueEngine){
+					dl3printf("NvmeAccess::nvmeProcess: Write completion queue doorbell: %d\n", oqueueDataRx);
+					if(e = writeNvmeReg32(0x100C, oqueueDataRx)){
+						printf("Error: %d\n", e);
+						return 1;
+					}
 				}
+				oqueueReplySem.set();
 			}
 			else if((request.address & 0x00FF0000) == 0x000800000){
 				dl3printf("NvmeAccess::nvmeProcess: IoBlockWrite: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), request.numWords);
-				printf("NvmeAccess::nvmeProcess: IoBlockWrite: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), request.numWords);
+				//printf("NvmeAccess::nvmeProcess: IoBlockWrite: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), request.numWords);
 
 				memcpy(&odataBlockMem[(request.address & 0x0000FFFF) / 4], request.data, request.numWords * 4);
 			}
@@ -475,6 +487,8 @@ int NvmeAccess::pcieWrite(BUInt8 request, BUInt32 address, BUInt32 num, BUInt32*
 	int			nt;
 	int			reqType;
 	BUInt8			err;
+
+	//printf("pcieWrite\n");
 	
 	// Memory or Config read
 	dl2printf("NvmeAccess::pcieWrite address: 0x%8.8x num: %d\n", address, num);
@@ -511,7 +525,7 @@ int NvmeAccess::pcieWrite(BUInt8 request, BUInt32 address, BUInt32 num, BUInt32*
 	}
 	else {
 		// Not sure why this is needed ?
-		usleep(10000);
+		//usleep(1000);
 	}
 	
 	return 0;
