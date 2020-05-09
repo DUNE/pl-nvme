@@ -191,7 +191,7 @@ begin
 						end if;
 
 						-- This should realy turn off, but with the newStreamSwitch waiting for ready
-						--  and the currentNvmeStreamMux.vhd wel need to allow replies.
+						--  and the currentNvmeStreamMux.vhd we need to allow replies.
 						--hostReq.ready	<= '0';
 					end if;
 

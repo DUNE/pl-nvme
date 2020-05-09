@@ -303,6 +303,7 @@ end component;
 component NvmeWrite is
 generic(
 	Simulate	: boolean := Simulate;			--! Generate simulation core
+	ClockPeriod	: time := ClockPeriod;			--! The clocks period
 	BlockSize	: integer := BlockSize			--! System block size
 );
 port (

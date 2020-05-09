@@ -57,9 +57,19 @@
 #include <sys/ioctl.h>
 #include <bfpga_driver/bfpga.h>
 
-const Bool	UseQueueEngine = 1;		///< Use the FPGA queue engine implementation
-const Bool	UseConfigEngine = 0;		///< Use the FPGA configuration engine
-const BUInt	PcieMaxPayloadSize = 32;	///< The Pcie maximim packet payload in 32bit DWords
+const Bool	UseQueueEngine = 1;			///< Use the FPGA queue engine implementation
+const Bool	UseConfigEngine = 0;			///< Use the FPGA configuration engine
+const BUInt	PcieMaxPayloadSize = 32;		///< The Pcie maximim packet payload in 32bit DWords
+
+const BUInt	RegIdent		= 0x000;	///< The ident and version
+const BUInt	RegControl		= 0x004;	///< The control register
+const BUInt	RegStatus		= 0x008;	///< The status register
+
+const BUInt	RegDataChunkStart	= 0x100;	///< The data chunk size register
+const BUInt	RegDataChunkSize	= 0x104;	///< The data chunk size register
+const BUInt	RegWriteError		= 0x108;	///< The write error status
+const BUInt	RegWriteNumBlocks	= 0x10C;	///< The number of blocks written
+const BUInt	RegWriteTime		= 0x110;	///< The write time in microseconds
 
 class NvmeRequestPacket {
 public:
@@ -135,8 +145,8 @@ public:
 	int		nvmeProcess();
 	
 	// NvmeStorage units register access
-	int		readNvmeStorageReg(BUInt32 address, BUInt32& data);
-	int		writeNvmeStorageReg(BUInt32 address, BUInt32 data);
+	BUInt32		readNvmeStorageReg(BUInt32 address);
+	void		writeNvmeStorageReg(BUInt32 address, BUInt32 data);
 	
 	// NVMe register access
 	int		readNvmeReg32(BUInt32 address, BUInt32& data);

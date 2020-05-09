@@ -172,7 +172,7 @@ void NvmeAccess::reset(){
 
 	data = 1;
 	while(data & 3){
-		readNvmeStorageReg(8, data);
+		data = readNvmeStorageReg(8);
 		usleep(1000);
 	}
 	usleep(100000);
@@ -188,13 +188,13 @@ void NvmeAccess::reset(){
 	dl1printf("NvmeAccess::reset\n");
 	ts = getTime();
 
-	readNvmeStorageReg(8, data); printf("Status: %8.8x\n", data);
+	printf("Status: %8.8x\n", readNvmeStorageReg(RegStatus));
 	writeNvmeStorageReg(4, 0x00000001);
-	readNvmeStorageReg(8, data); printf("Status: %8.8x\n", data);
+	printf("Status: %8.8x\n", readNvmeStorageReg(RegStatus));
 	
 	data = 1;
 	while(data & 1){
-		readNvmeStorageReg(8, data);
+		data = readNvmeStorageReg(RegStatus);
 		usleep(1000);
 	}
 	te = getTime();
@@ -206,7 +206,7 @@ void NvmeAccess::reset(){
 	if(UseConfigEngine){
 		data = 0;
 		while((data & 4) == 0){
-			readNvmeStorageReg(8, data);
+			data = readNvmeStorageReg(RegStatus);
 			usleep(1000);
 		}
 		te = getTime();
@@ -456,14 +456,12 @@ int NvmeAccess::nvmeProcess(){
 	return 0;
 }
 
-int NvmeAccess::readNvmeStorageReg(BUInt32 address, BUInt32& data){
-	data = oregs[address/4];
-	return 0;
+BUInt32 NvmeAccess::readNvmeStorageReg(BUInt32 address){
+	return oregs[address/4];
 }
 
-int NvmeAccess::writeNvmeStorageReg(BUInt32 address, BUInt32 data){
+void NvmeAccess::writeNvmeStorageReg(BUInt32 address, BUInt32 data){
 	oregs[address/4] = data;
-	return 0;
 }
 
 int NvmeAccess::readNvmeReg32(BUInt32 address, BUInt32& data){

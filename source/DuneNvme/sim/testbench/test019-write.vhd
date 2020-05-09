@@ -183,7 +183,8 @@ begin
 
 			-- Write to NvmeStorage control register to start NvmeWrite processing
 			wait for 100 ns;
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0100#, 16);		-- Number of blocks
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 2);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16);		-- Number of blocks
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
 
 			wait for 11000 ns;

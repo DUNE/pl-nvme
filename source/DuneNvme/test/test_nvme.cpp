@@ -129,7 +129,7 @@ int Control::configureNvme(){
 		printf("Start configuration\n");
 		writeNvmeStorageReg(4, 0x00000002);
 		usleep(100000);
-		readNvmeStorageReg(8, data); printf("Waited 100ms: Status: %8.8x\n", data);
+		printf("Waited 100ms: Status: %8.8x\n", readNvmeStorageReg(RegStatus));
 	}
 	else {
 #ifdef ZAP
@@ -318,7 +318,8 @@ int Control::test3(){
 
 int Control::test4(){
 	int	e;
-	int	numBlocks = 8;
+	BUInt32	block = 0;
+	BUInt32	numBlocks = 8;
 	
 	printf("Test4: Read blocks\n");
 	
@@ -328,10 +329,19 @@ int Control::test4(){
 	printf("Perform block read\n");
 	memset(odataBlockMem, 0x01, sizeof(odataBlockMem));
 
-	nvmeRequest(1, 1, 0x02, 0x01800000, 0x0000000, 0x00000000, numBlocks-1);	// Perform read
+	nvmeRequest(1, 1, 0x02, 0x01800000, block, 0x00000000, numBlocks-1);	// Perform read
 
 	printf("DataBlock:\n");
 	bhd32a(odataBlockMem, numBlocks*512/4);
+
+#ifndef ZAP
+	block = (262144 * 8);
+	printf("Block (512): %u data value: %8.8x\n", block, (block * 512) / 4);
+	nvmeRequest(1, 1, 0x02, 0x01800000, block - 1, 0x00000000, numBlocks-1);	// Perform read
+
+	printf("DataBlocks at: %u\n", block - 1);
+	bhd32a(odataBlockMem, 2*512/4);
+#endif
 
 	return 0;
 }
@@ -366,7 +376,8 @@ int Control::test6(){
 	BUInt32	t;
 	double	r;
 	double	ts;
-	BUInt	numBlocks = 262144;
+	BUInt	numBlocks = 262144;		// 1 GByte
+	//BUInt	numBlocks = 2621440;		// 10 GByte
 
 	//numBlocks = 8;
 	printf("Test6: Enable FPGA write blocks\n");
@@ -377,18 +388,14 @@ int Control::test6(){
 	//dumpRegs();
 	
 	// Set number of blocks to write
-	writeNvmeStorageReg(256, numBlocks);
-		
+	writeNvmeStorageReg(RegDataChunkSize, numBlocks);
+	
 	printf("Stats\n");
-	readNvmeStorageReg(256, v);
-	printf("NvmeWrite: dataChunkSize: %8.8x\n", v);
-	readNvmeStorageReg(256+4, v);
-	printf("NvmeWrite: status:        %8.8x\n", v);
-	readNvmeStorageReg(256+8, v);
-	printf("NvmeWrite: numBlocks:     %u\n", v);
-	readNvmeStorageReg(256+12, v);
-	printf("NvmeWrite: timeUs:        %u\n", v);
-
+	printf("NvmeWrite: dataChunkStart: %8.8x\n", readNvmeStorageReg(RegDataChunkStart));
+	printf("NvmeWrite: dataChunkSize:  %8.8x\n", readNvmeStorageReg(RegDataChunkSize));
+	printf("NvmeWrite: status:         %8.8x\n", readNvmeStorageReg(RegWriteError));
+	printf("NvmeWrite: numBlocks:      %u\n", n = readNvmeStorageReg(RegWriteNumBlocks));
+	printf("NvmeWrite: timeUs:         %u\n", t = readNvmeStorageReg(RegWriteTime));
 
 	// Start off NvmeWrite engine
 	printf("\nStart NvmeWrite engine\n");
@@ -398,7 +405,7 @@ int Control::test6(){
 	ts = getTime();
 	n = 0;
 	while(n != numBlocks){
-		readNvmeStorageReg(256+8, n);
+		n = readNvmeStorageReg(RegWriteNumBlocks);
 		printf("NvmeWrite: numBlocks: %u\n", n);
 		usleep(100000);
 	}
@@ -428,7 +435,7 @@ int Control::test6(){
 	ts = getTime();
 	n = 0;
 	while(n != numBlocks){
-		readNvmeStorageReg(256+8, n);
+		n = readNvmeStorageReg(RegWriteNumBlocks);
 		printf("NvmeWrite: numBlocks: %u\n", n);
 		usleep(100000);
 	}
@@ -448,18 +455,12 @@ int Control::test6(){
 #endif
 #endif
 
-
-
-
 	printf("Stats\n");
-	readNvmeStorageReg(256, v);
-	printf("NvmeWrite: dataChunkSize: %8.8x\n", v);
-	readNvmeStorageReg(256+4, v);
-	printf("NvmeWrite: status:        %8.8x\n", v);
-	readNvmeStorageReg(256+8, n);
-	printf("NvmeWrite: numBlocks:     %u\n", n);
-	readNvmeStorageReg(256+12, t);
-	printf("NvmeWrite: timeUs:        %u\n", t);
+	printf("NvmeWrite: dataChunkStart: %8.8x\n", readNvmeStorageReg(RegDataChunkStart));
+	printf("NvmeWrite: dataChunkSize:  %8.8x\n", readNvmeStorageReg(RegDataChunkSize));
+	printf("NvmeWrite: status:         %8.8x\n", readNvmeStorageReg(RegWriteError));
+	printf("NvmeWrite: numBlocks:      %u\n", n = readNvmeStorageReg(RegWriteNumBlocks));
+	printf("NvmeWrite: timeUs:         %u\n", t = readNvmeStorageReg(RegWriteTime));
 	
 	r = (4096.0 * n / (1e-6 * t));
 	printf("NvmeWrite: rate:      %f MBytes/s\n", r / (1024 * 1024));
@@ -498,6 +499,29 @@ int Control::test7(){
 	
 	return 0;
 }
+
+int Control::test8(){
+	int	e;
+	BUInt32	block;
+	BUInt	maxBlocks = 32768;
+	BUInt	numBlocks = 262144;		// 1 GByte
+	//BUInt	numBlocks = 2621440;		// 10 GByte
+
+	printf("Test8: Trim Nvme\n");
+	
+	if(e = configureNvme())
+		return e;
+
+	//nvmeRequest(1, 1, 0x08, 0x01800000, 0, 0x00000000, (1 << 25) | 1);	// Perform trim of 2 blocks
+
+	for(block = 0; block < numBlocks; block += (maxBlocks/8)){
+		nvmeRequest(1, 1, 0x08, 0x01800000, block * 8, 0x00000000, (1 << 25) | maxBlocks-1);	// Perform trim of 32k 512 Byte blocks
+	}
+
+
+	return 0;
+}
+
 
 int Control::test_misc(){
 	BUInt32	address = 0;
@@ -642,6 +666,9 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(test, "test7")){
 			err = control.test7();
+		}
+		else if(!strcmp(test, "test8")){
+			err = control.test8();
 		}
 		else if(!strcmp(test, "test_misc")){
 			err = control.test_misc();

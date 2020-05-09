@@ -269,14 +269,17 @@ begin
 		clk_out1	=> sys_clk
 	);
 
-	reset_n <= not (sys_reset or not pci_reset_n or boot_reset);
+	-- Early testing special resets
+	--reset_n <= not (sys_reset or not pci_reset_n or boot_reset);
 	--reset_n <= not (sys_reset or not pci_reset_n);
+	--reset_n <= pci_reset_n;
 
-	sys_reset_buf : BUFG port map (
-		I		=> reset_n,
-		O		=> sys_reset_buf_n
-	);
-
+	--sys_reset_buf : BUFG port map (
+	--	I		=> reset_n,
+	--	O		=> sys_reset_buf_n
+	--);
+	
+	sys_reset_buf_n <= pci_reset_n;
 
 	-- PCIE Clock, 100MHz
 	pci_clk_buf0 : IBUFDS_GTE3 port map(
