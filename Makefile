@@ -45,7 +45,7 @@ installPackages:
 ################################################################################
 #
 gitPush:
-	git push master
+	git push
 	git push --tags
 
 gitListReleases:
@@ -56,7 +56,7 @@ gitCommit:
 
 gitRelease:
 	git tag release-${VERSION}
-	git push master
+	git push
 	git push --tags
 
 gitDiff:
