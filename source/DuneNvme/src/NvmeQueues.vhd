@@ -1,17 +1,26 @@
 --------------------------------------------------------------------------------
---	NvmeQueues.vhd Nvme request/reply queues in RAM
---	T.Barnaby, Beam Ltd. 2020-04-18
+-- NvmeQueues.vhd Nvme request/reply queues in RAM
 -------------------------------------------------------------------------------
 --!
 --! @class	NvmeQueues
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-04-08
---! @version	0.0.1
+--! @version	0.2.0
 --!
 --! @brief
 --! This module implements the Nvme request/reply queues in RAM
 --!
 --! @details
+--! This module provides the ability to write a request to one of the 4 Nvme request queues
+--! and receive the queued replies. This engine handles the queue location and informs
+--! the Nvme of the new queue entry by writing to the appropriate doorbell register.
+--! It supports queue memory reads from the Nvme device.
+--! When the Nvme writes to a reply queue, the queue reply messages is directly sent to
+--! the originator of the request as given in the CID field.
+--! The process sending a requests simply uses a PcieWrite request to the appropriate queue memory location.
+--! The NvmeQueue engine handles wrting this to the next available queue entry slot.
+--! The queue replies are sent to the originator as a PcieWrite request with the address set to the reply
+--! queues address (0x0201XXXXX).
 --! 
 --!
 --! @copyright GNU GPL License
@@ -56,22 +65,45 @@ architecture Behavioral of NvmeQueues is
 
 constant TCQ		: time		:= 1 ns;
 constant NUM_QUEUES	: integer	:= 4;
-constant RAM_SIZE	: integer	:= (NUM_QUEUES * NumQueueEntries * 4);	-- Note uses same size for reply queues which is wasteful
+constant RAM_SIZE	: integer	:= NUM_QUEUES * NumQueueEntries * 4;		--! Only write to request queues are stored
+constant ADDRESS_WIDTH	: integer	:= log2(RAM_SIZE); 
+
+component Ram is
+generic (
+	DataWidth	: integer := 128;			--! The data width of the RAM in bits
+	Size		: integer := RAM_SIZE;			--! The size in RAM locations
+	AddressWidth	: integer := log2(RAM_SIZE)
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+
+	writeEnable	: in std_logic;
+	writeAddress	: in unsigned(AddressWidth-1 downto 0);	
+	writeData	: in std_logic_vector(DataWidth-1 downto 0);	
+
+	readEnable	: in std_logic;
+	readAddress	: in unsigned(AddressWidth-1 downto 0);	
+	readData	: out std_logic_vector(DataWidth-1 downto 0)	
+);
+end component;
 
 subtype QueueNumRange	is integer range 17 downto 16;
 subtype QueuePosType	is unsigned(log2(NumQueueEntries)-1 downto 0);
 type QueuePosArrayType	is array(0 to NUM_QUEUES-1) of QueuePosType;
-type StateType		is (STATE_IDLE, STATE_WRITE, STATE_READHEAD, STATE_READDATA,
+type StateType		is (STATE_IDLE, STATE_WRITE, STATE_READHEAD1, STATE_READHEAD2, STATE_READDATA,
 				STATE_WRITE_QUEUE, STATE_SEND_DOORBELL_HEAD, STATE_SEND_DOORBELL_POS,
 				STATE_REPLY_RDATA, STATE_REPLY_SHEAD, STATE_REPLY_SDATA, STATE_SEND_RDOORBELL_HEAD);
-type RamType		is array(0 to RAM_SIZE - 1) of std_logic_vector(127 downto 0);
-
-signal ram		: RamType := (others => zeros(128));
 
 signal state		: StateType := STATE_IDLE;
-signal ramAddress	: integer range 0 to RAM_SIZE - 1 := 0;
+signal ramWriteEnable	: std_logic := '0';
+signal ramReadEnable	: std_logic := '0';
+signal ramAddressWrite	: unsigned(ADDRESS_WIDTH-1 downto 0) := (others => '0');
+signal ramAddressRead	: unsigned(ADDRESS_WIDTH-1 downto 0) := (others => '0');
+signal ramReadData	: std_logic_vector(127 downto 0) := (others => '0');
+signal data1		: std_logic_vector(127 downto 0) := (others => '0');
 
-signal queueIn		: integer range 0 to NUM_QUEUES - 1;
+signal queueIn		: integer range 0 to NUM_QUEUES - 1 := 0;
 signal queueInArrayPos	: QueuePosArrayType := (others => (others => '0'));
 signal queueOutArrayPos	: QueuePosArrayType := (others => (others => '0'));
 
@@ -79,13 +111,17 @@ signal requestHead	: PcieRequestHeadType;
 signal requestHead1	: PcieRequestHeadType;
 signal replyHead	: PcieReplyHeadType;
 signal doorbellReqHead	: PcieRequestHeadType;
-signal data1		: std_logic_vector(127 downto 0);
-signal data2		: std_logic_vector(127 downto 0);
+
+--! Given Pcie address calculate RAM address
+procedure queueAddress(address: unsigned; signal ramAddress: out unsigned) is
+begin
+	ramAddress <= address(QueueNumRange) & address(log2(NumQueueEntries)+4+2-1 downto 4);
+end;
 
 --! Sets the RAM access address from last queue position and updates queue position
-procedure queueAddressStart(signal queueArray: inout QueuePosArrayType; queueNum: unsigned; signal address: out integer) is
+procedure queueAddressStart(signal queueArray: inout QueuePosArrayType; queueNum: unsigned; signal address: out unsigned) is
 begin
-	address <= to_integer(queueNum & queueArray(to_integer(queueNum)) & "00");
+	address <= queueNum & queueArray(to_integer(queueNum)) & "00";
 	queueArray(to_integer(queueNum)) <= queueArray(to_integer(queueNum)) + 1;
 end;
 
@@ -95,9 +131,27 @@ begin
 end;
 
 begin
+	-- Queue memory
+	queueMem0 : Ram
+	port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		writeEnable	=> ramWriteEnable,
+		writeAddress	=> ramAddressWrite,
+		writeData	=> streamIn.data,
+
+		readEnable	=> ramReadEnable,
+		readAddress	=> ramAddressRead,
+		readData	=> ramReadData
+	);
+	
+	ramWriteEnable		<= '1' when(((state = STATE_WRITE) or (state = STATE_WRITE_QUEUE)) and (streamIn.valid = '1')) else '0';
+	ramReadEnable		<= '1' when((state = STATE_IDLE) or (state = STATE_READHEAD1)) else streamOut.ready;
+	
 	requestHead		<= to_PcieRequestHeadType(streamIn.data);
-	streamOut.data		<= data1(31 downto 0) & to_stl(replyHead) when(state = STATE_READHEAD)
-					else data1(31 downto 0) & data2(127 downto 32) when(state = STATE_READDATA)
+	streamOut.data		<= ramReadData(31 downto 0) & to_stl(replyHead) when((state = STATE_READHEAD1) or (state = STATE_READHEAD2))
+					else ramReadData(31 downto 0) & data1(127 downto 32) when(state = STATE_READDATA)
 					else to_stl(doorbellReqHead) when(state = STATE_SEND_DOORBELL_HEAD)
 					else data1 when(state = STATE_SEND_DOORBELL_POS)
 					else to_stl(requestHead1) when(state = STATE_REPLY_SHEAD)
@@ -133,11 +187,12 @@ begin
 					if((streamIn.ready = '1') and (streamIn.valid = '1')) then
 						if(requestHead.request = 12) then
 							-- Special message handling performs normal write to addressed memory
-							ramAddress	<= to_integer(requestHead.address(log2(RAM_SIZE * 16)-1 downto 0)) / 16;
+							ramAddressWrite	<= requestHead.address(ADDRESS_WIDTH+4-1 downto 4);
 							state		<= STATE_WRITE;
 
 						elsif(requestHead.request = 0) then
-							ramAddress <= (to_integer(requestHead.address(17 downto 16)) * NumQueueEntries * 4) + to_integer(requestHead.address(log2(RAM_SIZE * 16)-1 downto 0)) / 16;
+							-- Reads from one of the queue
+							queueAddress(requestHead.address, ramAddressRead);
 							replyHead.error <= to_unsigned(0, replyHead.error'length);
 							replyHead.status <= to_unsigned(0, replyHead.status'length);
 							replyHead.byteCount <= truncate(requestHead.count * 4, replyHead.byteCount'length);
@@ -146,17 +201,17 @@ begin
 							replyHead.tag <= requestHead.tag;
 							replyHead.address <= requestHead.address(11 downto 0);
 							streamIn.ready <= '0';
-							state <= STATE_READHEAD;
+							state <= STATE_READHEAD1;
 
 						elsif(requestHead.request = 1) then
-							-- Performs special queue operation
+							-- Writes to the queue
 							queueIn <= to_integer(requestHead.address(QueueNumRange));
 							if(requestHead.address(20) = '1') then
 								requestHead1	<= requestHead;
 								queueOutIncrement(queueOutArrayPos, requestHead.address(QueueNumRange));
 								state		<= STATE_REPLY_RDATA;
 							else
-								queueAddressStart(queueInArrayPos, requestHead.address(QueueNumRange), ramAddress);
+								queueAddressStart(queueInArrayPos, requestHead.address(QueueNumRange), ramAddressWrite);
 								state <= STATE_WRITE_QUEUE;
 							end if;
 						end if;
@@ -164,31 +219,31 @@ begin
 					
 				when STATE_WRITE =>
 					if((streamIn.ready = '1') and (streamIn.valid = '1')) then
-						ram(ramAddress) <= streamIn.data;
-						ramAddress <= ramAddress + 1;
+						ramAddressWrite <= ramAddressWrite + 1;
 						if(streamIn.last = '1') then
 							state <= STATE_IDLE;
 						end if;
 					end if;
 				
-				when STATE_READHEAD =>
-					data1		<= ram(ramAddress);
+				when STATE_READHEAD1 =>
+					data1		<= ramReadData;
+					ramAddressRead 	<= ramAddressRead + 1;
 					streamOut.valid	<= '1';
+					state		<= STATE_READHEAD2;
 
-					if((streamOut.ready = '1') and (streamOut.valid = '1')) then
-						data2		<= data1;
-						data1		<= ram(ramAddress+1);
+				when STATE_READHEAD2 =>
+					if(streamOut.ready = '1') then
+						data1		<= ramReadData;
+						ramAddressRead 	<= ramAddressRead + 1;
 						replyHead.count	<= replyHead.count - 5;
-						ramAddress 	<= ramAddress + 1;
 						state		<= STATE_READDATA;
 					end if;
 
 				when STATE_READDATA =>
 					if((streamOut.ready = '1') and (streamOut.valid = '1')) then
-						data2		<= data1;
-						data1		<= ram(ramAddress+1);
+						data1		<= ramReadData;
+						ramAddressRead 	<= ramAddressRead + 1;
 						replyHead.count	<= replyHead.count - 4;
-						ramAddress 	<= ramAddress + 1;
 
 						if(streamOut.last = '1') then
 							streamOut.valid	<= '0';
@@ -202,8 +257,7 @@ begin
 
 				when STATE_WRITE_QUEUE =>
 					if((streamIn.ready = '1') and (streamIn.valid = '1')) then
-						ram(ramAddress) <= streamIn.data;
-						ramAddress <= ramAddress + 1;
+						ramAddressWrite <= ramAddressWrite + 1;
 						if(streamIn.last = '1') then
 							-- Perform bus master write request to doorbell register on Nvme (0x1000, 0x1008, 0x1010 ...)
 							doorbellReqHead.address	<= to_unsigned(16#000010#, doorbellReqHead.address'length - 8) & to_unsigned(queueIn * 8, 8);

@@ -1,18 +1,17 @@
 --------------------------------------------------------------------------------
---	DataBuffer.vhd NvmeStorage data input fifo
---	T.Barnaby, Beam Ltd. 2020-04-07
+-- Ram.vhd Simple RAM which will be implemented in blockram if large
 -------------------------------------------------------------------------------
 --!
---! @class	DataBuffer
+--! @class	Ram
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
---! @date	2020-04-07
---! @version	0.0.1
+--! @date	2020-05-09
+--! @version	1.0.0
 --!
 --! @brief
---! This module provides a data input fifo for the NvmeWrite module.
+--! This module provides a simple dual ported RAM module that will be implemented in blockram if large enough.
 --!
 --! @details
---! This FIFO will store a complete DataWiteChunk's worth of data, 32 kBytes.
+--! This is a simple RAM element written so that blockram can be easily infered by synthesis tools.
 --! 
 --!
 --! @copyright GNU GPL License
@@ -39,11 +38,11 @@ library work;
 use work.NvmeStoragePkg.all;
 use work.NvmeStorageIntPkg.all;
 
-entity DataBuffer is
+entity Ram is
 generic (
-	Simulate	: boolean := False;			--! Generate simulation core
-	Size		: integer := 4096;			--! The Buffer size in 128 bit words
-	--AddressWidth	: integer := log2(Size)
+	DataWidth	: integer := 128;			--! The data width of the RAM in bits
+	Size		: integer := 4096;			--! The size in RAM locations
+	--AddressWidth	: integer := log2(Size)			--! will work with VHDL 08+
 	AddressWidth	: integer := 13
 );
 port (
@@ -52,35 +51,36 @@ port (
 
 	writeEnable	: in std_logic;
 	writeAddress	: in unsigned(AddressWidth-1 downto 0);	
-	writeData	: in std_logic_vector(127 downto 0);	
+	writeData	: in std_logic_vector(DataWidth-1 downto 0);	
 
 	readEnable	: in std_logic;
 	readAddress	: in unsigned(AddressWidth-1 downto 0);	
-	readData	: out std_logic_vector(127 downto 0)	
+	readData	: out std_logic_vector(DataWidth-1 downto 0)	
 );
 end;
 
-architecture Behavioral of DataBuffer is
+architecture Behavioral of Ram is
 
 constant TCQ		: time := 1 ns;
 
 -- Simple RAM buffer, will be implemented in BlockRam by inferance
-type RamType		is array(0 to Size-1) of std_logic_vector(127 downto 0);
-signal ram		: RamType := (others => zeros(128));
+type MemoryType		is array(0 to Size-1) of std_logic_vector(DataWidth-1 downto 0);
+signal memory		: MemoryType := (others => (others => '0'));
 
 attribute ram_style	: string;
-attribute ram_style	of ram : signal is "block";
+attribute ram_style	of memory : signal is "block";
 
 begin
-	-- Write to memory
-	write: process(clk)
+	-- Read from and write to memory
+	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(writeEnable = '1') then
-				ram(to_integer(writeAddress)) <= writeData;
+				memory(to_integer(writeAddress)) <= writeData;
 			end if;
+
 			if(readEnable = '1') then
-				readData <= ram(to_integer(readAddress));
+				readData <= memory(to_integer(readAddress));
 			end if;
 		end if;
 	end process;

@@ -380,6 +380,8 @@ int Control::test6(){
 	//BUInt	numBlocks = 2621440;		// 10 GByte
 
 	//numBlocks = 8;
+	//numBlocks = 2621440;		// 10 GByte
+	
 	printf("Test6: Enable FPGA write blocks\n");
 	
 	if(e = configureNvme())

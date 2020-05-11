@@ -25,7 +25,8 @@ constant BlockSize	: integer := 4096;			--! Proper block size
 component NvmeStorageUnit is
 generic(
 	Simulate	: boolean	:= True;		--! Generate simulation core
-	ClockPeriod	: time		:= 10 ms;		--! Clock period for timers (125 MHz)
+	--ClockPeriod	: time		:= 10 ms;		--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= 4 ns;		--! Clock period for timers (125 MHz)
 	BlockSize	: integer	:= Blocksize
 );
 port (
