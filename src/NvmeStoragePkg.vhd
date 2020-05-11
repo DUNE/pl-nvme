@@ -112,6 +112,15 @@ package NvmeStoragePkg is
 	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: inout AxisStreamType);
 
 
+	-- Axis data stream
+	constant AxisDataStreamWidth : integer := 256;
+
+	type AxisDataStreamType is record
+		valid		: std_logic;
+		last		: std_logic;
+		data		: std_logic_vector(AxisDataStreamWidth-1 downto 0);
+	end record;
+
 
 	--! The NvmeStorage module's interface
 	component NvmeStorage is
@@ -127,12 +136,13 @@ package NvmeStoragePkg is
 		axilOut		: out AxilToMasterType;			--! Axil bus output signals
 
 		-- From host to NVMe request/reply streams
-		hostSend	: inout AxisStreamType := AxisInput;	--! Host request stream
-		hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
+		fromHost	: inout AxisStreamType := AxisInput;	--! Host request stream
+		toHost		: inout AxisStreamType := AxisOutput;	--! Host reply stream
 
 		-- AXIS data stream input
 		dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
-		dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+		dataIn		: in AxisDataStream;			--! Raw data to save stream
+		dataInReady	: out std_logic;			--! Raw data ready
 
 		-- NVMe interface
 		nvme_clk_p	: in std_logic;				--! Nvme external clock +ve

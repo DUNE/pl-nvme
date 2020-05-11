@@ -39,7 +39,8 @@ fpga: $(PROJECT).bit
 clean:
 	-rm -rf *.log *.jou *.cache *.hw *.ip_user_files *.runs *.xpr *.html *.xml *.sim *.srcs *.str .Xil defines.v
 	-rm -rf create_project.tcl run_synth.tcl run_impl.tcl generate_bit.tcl
-	-rm -rf *.bit program.tcl generate_mcs.tcl *.mcs *.prm flash.tcl
+	-rm -rf *.bit program.tcl generate_mcs.tcl *.mcs *.prm flash.tcl report.tcl
+	-rm -f utilisation.txt
 
 distclean: clean
 	-rm -rf rev
