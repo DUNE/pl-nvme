@@ -4,5 +4,5 @@
 ################################################################################
 #
 PROJECT		= DuneNvme
-VERSION		= 0.1.1
-DOCDIR		?= ${TOP}/doc/${PROJECT}
+VERSION		= 0.3.1
+DOCDIR		?= 

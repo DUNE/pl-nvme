@@ -3,15 +3,19 @@
 #	T.Barnaby,	Beam Ltd,	2020-02-18
 ################################################################################
 #
-TOP	= ../..
 include Config.mk
+
+# Fedora RPM packages needed
+PACKAGES	= "ghdl gtkwave"
+PACKAGES	+= "texlive-scheme-medium texlive-hanging texlive-stackengine texlive-etoc texlive-newunicodechar"
 
 .PHONY:	release
 
 all:
-	
+	make -C vivado
+	make -C test
 
-install:
+install: all
 
 clean:
 	make -C vivado clean
@@ -24,12 +28,39 @@ distclean: clean
 	make -C docsrc distclean
 	make -C test distclean
 	
-release:
+release: all
 	mkdir -p release
 	cp vivado/*.runs/impl_1/*.bit release/${PROJECT}-${VERSION}.bit
+	cp test/test-nvme release/test-nvme-${VERSION}
 
 docs:
 	make -C docsrc
 
-packages:
-	dnf install texlive-scheme-medium texlive-hanging texlive-stackengine texlive-etoc texlive-newunicodechar
+installPackages:
+	dnf install ${PACKAGES}
+
+
+################################################################################
+#	Git project Management
+################################################################################
+#
+gitPush:
+	git push master
+	git push --tags
+
+gitListReleases:
+	git tag
+
+gitCommit:
+	git commit -a
+
+gitRelease:
+	git tag release-${VERSION}
+	git push master
+	git push --tags
+
+gitDiff:
+	git diff
+
+gitId:
+	git rev-parse HEAD
