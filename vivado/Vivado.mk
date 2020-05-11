@@ -8,6 +8,8 @@
 #  BOARD:	The board type if a specific standard board
 #  FPGA_PART:	FPGA device (e.g. xcvu095-ffva2104-2-e)
 #  FPGA_TOP:	Top module name
+#  VIVADO_PATH:	Path to Xilinx Vivado tools
+#  VIVADO_TARGET: The Vivado FPGA prohram target
 #  SYN_FILES:	Space-separated list of source files
 #  INC_FILES:	Space-separated list of include files
 #  XDC_FILES:	Space-separated list of timing constraint files
@@ -19,7 +21,10 @@
 #  distclean:	Clean all files
 #
 
-export PATH:=/opt/Xilinx/Vivado/2019.2/bin:${PATH}
+VIVADO_PATH	?= /opt/Xilinx/Vivado/2019.2/bin
+VIVADO_TARGET	?= ""
+
+export PATH	:= ${VIVADO_PATH}:${PATH}
 
 .PHONY: clean fpga
 
@@ -84,7 +89,6 @@ ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}
 	echo "	exit 1" >> run_impl.tcl
 	echo "}" >> run_impl.tcl
 
-	echo "report_utilization -hierarchical -file utilisation.txt" >> run_impl.tcl
 	echo "exit 0" >> run_impl.tcl
 	vivado -nojournal -nolog -mode batch -source run_impl.tcl
 
@@ -93,6 +97,7 @@ ${PROJECT}.bit: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
 	rm -f $(PROJECT).bit
 	echo "open_project ${PROJECT}.xpr" > generate_bit.tcl
 	echo "open_run impl_1" >> generate_bit.tcl
+	echo "report_utilization -hierarchical -file utilisation.txt" >> generate_bit.tcl
 	echo "write_bitstream -force ${PROJECT}.bit" >> generate_bit.tcl
 	echo "exit" >> generate_bit.tcl
 	time vivado -nojournal -nolog -mode batch -source generate_bit.tcl
@@ -116,6 +121,26 @@ ${PROJECT}_primary.mcs ${PROJECT}_secondary.mcs ${PROJECT}_primary.prm ${PROJECT
 	for x in _primary.mcs _secondary.mcs _primary.prm _secondary.prm; \
 	do cp $*$$x rev/$*_rev$$COUNT$$x; \
 	echo "Output: rev/$*_rev$$COUNT$$x"; done;
+
+report: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
+	echo "open_project ${PROJECT}.xpr" > report.tcl
+	echo "open_run impl_1" >> report.tcl
+	echo "report_utilization -hierarchical -file utilisation.txt" >> report.tcl
+	echo "exit" >> report.tcl
+	vivado -nojournal -nolog -mode batch -source report.tcl
+
+program: $(PROJECT).bit
+	echo "open_hw_manager" > program.tcl
+	echo "connect_hw_server ${FPGA_TARGET}" >> program.tcl
+	echo "open_hw_target" >> program.tcl
+	echo "current_hw_device [lindex [get_hw_devices] 0]" >> program.tcl
+	echo "refresh_hw_device -update_hw_probes false [current_hw_device]" >> program.tcl
+	echo "set_property PROGRAM.FILE {$(PROJECT).bit} [current_hw_device]" >> program.tcl
+	echo "program_hw_devices [current_hw_device]" >> program.tcl
+	echo "exit" >> program.tcl
+	vivado -nojournal -nolog -mode batch -source program.tcl
+	# cs_server sits around using 100% CPU!
+	killall cs_server
 
 flash: $(PROJECT)_primary.mcs $(PROJECT)_secondary.mcs $(PROJECT)_primary.prm $(PROJECT)_secondary.prm
 	echo "open_hw" > flash.tcl
