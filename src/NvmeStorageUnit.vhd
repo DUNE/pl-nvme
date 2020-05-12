@@ -1,15 +1,14 @@
 --------------------------------------------------------------------------------
---	NvmeStorageUnit.vhd Nvme storage access module
---	T.Barnaby, Beam Ltd. 2020-02-28
+-- NvmeStorageUnit.vhd Nvme storage access module
 -------------------------------------------------------------------------------
 --!
 --! @class	NvmeStorageUnit
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
---! @date	2020-02-28
---! @version	0.0.1
+--! @date	2020-05-12
+--! @version	0.5.1
 --!
 --! @brief
---! This is the main Nvme control module.
+--! This is the main Nvme control module for a single Nvme device.
 --!
 --! @details
 --! Communication is performed over an AXI lite bus and AXI request and reply streams.
@@ -851,5 +850,4 @@ begin
 	);
 
 	end generate;
-	
 end;

@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
---	StreamSwitch.vhd Send PCIe packets between separate streams.
---	T.Barnaby, Beam Ltd. 2020-04-08
+-- StreamSwitch.vhd Send PCIe packets between separate streams.
 -------------------------------------------------------------------------------
 --!
 --! @class	StreamSwitch
@@ -20,6 +19,7 @@
 --! The switch uses a priority based on the input stream number, with 0 being the highest priority.
 --! When the switch sees a valid signal on one of the streams and its desitation stream is ready then
 --! the switch will send a complete packet, using the "last" signal to denote the end of packet.
+--! Note this simple implementation can only send one packet at a time.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -47,14 +47,14 @@ use work.NvmeStorageIntPkg.all;
 
 entity StreamSwitch is
 generic(
-	NumStreams	: integer	:= 8			--! The number of stream
+	NumStreams	: integer	:= 8			--! The number of streams
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	streamIn	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamInput);	--! Input stream
-	streamOut	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamOutput)	--! Output stream
+	streamIn	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamInput);	--! Input streams
+	streamOut	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamOutput)	--! Output streams
 );
 end;
 

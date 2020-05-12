@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
---	NvmeStreamMux.vhd Multiplex/De-multiplex a streams into two using header
---	T.Barnaby, Beam Ltd. 2020-04-08
+-- NvmeStreamMux.vhd Multiplex/De-multiplex a streams into two using header
 -------------------------------------------------------------------------------
 --!
 --! @class	NvmeStreamMux
@@ -12,7 +11,8 @@
 --! This module Multiplex/De-multiplex a stream a 128bit Axis stream into two streams using the 128bit header
 --!
 --! @details
---! 
+--! This uses bit 95 in the Pcie header to determin if packets are Pcie requests or replies and then
+--! routes the packets appropriately. It is used to handle the quad stream nature of the Xilinx Pcie Gen3 hardblock.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -170,5 +170,4 @@ begin
 			end if;
 		end if;
 	end process;
-
 end;

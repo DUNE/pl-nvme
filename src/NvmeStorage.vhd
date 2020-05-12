@@ -15,7 +15,8 @@
 --! The main Nvme working module is NvmeStorageUnit. This NvmeStorage module splits the incomming
 --! data stream into two at the NvmeStoargeBlock level (8k) passing alternate blocks into the two
 --! NvmeStorageUnit engines.
---! At the moment, during development, it just passes the datra through to a single NvmeStorageUnit module.
+--! At the moment, during development, it just passes the data through to a single NvmeStorageUnit module.
+--! See the DuneNvmeStorageManual for more details.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>

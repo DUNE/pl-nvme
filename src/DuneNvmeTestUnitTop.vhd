@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
---	DuneNvmeTestTop.vhd Simple NVMe access test system
---	T.Barnaby, Beam Ltd. 2020-02-18
+-- DuneNvmeTestUnitTop.vhd Simple NVMe access test system
 --------------------------------------------------------------------------------
 --!
 --! @class	DuneNvmeTestTop
@@ -9,7 +8,7 @@
 --! @version	0.0.1
 --!
 --! @brief
---! This FPGA bit file allows a host computer to access a NVMe storage device
+--! This FPGA bit file allows a host computer to access a single NVMe storage device
 --!  connected to the FPGA via the hosts PCIe interface. It allows a host computer
 --!  program to communicate with the NVMe device for research and developemnt test work.
 --!
@@ -39,7 +38,7 @@ library work;
 use work.NvmeStoragePkg.all;
 use work.NvmeStorageIntPkg.all;
 
-entity DuneNvmeTestTop is
+entity DuneNvmeTestUnitTop is
 generic(
 	Simulate	: boolean	:= False
 );
@@ -69,7 +68,7 @@ port (
 );
 end;
 
-architecture Behavioral of DuneNvmeTestTop is
+architecture Behavioral of DuneNvmeTestUnitTop is
 
 component Clk_core is                   
 	port (
@@ -213,7 +212,7 @@ port (
 );
 end component;
 
-component TestData is
+component TestDataStream is
 generic(
 	BlockSize	: integer := NvmeStorageBlockSize	--! The block size in Bytes.
 );

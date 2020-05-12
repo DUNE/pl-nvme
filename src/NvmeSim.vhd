@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
---	NvmeSim.vhd Nvme storage simulation module
---	T.Barnaby, Beam Ltd. 2020-03-13
+-- NvmeSim.vhd Nvme storage simulation module
 -------------------------------------------------------------------------------
 --!
 --! @class	NvmeSim

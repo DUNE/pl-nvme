@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
---	AxilClockConverter.vhd AXI Lite bus clock domain crossing
---	T.Barnaby, Beam Ltd. 2020-02-28
+-- AxilClockConverter.vhd AXI Lite bus clock domain crossing
 --------------------------------------------------------------------------------
 --!
 --! @class	AxilClockConverter

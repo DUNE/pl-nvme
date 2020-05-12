@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
---	NvmeWrite.vhd Nvme Write data module
---	T.Barnaby, Beam Ltd. 2020-02-28
+-- NvmeWriteBasic.vhd Nvme Write data module
 -------------------------------------------------------------------------------
 --!
 --! @class	NvmeWrite
@@ -9,10 +8,10 @@
 --! @version	0.0.1
 --!
 --! @brief
---! This module performs the Nvme write data functionality.
+--! This module performs basic Nvme write data functionality.
 --!
 --! @details
---! TBD.
+--! This is an intial, simplistic NvmeWrite implementation. It could be still useful for testing/debug of issues.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>

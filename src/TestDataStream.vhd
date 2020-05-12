@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
---	TestDataStream.vhd Simple AXIS test data source
---	T.Barnaby, Beam Ltd. 2020-04-07
+-- TestDataStream.vhd Simple AXIS test data source
 -------------------------------------------------------------------------------
 --!
 --! @class	TestDataStream

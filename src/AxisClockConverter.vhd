@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
---	AxisClockConverter.vhd AXI Stream clock domain crossing
---	T.Barnaby, Beam Ltd. 2020-02-28
+-- AxisClockConverter.vhd AXI Stream clock domain crossing
 --------------------------------------------------------------------------------
 --!
 --! @class	AxisClockConverter
