@@ -24,7 +24,8 @@
 #TEST	= test016-fifo
 #TEST	= test017-write
 #TEST	= test018-buffer
-TEST	= test019-write
+#TEST	= test019-write
+TEST	= test020-write
 
 # VHDL source files
 FILES_BASE	+= testbench/TestPkg.vhd ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd ../src/AxilClockConverter.vhd ../src/AxisClockConverter.vhd 
@@ -55,6 +56,7 @@ FILES_test016-fifo += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test017-write += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test018-buffer += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test019-write += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
+FILES_test020-write += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM} ../src/NvmeStorage.vhd
 
 # VHDL testbench files
 STOP	= test
@@ -77,7 +79,10 @@ SFLAGS += --stop-time=30us
 
 .PHONY: isim
 
-all:	compile run
+all:	dirs compile run
+
+dirs:
+	-mkdir -p simu
 
 compile: unisim
 	ghdl -i $(GFLAGS) --workdir=simu --work=work $(FILES)

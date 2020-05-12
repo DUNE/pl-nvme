@@ -12,6 +12,9 @@ create_clock -period 10.000 -name nvme_clk [get_ports nvme_clk_p]
 # Asyncronous resets
 set_false_path -from [get_ports sys_reset]
 set_false_path -from [get_ports pci_reset_n]
+#set_false_path -through [get_nets boot_reset]
+#set_false_path -through [get_nets reset_n]
+#set_false_path -through [get_nets sys_reset_buf_n]
 
 # PCIe Host
 #set_false_path -through [get_pins pcie_host0/inst/pcie3_ip_i/inst/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst/CFGMAX*]

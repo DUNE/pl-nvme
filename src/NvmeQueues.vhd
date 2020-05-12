@@ -56,8 +56,8 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	streamIn	: inout AxisStreamType := AxisInput;	--! Request queue entries
-	streamOut	: inout AxisStreamType := AxisOutput	--! replies and requests
+	streamIn	: inout AxisStreamType := AxisStreamInput;	--! Request queue entries
+	streamOut	: inout AxisStreamType := AxisStreamOutput	--! replies and requests
 );
 end;
 
@@ -251,7 +251,7 @@ begin
 							state		<= STATE_IDLE;
 						elsif(replyHead.count <= 4) then
 							streamOut.last	<= '1';
-							streamOut.keep	<= concat('0', 4) & concat('1', 12);
+							streamOut.keep	<= "0111";
 						end if;
 					end if;
 
@@ -267,7 +267,7 @@ begin
 							doorbellReqHead.count	<= to_unsigned(16#0001#, doorbellReqHead.count'length);
 
 							streamIn.ready		<= '0';
-							streamOut.keep 		<= ones(16);
+							streamOut.keep 		<= ones(streamOut.keep'length);
 							streamOut.valid 	<= '1';
 							streamOut.last 		<= '0';
 							state			<= STATE_SEND_DOORBELL_HEAD;
@@ -277,7 +277,7 @@ begin
 				when STATE_SEND_DOORBELL_HEAD =>
 					if(streamOut.valid = '1' and streamOut.ready = '1') then
 						data1		<= zeros(128 - log2(NumQueueEntries)) & std_logic_vector(queueInArrayPos(queueIn));
-						streamOut.keep 	<= zeros(12) & ones(4);
+						streamOut.keep 	<= "0001";
 						streamOut.last 	<= '1';
 						state		<= STATE_SEND_DOORBELL_POS;
 					end if;
@@ -296,7 +296,7 @@ begin
 						requestHead1.requesterId		<= to_unsigned(2, requestHead1.requesterId'length);
 
 						streamIn.ready				<= '0';
-						streamOut.keep 				<= ones(16);
+						streamOut.keep 				<= ones(streamOut.keep'length);
 						streamOut.last 				<= '0';
 						streamOut.valid 			<= '1';
 						state					<= STATE_REPLY_SHEAD;
@@ -325,7 +325,7 @@ begin
 				when STATE_SEND_RDOORBELL_HEAD =>
 					if(streamOut.valid = '1' and streamOut.ready = '1') then
 						data1		<= zeros(128 - log2(NumQueueEntries)) & std_logic_vector(queueOutArrayPos(queueIn));
-						streamOut.keep 	<= zeros(12) & ones(4);
+						streamOut.keep 	<= "0001";
 						streamOut.last	<= '1';
 						state		<= STATE_SEND_DOORBELL_POS;
 					end if;

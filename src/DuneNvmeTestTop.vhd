@@ -1,12 +1,11 @@
 --------------------------------------------------------------------------------
---	DuneNvmeTestTop.vhd Simple NVMe access test system
---	T.Barnaby, Beam Ltd. 2020-02-18
+-- DuneNvmeTestTop.vhd Simple NVMe access test system
 --------------------------------------------------------------------------------
 --!
 --! @class	DuneNvmeTestTop
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
---! @date	2020-02-18
---! @version	0.0.1
+--! @date	2020-05-12
+--! @version	0.5.1
 --!
 --! @brief
 --! This FPGA bit file allows a host computer to access a NVMe storage device
@@ -37,7 +36,6 @@ use unisim.vcomponents.all;
 
 library work;
 use work.NvmeStoragePkg.all;
-use work.NvmeStorageIntPkg.all;
 
 entity DuneNvmeTestTop is
 generic(
@@ -72,16 +70,16 @@ end;
 architecture Behavioral of DuneNvmeTestTop is
 
 component Clk_core is                   
-	port (
-		clk_in1_p	: in std_logic; 
-		clk_in1_n	: in std_logic;
-		clk_out1	: out std_logic;
-		locked		: out std_logic
-	);                                     
+port (
+	clk_in1_p	: in std_logic; 
+	clk_in1_n	: in std_logic;
+	clk_out1	: out std_logic;
+	locked		: out std_logic
+);                                     
 end component;                 
 
 component Pcie_host
-	port (
+port (
 	sys_clk : in std_logic;
 	sys_clk_gt : in std_logic;
 	sys_rst_n : in std_logic;
@@ -134,132 +132,31 @@ component Pcie_host
 	m_axis_h2c_tready_0 : in std_logic;
 	m_axis_h2c_tkeep_0 : out std_logic_vector(15 downto 0);
 
-	s_axis_c2h_tdata_1 : in std_logic_vector(127 downto 0);
-	s_axis_c2h_tlast_1 : in std_logic;
-	s_axis_c2h_tvalid_1 : in std_logic;
-	s_axis_c2h_tready_1 : out std_logic;
-	s_axis_c2h_tkeep_1 : in std_logic_vector(15 downto 0);
-	m_axis_h2c_tdata_1 : out std_logic_vector(127 downto 0);
-	m_axis_h2c_tlast_1 : out std_logic;
-	m_axis_h2c_tvalid_1 : out std_logic;
-	m_axis_h2c_tready_1 : in std_logic;
-	m_axis_h2c_tkeep_1 : out std_logic_vector(15 downto 0);
-
 	int_qpll1lock_out : out std_logic_vector(0 to 0);
 	int_qpll1outrefclk_out : out std_logic_vector(0 to 0);
 	int_qpll1outclk_out : out std_logic_vector(0 to 0)
-	);
-end component;
-
-component blk_mem_gen_0
-	port (
-	rsta_busy : out std_logic;
-	rstb_busy : out std_logic;
-	s_aclk : in std_logic;
-	s_aresetn : in std_logic;
-	s_axi_awaddr : in std_logic_vector(31 downto 0);
-	s_axi_awvalid : in std_logic;
-	s_axi_awready : out std_logic;
-	s_axi_wdata : in std_logic_vector(31 downto 0);
-	s_axi_wstrb : in std_logic_vector(3 downto 0);
-	s_axi_wvalid : in std_logic;
-	s_axi_wready : out std_logic;
-	s_axi_bresp : out std_logic_vector(1 downto 0);
-	s_axi_bvalid : out std_logic;
-	s_axi_bready : in std_logic;
-	s_axi_araddr : in std_logic_vector(31 downto 0);
-	s_axi_arvalid : in std_logic;
-	s_axi_arready : out std_logic;
-	s_axi_rdata : out std_logic_vector(31 downto 0);
-	s_axi_rresp : out std_logic_vector(1 downto 0);
-	s_axi_rvalid : out std_logic;
-	s_axi_rready : in std_logic
-	);
-end component;
-
-component NvmeStorageUnit is
-generic(
-	Simulate	: boolean	:= False;		--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
-	BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
-);
-port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
-
-	-- Control and status interface
-	axilIn		: in AxilToSlaveType;			--! Axil bus input signals
-	axilOut		: out AxilToMasterType;			--! Axil bus output signals
-
-	-- From host to NVMe request/reply streams
-	hostSend	: inout AxisStreamType := AxisInput;	--! Host request stream
-	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
-
-	-- AXIS data stream input
-	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
-	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
-
-	-- NVMe interface
-	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
-	nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
-	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
-	nvme_exp_txp	: out std_logic_vector(3 downto 0);	--! nvme PCIe TX plus lanes
-	nvme_exp_txn	: out std_logic_vector(3 downto 0);	--! nvme PCIe TX minus lanes
-	nvme_exp_rxp	: in std_logic_vector(3 downto 0);	--! nvme PCIe RX plus lanes
-	nvme_exp_rxn	: in std_logic_vector(3 downto 0);	--! nvme PCIe RX minus lanes
-
-	-- Debug
-	leds		: out std_logic_vector(3 downto 0)
-);
-end component;
-
-component TestData is
-generic(
-	BlockSize	: integer := NvmeStorageBlockSize	--! The block size in Bytes.
-);
-port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
-
-	-- Control and status interface
-	enable		: in std_logic;				--! Enable production of data
-
-	-- AXIS data output
-	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
 );
 end component;
 
 -- Clock and controls
 signal sys_clk			: std_logic := 'U';
-signal sys_reset_buf_n		: std_logic := 'U';
 
 signal pci_clk			: std_logic := 'U';
 signal pci_clk_gt		: std_logic := 'U';
 signal leds_l			: std_logic_vector(7 downto 0) := (others => '0');
 
-signal reset_n			: std_logic := '0';
-signal boot_reset		: std_logic := '1';
-constant boot_reset_count	: natural := 2000000;	-- 10ms
-
 signal axil_clk			: std_logic;
 signal axil_reset_n		: std_logic;
 signal axil_reset		: std_logic;
 
---signal usr_irq_req		: std_logic;
---signal usr_irq_ack		: std_logic;
---signal msi_enable		: std_logic;
---signal msi_vector_width	: std_logic;
-
-signal axil			: AxilBusType;
-signal hostSend			: AxisStreamType;
-signal hostRecv			: AxisStreamType;
-signal nvmeReq			: AxisStreamType;
-signal nvmeReply		: AxisStreamType;
-signal testDataStream		: AxisStreamType;
-signal dataEnabled		: std_logic;
-
-signal hostSend1		: AxisStreamType := AxisInput;
-signal hostRecv1		: AxisStreamType := AxisOutput;
+signal axil			: AxilBusType;			--! The AXI lite bus
+signal hostSend			: AxisType;			--! AXI stream to send requests from the host
+signal hostSend_ready		: std_logic;
+signal hostRecv			: AxisType;			--! AXI stream for replies to the host
+signal hostrecv_ready		: std_logic;
+signal dataStream		: AxisDataStreamType;		--! AXI stream for test data
+signal dataStream_ready		: std_logic;
+signal dataEnabled		: std_logic;			--! Enabled signal for test data
 
 begin
 	-- System clock just used for a boot reset
@@ -268,18 +165,6 @@ begin
 		clk_in1_n	=> sys_clk_n,
 		clk_out1	=> sys_clk
 	);
-
-	-- Early testing special resets
-	--reset_n <= not (sys_reset or not pci_reset_n or boot_reset);
-	--reset_n <= not (sys_reset or not pci_reset_n);
-	--reset_n <= pci_reset_n;
-
-	--sys_reset_buf : BUFG port map (
-	--	I		=> reset_n,
-	--	O		=> sys_reset_buf_n
-	--);
-	
-	sys_reset_buf_n <= pci_reset_n;
 
 	-- PCIE Clock, 100MHz
 	pci_clk_buf0 : IBUFDS_GTE3 port map(
@@ -290,28 +175,12 @@ begin
 		CEB     => '0'
 	);
 	
-	-- Boot Reset from power up
-	process(sys_clk, boot_reset)
-		variable count : natural range 0 to boot_reset_count;
-	begin
-		if(rising_edge(sys_clk)) then
-			if(boot_reset = '1') then
-				if(count >= boot_reset_count) then
-					boot_reset	<= '0';
-					count		:= 0;
-				else
-					count		:= count + 1;
-				end if;
-			end if;
-		end if;
-	end process; 
-
 	-- The PCIe interface to the host
 	pcie_host0 : Pcie_host
 	port map (
 		sys_clk			=> pci_clk,
 		sys_clk_gt		=> pci_clk_gt,
-		sys_rst_n		=> sys_reset_buf_n,
+		sys_rst_n		=> pci_reset_n,
 		pci_exp_txp		=> pci_exp_txp,
 		pci_exp_txn		=> pci_exp_txn,
 		pci_exp_rxp		=> pci_exp_rxp,
@@ -319,7 +188,7 @@ begin
 		
 		user_lnk_up		=> leds_l(7),
 
-		usr_irq_req		=> (others		=> '0'),
+		usr_irq_req		=> (others => '0'),
 		--usr_irq_ack		=> usr_irq_ack,
 		--msi_enable		=> msi_enable,
 		--msi_vector_width	=> msi_vector_width,
@@ -359,136 +228,20 @@ begin
 		s_axis_c2h_tdata_0	=> hostRecv.data,
 		s_axis_c2h_tlast_0	=> hostRecv.last,
 		s_axis_c2h_tvalid_0	=> hostRecv.valid,
-		s_axis_c2h_tready_0	=> hostRecv.ready,
+		s_axis_c2h_tready_0	=> hostRecv_ready,
 		s_axis_c2h_tkeep_0	=> hostRecv.keep,
+
 		m_axis_h2c_tdata_0	=> hostSend.data,
 		m_axis_h2c_tlast_0	=> hostSend.last,
 		m_axis_h2c_tvalid_0	=> hostSend.valid,
-		m_axis_h2c_tready_0	=> hostSend.ready,
-		m_axis_h2c_tkeep_0	=> hostSend.keep,
-
-		s_axis_c2h_tdata_1	=> nvmeReq.data,
-		s_axis_c2h_tlast_1	=> nvmeReq.last,
-		s_axis_c2h_tvalid_1	=> nvmeReq.valid,
-		s_axis_c2h_tready_1	=> nvmeReq.ready,
-		s_axis_c2h_tkeep_1	=> nvmeReq.keep,
-		m_axis_h2c_tdata_1	=> nvmeReply.data,
-		m_axis_h2c_tlast_1	=> nvmeReply.last,
-		m_axis_h2c_tvalid_1	=> nvmeReply.valid,
-		m_axis_h2c_tready_1	=> nvmeReply.ready,
-		m_axis_h2c_tkeep_1	=> nvmeReply.keep
+		m_axis_h2c_tready_0	=> hostSend_ready,
+		m_axis_h2c_tkeep_0	=> hostSend.keep
 	);
 
-	zap10: if false generate
-	-- Echo back AXI streaming ports
-	hostRecv.valid	<= hostSend.valid;   
-	hostRecv.last	<= hostSend.last;   
-	hostRecv.keep	<= hostSend.keep;   
-	hostRecv.data	<= hostSend.data;  
-	hostSend.ready	<= hostRecv.ready;
-
-	nvmeReply.valid	<= nvmeReq.valid;   
-	nvmeReply.last	<= nvmeReq.last;   
-	nvmeReply.keep	<= nvmeReq.keep;   
-	nvmeReply.data	<= nvmeReq.data;  
-	nvmeReq.ready	<= nvmeReply.ready;
-	end generate;
-
-	zap11: if false generate
-	-- Test Axil bus interface using blockram write/read accesses
-	bram0 : blk_mem_gen_0
-	port map (
-		--rsta_busy		=> rsta_busy,
-		--rstb_busy		=> rstb_busy,
-		s_aclk			=> axil_clk,
-		s_aresetn		=> axil_reset_n,
-		
-		s_axi_awaddr		=> axil.toSlave.awaddr,
-		s_axi_awvalid		=> axil.toSlave.awvalid,
-		s_axi_awready		=> axil.toMaster.awready,
-		s_axi_wdata		=> axil.toSlave.wdata,
-		s_axi_wstrb		=> axil.toSlave.wstrb,
-		s_axi_wvalid		=> axil.toSlave.wvalid,
-		s_axi_wready		=> axil.toMaster.wready,
-		s_axi_bresp		=> axil.toMaster.bresp,
-		s_axi_bvalid		=> axil.toMaster.bvalid,
-		s_axi_bready		=> axil.toSlave.bready,
-		s_axi_araddr		=> axil.toSlave.araddr,
-		s_axi_arvalid		=> axil.toSlave.arvalid,
-		s_axi_arready		=> axil.toMaster.arready,
-		s_axi_rdata		=> axil.toMaster.rdata,
-		s_axi_rresp		=> axil.toMaster.rresp,
-		s_axi_rvalid		=> axil.toMaster.rvalid,
-		s_axi_rready		=> axil.toSlave.rready
-	);	
-	end generate;
-	
-	zap12: if false generate
 	-- NVME Storage interface
 	axil_reset <= not axil_reset_n;
 	
-	hostSend.ready	<= '1';
-
-	hostSend1.valid	<= '0';
-	hostSend1.last	<= '0';
-	hostSend1.keep	<= (others => '0');
-	hostSend1.data	<= (others => '0');
-	hostRecv1.ready	<= '0';
-	
-	nvmeStorageUnit1 : NvmeStorageUnit
-	port map (
-		clk		=> axil_clk,
-		reset		=> axil_reset,
-
-		-- Control and status interface
-		axilIn		=> axil.toSlave,
-		axilOut		=> axil.toMaster,
-
-		-- From host to NVMe request/reply streams
-		hostSend	=> hostSend1,
-		hostRecv	=> hostRecv1,
-
-		-- AXIS data stream input
-		dataEnabledOut	=> dataEnabled,
-		dataIn		=> testDataStream,
-
-		-- NVMe interface
-		nvme_clk_p	=> nvme_clk_p,
-		nvme_clk_n	=> nvme_clk_n,
-		nvme_reset_n	=> nvme_reset_n,
-		nvme_exp_txp	=> nvme0_exp_txp,
-		nvme_exp_txn	=> nvme0_exp_txn,
-		nvme_exp_rxp	=> nvme0_exp_rxp,
-		nvme_exp_rxn	=> nvme0_exp_rxn,
-
-		-- Debug
-		leds		=> leds_l(3 downto 0)
-	);
-
-	-- Echo this stream	
-	nvmeReply.valid	<= nvmeReq.valid;   
-	nvmeReply.last	<= nvmeReq.last;   
-	nvmeReply.keep	<= nvmeReq.keep;   
-	nvmeReply.data	<= nvmeReq.data;  
-	nvmeReq.ready	<= nvmeReply.ready;
-
-	-- The test data interface
-	testData1 : TestData
-	port map (
-		clk		=> axil_clk,
-		reset		=> axil_reset,
-
-		enable		=> '1',
-
-		dataOut		=> hostRecv
-	);
-	end generate;
-
-	zap13: if true generate
-	-- NVME Storage interface
-	axil_reset <= not axil_reset_n;
-	
-	nvmeStorageUnit0 : NvmeStorageUnit
+	nvmeStorage0 : NvmeStorage
 	port map (
 		clk		=> axil_clk,
 		reset		=> axil_reset,
@@ -499,31 +252,27 @@ begin
 
 		-- From host to NVMe request/reply streams
 		hostSend	=> hostSend,
+		hostSendReady	=> hostSend_ready,
 		hostRecv	=> hostRecv,
+		hostRecvReady	=> hostRecv_ready,
 
 		-- AXIS data stream input
 		dataEnabledOut	=> dataEnabled,
-		dataIn		=> testDataStream,
+		dataIn		=> dataStream,
+		dataInReady	=> dataStream_ready,
 
 		-- NVMe interface
 		nvme_clk_p	=> nvme_clk_p,
 		nvme_clk_n	=> nvme_clk_n,
 		nvme_reset_n	=> nvme_reset_n,
-		nvme_exp_txp	=> nvme0_exp_txp,
-		nvme_exp_txn	=> nvme0_exp_txn,
-		nvme_exp_rxp	=> nvme0_exp_rxp,
-		nvme_exp_rxn	=> nvme0_exp_rxn,
+		nvme0_exp_txp	=> nvme0_exp_txp,
+		nvme0_exp_txn	=> nvme0_exp_txn,
+		nvme0_exp_rxp	=> nvme0_exp_rxp,
+		nvme0_exp_rxn	=> nvme0_exp_rxn,
 
 		-- Debug
 		leds		=> leds_l(3 downto 0)
 	);
-
-	-- Echo this stream	
-	nvmeReply.valid	<= nvmeReq.valid;   
-	nvmeReply.last	<= nvmeReq.last;   
-	nvmeReply.keep	<= nvmeReq.keep;   
-	nvmeReply.data	<= nvmeReq.data;  
-	nvmeReq.ready	<= nvmeReply.ready;
 
 	-- The test data interface
 	testData0 : TestData
@@ -533,17 +282,15 @@ begin
 
 		enable		=> dataEnabled,
 
-		dataOut		=> testDataStream
+		dataOut		=> dataStream,
+		dataOutReady	=> dataStream_ready
 	);
-	end generate;
-	
-
 
 	-- Led buffers
 	obuf_leds: for i in 0 to 7 generate
 		obuf_led_i: OBUF port map (I => leds_l(i), O => leds(i));
 	end generate;
 
-	leds_l(4) <= sys_reset_buf_n;
+	leds_l(4) <= pci_reset_n;
 end;
 

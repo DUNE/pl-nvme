@@ -63,12 +63,12 @@ port (
 	reset		: in std_logic;					--! The reset line
 
 	-- AXIS Interface to PCIE
-	hostReq		: inout AxisStreamType := AxisInput;		--! Host request stream
-	hostReply	: inout AxisStreamType := AxisOutput;		--! Host reply stream
+	hostReq		: inout AxisStreamType := AxisStreamInput;		--! Host request stream
+	hostReply	: inout AxisStreamType := AxisStreamOutput;		--! Host reply stream
 
 	-- From Nvme reqeuest and reply stream
-	nvmeReq		: inout AxisStreamType := AxisOutput;		--! Nvme request stream (bus master)
-	nvmeReply	: inout AxisStreamType := AxisInput		--! Nvme reply stream
+	nvmeReq		: inout AxisStreamType := AxisStreamOutput;		--! Nvme request stream (bus master)
+	nvmeReply	: inout AxisStreamType := AxisStreamInput		--! Nvme reply stream
 );
 end;
 
@@ -210,7 +210,7 @@ begin
 					else
 						hostReply.valid	<= '1';
 						hostReply.last	<= '1';
-						hostReply.keep	<= zeros(4) & ones(12);
+						hostReply.keep	<= "0111";
 					end if;
 					
 
@@ -222,7 +222,7 @@ begin
 					else
 						hostReply.valid	<= '1';
 						hostReply.last	<= '1';
-						hostReply.keep	<= ones(16);
+						hostReply.keep	<= ones(hostReply.keep'length);
 					end if;
 
 				when STATE_READ_QUEUE_START =>
@@ -232,7 +232,7 @@ begin
 					nvmeRequestHead.requesterId	<= to_unsigned(0, nvmeRequestHead.requesterId'length);
 					nvmeRequestHead.request	<= "0000";
 					nvmeRequestHead.count	<= to_unsigned(16#0010#, nvmeRequestHead.count'length);
-					nvmeReq.keep 		<= ones(16);
+					nvmeReq.keep 		<= ones(nvmeReq.keep'length);
 					nvmeReq.valid 		<= '1';
 					nvmeReq.last 		<= '1';
 					
@@ -284,7 +284,7 @@ begin
 								nvmeRequestHead.request	<= "0001";
 								nvmeRequestHead.count	<= to_unsigned(16#0004#, nvmeRequestHead.count'length);	-- 16 Byte queue entry
 								count			<= to_unsigned(16#0004#, count'length);	-- 16 Byte queue entry
-								nvmeReq.keep 		<= ones(16);
+								nvmeReq.keep 		<= ones(nvmeReq.keep'length);
 								nvmeReq.valid 		<= '1';
 								state			<= STATE_QUEUE_REPLY_HEAD;
 							end if;
@@ -320,7 +320,7 @@ begin
 						waitingForReply	<= '1';
 						state		<= STATE_READ_DATA_RECV_START;
 					else
-						nvmeReq.keep 	<= ones(16);
+						nvmeReq.keep 	<= ones(nvmeReq.keep'length);
 						nvmeReq.last 	<= '1';
 						nvmeReq.valid 	<= '1';
 					end if;
@@ -357,7 +357,7 @@ begin
 					nvmeRequestHead.request	<= "0001";
 					nvmeRequestHead.count	<= to_unsigned(16#0004#, nvmeRequestHead.count'length);	-- 16 Byte queue entry
 					count			<= to_unsigned(16#0004#, count'length);	-- 16 Byte queue entry
-					nvmeReq.keep 		<= ones(16);
+					nvmeReq.keep 		<= ones(nvmeReq.keep'length);
 					nvmeReq.valid 		<= '1';
 					state			<= STATE_QUEUE_REPLY_HEAD;
 

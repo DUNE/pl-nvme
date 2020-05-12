@@ -76,15 +76,15 @@ port (
 	reset		: in std_logic;				--! The active high reset line
 
 	enable		: in std_logic;				--! Enable the data writing process
-	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
 	-- To Nvme Request/reply streams
-	requestOut	: inout AxisStreamType := AxisOutput;	--! To Nvme request stream (3)
-	replyIn		: inout AxisStreamType := AxisInput;	--! from Nvme reply stream
+	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
+	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
 
 	-- From Nvme Request/reply streams
-	memReqIn	: inout AxisStreamType := AxisInput;	--! From Nvme request stream (4)
-	memReplyOut	: inout AxisStreamType := AxisOutput;	--! To Nvme reply stream
+	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream (4)
+	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
 	
 	regWrite	: in std_logic;				--! Enable write to register
 	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
@@ -608,7 +608,7 @@ begin
 							end if;
 
 						elsif(memChunkCount = 8) then
-							memReplyOut.keep <= zeros(4) & ones(12);
+							memReplyOut.keep <= "0111";
 							memReplyOut.last <= '1';
 
 						else

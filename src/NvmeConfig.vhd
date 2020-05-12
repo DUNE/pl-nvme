@@ -55,8 +55,8 @@ port (
 	configComplete	: out std_logic;			--! Initialisation is complete
 
 	-- From host to NVMe request/reply streams
-	streamOut	: inout AxisStreamType := AxisOutput;	--! Nvme request stream
-	streamIn	: inout AxisStreamType := AxisInput		--! Nvme reply stream
+	streamOut	: inout AxisStreamType := AxisStreamOutput;	--! Nvme request stream
+	streamIn	: inout AxisStreamType := AxisStreamInput		--! Nvme reply stream
 );
 end;
 

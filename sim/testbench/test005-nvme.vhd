@@ -30,12 +30,12 @@ port (
 	reset		: in std_logic;
 
 	-- AXIS Interface to PCIE
-	hostReq		: inout AxisStream	:= AxisInput;
-	hostReply	: inout AxisStream	:= AxisOutput;                        
+	hostReq		: inout AxisStream	:= AxisStreamInput;
+	hostReply	: inout AxisStream	:= AxisStreamOutput;                        
 	
 	-- From Nvme reqeuest and reply stream
-	nvmeReq		: inout AxisStream	:= AxisOutput;
-	nvmeReply	: inout AxisStream	:= AxisInput
+	nvmeReq		: inout AxisStream	:= AxisStreamOutput;
+	nvmeReply	: inout AxisStream	:= AxisStreamInput
 );
 end component;
 
@@ -45,10 +45,10 @@ constant CHUNK_SIZE	: integer := 32;			-- The data write chunk size in DWords du
 signal clk		: std_logic := '0';
 signal reset		: std_logic := '0';
 
-signal hostReply	: AxisStream	:= AxisInput;
-signal hostReq		: AxisStream	:= AxisOutput;
-signal nvmeReq		: AxisStream	:= AxisOutput;
-signal nvmeReply	: AxisStream	:= AxisInput;
+signal hostReply	: AxisStream	:= AxisStreamInput;
+signal hostReq		: AxisStream	:= AxisStreamOutput;
+signal nvmeReq		: AxisStream	:= AxisStreamOutput;
+signal nvmeReply	: AxisStream	:= AxisStreamInput;
 
 type NvmeStateType is (NVME_STATE_IDLE, NVME_STATE_WRITEDATA_START, NVME_STATE_WRITEDATA);
 signal nvmeState	: NvmeStateType := NVME_STATE_IDLE;

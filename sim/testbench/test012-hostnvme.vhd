@@ -37,11 +37,11 @@ port (
 	axilOut		: out AxilToMaster;			--! Axil bus output signals
 
 	-- From host to NVMe request/reply streams
-	hostSend	: inout AxisStream := AxisInput;	--! Host request stream
-	hostRecv	: inout AxisStream := AxisOutput;	--! Host reply stream
+	hostSend	: inout AxisStream := AxisStreamInput;	--! Host request stream
+	hostRecv	: inout AxisStream := AxisStreamOutput;	--! Host reply stream
 
 	-- AXIS data stream input
-	--dataRx	: inout AxisStream	:= AxisInput;	--! Raw data to save stream
+	--dataRx	: inout AxisStream	:= AxisStreamInput;	--! Raw data to save stream
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
@@ -62,14 +62,14 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	stream1In	: inout AxisStream := AxisInput;	--! Single multiplexed Input stream
-	stream1Out	: inout AxisStream := AxisOutput;	--! Single multiplexed Ouput stream
+	stream1In	: inout AxisStream := AxisStreamInput;	--! Single multiplexed Input stream
+	stream1Out	: inout AxisStream := AxisStreamOutput;	--! Single multiplexed Ouput stream
 
-	stream2In	: inout AxisStream := AxisInput;	--! Host Replies input stream
-	stream2Out	: inout AxisStream := AxisOutput;	--! Host Requests output stream
+	stream2In	: inout AxisStream := AxisStreamInput;	--! Host Replies input stream
+	stream2Out	: inout AxisStream := AxisStreamOutput;	--! Host Requests output stream
 
-	stream3In	: inout AxisStream := AxisInput;	--! Nvme Requests input stream
-	stream3Out	: inout AxisStream := AxisOutput	--! Nvme replies output stream
+	stream3In	: inout AxisStream := AxisStreamInput;	--! Nvme Requests input stream
+	stream3Out	: inout AxisStream := AxisStreamOutput	--! Nvme replies output stream
 );
 end component;
 
@@ -80,15 +80,15 @@ signal clk		: std_logic := '0';
 signal reset		: std_logic := '0';
 
 signal axil		: AxilBus;
-signal hostSend		: AxisStream	:= AxisOutput;
-signal hostRecv		: AxisStream	:= AxisInput;
+signal hostSend		: AxisStream	:= AxisStreamOutput;
+signal hostRecv		: AxisStream	:= AxisStreamInput;
 
 signal leds		: std_logic_vector(3 downto 0);
 
-signal hostReply	: AxisStream	:= AxisInput;
-signal hostReq		: AxisStream	:= AxisOutput;
-signal nvmeReq		: AxisStream	:= AxisInput;
-signal nvmeReply	: AxisStream	:= AxisOutput;
+signal hostReply	: AxisStream	:= AxisStreamInput;
+signal hostReq		: AxisStream	:= AxisStreamOutput;
+signal nvmeReq		: AxisStream	:= AxisStreamInput;
+signal nvmeReply	: AxisStream	:= AxisStreamOutput;
 
 type NvmeStateType is (NVME_STATE_IDLE, NVME_STATE_WRITEDATA_START, NVME_STATE_WRITEDATA);
 signal nvmeState	: NvmeStateType := NVME_STATE_IDLE;

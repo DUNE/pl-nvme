@@ -1,15 +1,14 @@
 --------------------------------------------------------------------------------
---	NvmeStoragePkg.vhd Axil and Axis definitions for NvmeStorage module
---	T.Barnaby, Beam Ltd. 2020-02-28
+-- NvmeStoragePkg.vhd External interface definitions for NvmeStorage module
 --------------------------------------------------------------------------------
 --!
 --! @class	NvmeStoragePkg
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-02-28
---! @version	0.0.1
+--! @version	0.5.1
 --!
 --! @brief
---! This package provides definitions to the AXI4 lite and AXI4 stream interfaces to the NvmeStorage module.
+--! This package provides external interface definitions for the NvmeStorage module.
 --!
 --! @details
 --!
@@ -31,6 +30,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 package NvmeStoragePkg is
+	--! System constants
+	constant NvmeStorageBlockSize	: integer := 4096;	--! System block size
+
 	--! AXI Lite bus like interface
 	constant AxilAddressWidth	: integer := 32;
 	constant AxilDataWidth		: integer := 32;
@@ -79,7 +81,7 @@ package NvmeStoragePkg is
 
 	--! AXI Stream interface
 	constant AxisDataWidth	: integer := 128;
-	constant AxisKeepWidth	: integer := 16;
+	constant AxisKeepWidth	: integer := AxisDataWidth / 8;
 
 	type AxisType is record
 		valid		: std_logic;
@@ -90,30 +92,8 @@ package NvmeStoragePkg is
 
 	constant AxisInit	: AxisType := ('0', '0', (others => '0'), (others => '0'));
 
-	--! This implemtation makes it easy to pass and manipulate streams in VHDL. It's not not nice as it uses inout
-	--! to acheive this as VHDL is very limited when using records especialy as module in's and out's.
-	--! However this scheme simplifies the code syntax a lot at the expense of less in/out validation in initial compilation stages.
-	type AxisStreamType is record
-		ready		: std_logic;
-		valid		: std_logic;
-		last		: std_logic;
-		data		: std_logic_vector(AxisDataWidth-1 downto 0);
-		keep		: std_logic_vector(AxisKeepWidth-1 downto 0);
-	end record;
-
-	constant AxisInput	: AxisStreamType := ('0', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
-	constant AxisOutput	: AxisStreamType := ('Z', '0', '0', (others => '0'), (others => '0'));
-	constant AxisInOut	: AxisStreamType := ('Z', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
-	constant AxisSink	: AxisStreamType := ('1', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
-	type AxisArrayType is array (natural range <>) of AxisStreamType;
-
-	function to_AxisData(v: integer) return std_logic_vector;
-
-	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: inout AxisStreamType);
-
-
 	-- Axis data stream
-	constant AxisDataStreamWidth : integer := 256;
+	constant AxisDataStreamWidth : integer := 128;
 
 	type AxisDataStreamType is record
 		valid		: std_logic;
@@ -125,7 +105,9 @@ package NvmeStoragePkg is
 	--! The NvmeStorage module's interface
 	component NvmeStorage is
 	generic(
-		Simulate	: boolean	:= False
+		Simulate	: boolean	:= False;		--! Generate simulation core
+		ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
+		BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
 	);
 	port (
 		clk		: in std_logic;				--! The interface clock line
@@ -136,13 +118,15 @@ package NvmeStoragePkg is
 		axilOut		: out AxilToMasterType;			--! Axil bus output signals
 
 		-- From host to NVMe request/reply streams
-		fromHost	: inout AxisStreamType := AxisInput;	--! Host request stream
-		toHost		: inout AxisStreamType := AxisOutput;	--! Host reply stream
+		hostSend	: in AxisType;				--! Host request stream
+		hostSendReady	: out std_logic;			--! Host request stream ready line
+		hostRecv	: out AxisType;				--! Host reply stream
+		hostRecvReady	: in std_logic;				--! Host reply stream ready line
 
 		-- AXIS data stream input
 		dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
-		dataIn		: in AxisDataStream;			--! Raw data to save stream
-		dataInReady	: out std_logic;			--! Raw data ready
+		dataIn		: in AxisDataStreamType;		--! Raw data input stream
+		dataInReady	: out std_logic;			--! Raw data input ready
 
 		-- NVMe interface
 		nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
@@ -155,6 +139,24 @@ package NvmeStoragePkg is
 
 		-- Debug
 		leds		: out std_logic_vector(3 downto 0)
+	);
+	end component;
+	
+	--! Simple test data source
+	component TestData is
+	generic(
+		BlockSize	: integer := NvmeStorageBlockSize	--! The block size in Bytes.
+	);
+	port (
+		clk		: in std_logic;				--! The interface clock line
+		reset		: in std_logic;				--! The active high reset line
+
+		-- Control and status interface
+		enable		: in std_logic;				--! Enable production of data. Clears to reset state when set to 0.
+
+		-- AXIS data output
+		dataOut		: out AxisDataStreamType;		--! Output data stream
+		dataOutReady	: in std_logic				--! Ready signal for output data stream
 	);
 	end component;
 end package;
@@ -174,16 +176,4 @@ package body NvmeStoragePkg is
 	begin
 		return std_logic_vector(to_unsigned(v, AxisDataWidth));
 	end function;
-	
-	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: inout AxisStreamType) is
-	begin
-		streamIn	<= AxisInOut;
-		streamOut	<= AxisInOut;
-		
-		streamIn.ready	<= streamOut.ready;
-		streamOut.valid	<= streamIn.valid;
-		streamOut.last	<= streamIn.last;
-		streamOut.keep	<= streamIn.keep;
-		streamOut.data	<= streamIn.data;
-	end procedure;
 end;

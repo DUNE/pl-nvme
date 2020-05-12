@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
---	Test009-packets.vhd	Simple nvme interface tests
---	T.Barnaby,	Beam Ltd.	2020-04-14
+--	Test020-write.vhd	Simple nvme interface tests
+--	T.Barnaby,	Beam Ltd.	2020-05-12
 --------------------------------------------------------------------------------
 --
 --
@@ -19,10 +19,15 @@ end;
 
 architecture sim of Test is
 
-component NvmeStorageUnit is
+--constant BlockSize	: integer := 512;			--! For simple testing should be 4096
+constant BlockSize	: integer := 4096;			--! Proper block size
+
+component NvmeStorage is
 generic(
 	Simulate	: boolean	:= True;		--! Generate simulation core
-	ClockPeriod	: time		:= 10 ms		--! Clock period for timers (125 MHz)
+	--ClockPeriod	: time		:= 10 ms;		--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= 4 ns;			--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= Blocksize
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -33,23 +38,44 @@ port (
 	axilOut		: out AxilToMasterType;			--! Axil bus output signals
 
 	-- From host to NVMe request/reply streams
-	hostSend	: inout AxisStreamType := AxisStreamInput;	--! Host request stream
-	hostRecv	: inout AxisStreamType := AxisStreamOutput;	--! Host reply stream
+	hostSend	: in AxisType;				--! Host request stream
+	hostSendReady	: out std_logic;			--! Host request stream ready line
+	hostRecv	: out AxisType;				--! Host reply stream
+	hostRecvReady	: in std_logic;				--! Host reply stream ready line
 
 	-- AXIS data stream input
-	--dataRx	: inout AxisStreamType	:= AxisStreamInput;	--! Raw data to save stream
+	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
+	dataIn		: in AxisDataStreamType;		--! Raw data input stream
+	dataInReady	: out std_logic;			--! Raw data input ready
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
 	nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
 	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
-	nvme_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme PCIe TX plus lanes
-	nvme_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme PCIe TX minus lanes
-	nvme_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme PCIe RX plus lanes
-	nvme_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme PCIe RX minus lanes
+	nvme0_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX plus lanes
+	nvme0_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX minus lanes
+	nvme0_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX plus lanes
+	nvme0_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX minus lanes
 
 	-- Debug
 	leds		: out std_logic_vector(3 downto 0)
+);
+end component;
+
+component TestData is
+generic(
+	BlockSize	: integer := BlockSize			--! The block size in Bytes.
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+
+	-- Control and status interface
+	enable		: in std_logic;				--! Enable production of data
+
+	-- AXIS data output
+	dataOut		: out AxisDataStreamType;		--! Output data stream
+	dataOutReady	: in std_logic
 );
 end component;
 
@@ -76,53 +102,36 @@ signal clk		: std_logic := '0';
 signal reset		: std_logic := '0';
 
 signal axil		: AxilBusType;
-signal hostSend		: AxisStreamType	:= AxisStreamOutput;
-signal hostRecv		: AxisStreamType	:= AxisStreamInput;
+signal hostSend		: AxisType;
+signal hostSendReady	: std_logic := '0';
+signal hostRecv		: AxisType;
+signal hostRecvReady	: std_logic := '0';
 
 signal leds		: std_logic_vector(3 downto 0);
 
-signal hostReply	: AxisStreamType	:= AxisStreamInput;
-signal hostReq		: AxisStreamType	:= AxisStreamOutput;
-signal nvmeReq		: AxisStreamType	:= AxisStreamInput;
-signal nvmeReply	: AxisStreamType	:= AxisStreamOutput;
+signal hostSend1	: AxisStreamType;
+signal hostRecv1	: AxisStreamType;
+signal hostReply	: AxisStreamType := AxisStreamInput;
+signal hostReq		: AxisStreamType := AxisStreamOutput;
+signal nvmeReq		: AxisStreamType := AxisStreamInput;
+signal nvmeReply	: AxisStreamType := AxisStreamOutput;
 
-type NvmeStateType is (NVME_STATE_IDLE, NVME_STATE_WRITEDATA, NVME_STATE_READDATA_START, NVME_STATE_READDATA);
+signal dataStream	: AxisDataStreamType;
+signal dataStreamReady	: std_logic := '0';
+
+type NvmeStateType is (NVME_STATE_IDLE, NVME_STATE_WRITEDATA, NVME_STATE_READHEAD, NVME_STATE_READDATA);
 signal nvmeState	: NvmeStateType := NVME_STATE_IDLE;
 signal nvmeRequestHead	: PcieRequestHeadType;
 signal nvmeRequestHead1	: PcieRequestHeadType;
 signal nvmeReplyHead	: PcieReplyHeadType;
 signal nvmeCount	: unsigned(10 downto 0);			-- DWord data send count
 signal nvmeChunkCount	: unsigned(10 downto 0);			-- DWord data send within a chunk count
-signal nvmeByteCount	: integer;
 signal nvmeData		: std_logic_vector(127 downto 0);
+signal nvmeData1	: std_logic_vector(127 downto 0);
 
 signal sendData		: std_logic := '0';
 
 begin
-	hostReply.ready <= '1';
-	
-	NvmeStorageUnit0 : NvmeStorageUnit
-	port map (
-		clk		=> clk,
-		reset		=> reset,
-
-		axilIn		=> axil.toSlave,
-		axilOut		=> axil.toMaster,
-
-		hostSend	=> hostSend,
-		hostRecv	=> hostRecv,
-
-		-- NVMe interface
-		nvme_clk_p	=> '0',
-		nvme_clk_n	=> '0',
-		--nvme_exp_txp	: out std_logic_vector(0 downto 0);
-		--nvme_exp_txn	: out std_logic_vector(0 downto 0);
-		nvme_exp_rxp	=> "0000",
-		nvme_exp_rxn	=> "0000",
-
-		leds		=> leds
-	);
-
 	clock : process
 	begin
 		wait for 5 ns; clk  <= not clk;
@@ -138,12 +147,42 @@ begin
 	
 	run : process
 	begin
+		axil.toSlave <= ((others => '0'), (others => '0'), '0', (others => '0'), (others => '0'), '0', '0', (others => '0'), (others => '0'), '0', '0');
 		wait until reset = '0';
+
+		if(False) then
+			-- Test Read/Write NvmeWrite registers
+			wait for 100 ns;
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0100#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0104#);
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0100#, 16#00000004#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0100#);
+
+			wait;
+		end if;
+		
+		if(True) then
+			-- Start off TestData source and start writing data to Nvme
+			wait for 100 ns;
+			sendData <= '1';
+
+			-- Write to NvmeStorage control register to start NvmeWrite processing
+			wait for 100 ns;
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 2);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
+
+			wait for 11000 ns;
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000000#);	-- Stop
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
+			wait;	
+		end if;
+		
 		--wait for 1000 ns;
 		
 		-- Perform local reset
-		busWrite(clk, axil.toSlave, axil.toMaster, 4, 16#00000001#);
-		wait for 1000 ns;
+		--busWrite(clk, axil.toSlave, axil.toMaster, 4, 16#00000001#);
+		--wait for 1000 ns;
 
 		-- Set PCIe configuration command register to 0x06
 		--pcieRequestWrite(clk, hostReq, 1, 10, 4, 16#44#, 1, 16#00100006#);
@@ -158,10 +197,10 @@ begin
 		--pcieRequestWrite(clk, hostReq, 1, 1, 16#1000#, 16#22#, 1, 16#40#);
 
 		-- Write to AdminQueue
-		--pcieRequestWrite(clk, hostReq, 1, 1, 16#05000000#, 16#22#, 16, 16#00000010#);
+		pcieRequestWrite(clk, hostReq, 1, 1, 16#02000000#, 16#22#, 16, 16#00000010#);
 
 		-- Write to DataQueue
-		pcieRequestWrite(clk, hostReq, 1, 1, 16#05010000#, 16#22#, 16, 16#00000010#);
+		pcieRequestWrite(clk, hostReq, 1, 1, 16#02010000#, 16#22#, 16, 16#00000010#);
 
 		-- Perform NVMe data write
 		-- Write to DataWriteQueue doorbell register
@@ -169,14 +208,58 @@ begin
 		wait;
 	end process;
 	
+	-- The test data interface
+	testData0 : TestData
+	port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		enable		=> sendData,
+
+		dataOut		=> dataStream,
+		dataOutReady	=> dataStreamReady
+	);	
+
+	axisConnect(hostSend1, hostSend, hostSendReady);
+	axisConnect(hostRecv, hostrecvReady, hostRecv1);
+	
+	hostReply.ready <= '1';
+	
+	NvmeStorage0 : NvmeStorage
+	port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		axilIn		=> axil.toSlave,
+		axilOut		=> axil.toMaster,
+
+		hostSend	=> hostSend,
+		hostSendReady	=> hostSendReady,
+		hostRecv	=> hostRecv,
+		hostRecvReady	=> hostRecvReady,
+		
+		dataIn		=> dataStream,
+		dataInReady	=> dataStreamReady,
+
+		-- NVMe interface
+		nvme_clk_p	=> '0',
+		nvme_clk_n	=> '0',
+		--nvme_exp_txp	: out std_logic_vector(0 downto 0);
+		--nvme_exp_txn	: out std_logic_vector(0 downto 0);
+		nvme0_exp_rxp	=> "0000",
+		nvme0_exp_rxn	=> "0000",
+
+		leds		=> leds
+	);
+
 	-- Host to Nvme stream Mux/DeMux
 	nvmeStreamMux0 : NvmeStreamMux
 	port map (
 		clk		=> clk,
 		reset		=> reset,
 
-		stream1In	=> hostRecv,
-		stream1Out	=> hostSend,
+		stream1In	=> hostRecv1,
+		stream1Out	=> hostSend1,
 		
 		stream2In	=> nvmeReply,
 		stream2Out	=> nvmeReq,
@@ -187,7 +270,8 @@ begin
 
 
 	nvmeRequestHead	<= to_PcieRequestHeadType(nvmeReq.data);
-	nvmeReply.data <= nvmeData when(nvmeState = NVME_STATE_READDATA) else concat('0', 32) & to_stl(nvmeReplyHead);
+	nvmeReply.data <= nvmeData(31 downto 0) & to_stl(nvmeReplyHead) when(nvmeState = NVME_STATE_READHEAD)
+		else nvmeData(31 downto 0) & nvmeData1(127 downto 32);
 	
 	requests : process(clk)
 	begin
@@ -209,7 +293,7 @@ begin
 						if(nvmeRequestHead.request = 1) then
 							nvmeState <= NVME_STATE_WRITEDATA;
 						elsif(nvmeRequestHead.request = 0) then
-							nvmeState <= NVME_STATE_READDATA_START;
+							nvmeState <= NVME_STATE_READHEAD;
 						end if;
 					else
 						nvmeReq.ready <= '1';
@@ -221,9 +305,9 @@ begin
 					end if;
 				
 				
-				when NVME_STATE_READDATA_START =>
+				when NVME_STATE_READHEAD =>
 					nvmeReq.ready			<= '0';
-					nvmeReplyHead.byteCount		<= nvmeRequestHead1.count & "00";
+					nvmeReplyHead.byteCount		<= nvmeCount & "00";
 					nvmeReplyHead.address		<= nvmeRequestHead1.address(nvmeReplyHead.address'length - 1 downto 0);
 					nvmeReplyHead.error		<= (others => '0');
 					nvmeReplyHead.status		<= (others => '0');
@@ -231,14 +315,15 @@ begin
 					nvmeReplyHead.requesterId	<= nvmeRequestHead1.requesterId;
 
 					if(nvmeCount > CHUNK_SIZE) then
-						nvmeReplyHead.count	<= to_unsigned(CHUNK_SIZE-1, nvmeReplyHead.count'length);
-						nvmeChunkCount		<= to_unsigned(CHUNK_SIZE, nvmeReplyHead.count'length);
+						nvmeReplyHead.count	<= to_unsigned(PcieMaxPayloadSize, nvmeReplyHead.count'length);
+						nvmeChunkCount		<= to_unsigned(PcieMaxPayloadSize, nvmeReplyHead.count'length);
 					else
-						nvmeReplyHead.count	<= nvmeCount - 1;
+						nvmeReplyHead.count	<= nvmeCount;
 						nvmeChunkCount		<= nvmeCount;
 					end if;
-
-					nvmeByteCount		<= (to_integer(nvmeRequestHead1.count) + 1) * 4;
+					
+					nvmeData1		<= nvmeData;
+					nvmeReply.keep	 	<= (others => '1');
 					nvmeReply.valid 	<= '1';
 
 					if(nvmeReply.ready = '1' and nvmeReply.valid = '1') then
@@ -248,23 +333,31 @@ begin
 
 				when NVME_STATE_READDATA =>
 					if(nvmeReply.ready = '1' and nvmeReply.valid = '1') then
+						nvmeData1	<= nvmeData;
 						nvmeData 	<= std_logic_vector(unsigned(nvmeData) + 1);
+
 						if(nvmeChunkCount = 4) then
 							if(nvmeCount = 4) then
-								nvmeReply.valid <= '0';
 								nvmeReply.last	<= '0';
+								nvmeReply.valid <= '0';
 								nvmeState	<= NVME_STATE_IDLE;
 							else
 								nvmeReply.last	<= '0';
-								nvmeState	<= NVME_STATE_READDATA_START;
+								nvmeReply.valid <= '0';
+								nvmeState	<= NVME_STATE_READHEAD;
 							end if;
+
 						elsif(nvmeChunkCount = 8) then
+							nvmeReply.keep <= zeros(4) & ones(12);
 							nvmeReply.last <= '1';
+
 						else
 							nvmeReply.last <= '0';
 						end if;
-						nvmeChunkCount	<= nvmeChunkCount - 4;
-						nvmeCount	<= nvmeCount - 4;
+						
+						nvmeChunkCount			<= nvmeChunkCount - 4;
+						nvmeCount			<= nvmeCount - 4;
+						nvmeRequestHead1.address	<= nvmeRequestHead1.address + 4;
 					end if;
 				end case;
 			end if;
@@ -273,7 +366,8 @@ begin
 
 	stop : process
 	begin
-		wait for 700 ns;
+		--wait for 2000 ns;
+		wait for 14000 ns;
 		assert false report "simulation ended ok" severity failure;
 	end process;
 end;

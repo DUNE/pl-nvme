@@ -33,15 +33,15 @@ port (
 	axilOut		: out AxilToMaster;
 
 	-- AXIS Interface to PCIE
-	hostReq		: inout AxisStream	:= AxisInput;
-	hostReply	: inout AxisStream	:= AxisOutput;                        
+	hostReq		: inout AxisStream	:= AxisStreamInput;
+	hostReply	: inout AxisStream	:= AxisStreamOutput;                        
 	
 	-- From Nvme reqeuest and reply stream
-	nvmeReq		: inout AxisStream	:= AxisOutput;
-	nvmeReply	: inout AxisStream	:= AxisInput;                        
+	nvmeReq		: inout AxisStream	:= AxisStreamOutput;
+	nvmeReply	: inout AxisStream	:= AxisStreamInput;                        
 	
 	-- AXIS data stream input
-	--dataRx	: inout AxisStream	:= AxisInput;
+	--dataRx	: inout AxisStream	:= AxisStreamInput;
 	
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;

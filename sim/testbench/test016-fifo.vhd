@@ -31,8 +31,8 @@ port (
 	full		: out std_logic;			--! The fifo is full (Has Fifo size words)
 	empty		: out std_logic;			--! The fifo is empty
 
-	dataIn		: inout AxisStreamType := AxisInput;	--! Input data stream
-	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
+	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Input data stream
+	dataOut		: inout AxisStreamType := AxisStreamOutput	--! Output data stream
 );
 end component;
 

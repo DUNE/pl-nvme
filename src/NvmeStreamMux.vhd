@@ -43,14 +43,14 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	stream1In	: inout AxisStreamType := AxisInput;	--! Single multiplexed Input stream
-	stream1Out	: inout AxisStreamType := AxisOutput;	--! Single multiplexed Ouput stream
+	stream1In	: inout AxisStreamType := AxisStreamInput;	--! Single multiplexed Input stream
+	stream1Out	: inout AxisStreamType := AxisStreamOutput;	--! Single multiplexed Ouput stream
 
-	stream2In	: inout AxisStreamType := AxisInput;	--! Host Replies input stream
-	stream2Out	: inout AxisStreamType := AxisOutput;	--! Host Requests output stream
+	stream2In	: inout AxisStreamType := AxisStreamInput;	--! Host Replies input stream
+	stream2Out	: inout AxisStreamType := AxisStreamOutput;	--! Host Requests output stream
 
-	stream3In	: inout AxisStreamType := AxisInput;	--! Nvme Requests input stream
-	stream3Out	: inout AxisStreamType := AxisOutput	--! Nvme replies output stream
+	stream3In	: inout AxisStreamType := AxisStreamInput;	--! Nvme Requests input stream
+	stream3Out	: inout AxisStreamType := AxisStreamOutput	--! Nvme replies output stream
 );
 end;
 

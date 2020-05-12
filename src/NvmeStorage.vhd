@@ -1,12 +1,11 @@
 --------------------------------------------------------------------------------
---	NvmeStorage.vhd Nvme storage access module
---	T.Barnaby, Beam Ltd. 2020-04-26
+-- NvmeStorage.vhd Nvme storage access module
 -------------------------------------------------------------------------------
 --!
 --! @class	NvmeStorage
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
---! @date	2020-04-26
---! @version	0.0.1
+--! @date	2020-05-12
+--! @version	0.5.1
 --!
 --! @brief
 --! This is the main top level NvmeStorage module that provides access to the NVMe devices
@@ -45,7 +44,8 @@ use work.NvmeStorageIntPkg.all;
 entity NvmeStorage is
 generic(
 	Simulate	: boolean	:= False;		--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns			--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -56,12 +56,15 @@ port (
 	axilOut		: out AxilToMasterType;			--! Axil bus output signals
 
 	-- From host to NVMe request/reply streams
-	hostSend	: inout AxisStreamType := AxisInput;	--! Host request stream
-	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
+	hostSend	: in AxisType;				--! Host request stream
+	hostSendReady	: out std_logic;			--! Host request stream ready line
+	hostRecv	: out AxisType;				--! Host reply stream
+	hostRecvReady	: in std_logic;				--! Host reply stream ready line
 
 	-- AXIS data stream input
 	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
-	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	dataIn		: in AxisDataStreamType;		--! Raw data input stream
+	dataInReady	: out std_logic;			--! Raw data input ready
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
@@ -81,8 +84,9 @@ architecture Behavioral of NvmeStorage is
 
 component NvmeStorageUnit is
 generic(
-	Simulate	: boolean	:= False;		--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns			--! Clock period for timers (125 MHz)
+	Simulate	: boolean	:= Simulate;		--! Generate simulation core
+	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -93,11 +97,12 @@ port (
 	axilOut		: out AxilToMasterType;			--! Axil bus output signals
 
 	-- From host to NVMe request/reply streams
-	hostSend	: inout AxisStreamType := AxisInput;	--! Host request stream
-	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
+	hostSend	: inout AxisStreamType := AxisStreamInput;	--! Host request stream
+	hostRecv	: inout AxisStreamType := AxisStreamOutput;	--! Host reply stream
 
 	-- AXIS data stream input
-	--dataRx	: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
+	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
@@ -111,10 +116,24 @@ port (
 	-- Debug
 	leds		: out std_logic_vector(3 downto 0)
 );
-end;
-constant TCQ			: time := 1 ns;
+end component;
+
+constant TCQ		: time := 1 ns;
+
+signal dataIn1		: AxisStreamType := AxisStreamOutput;
+signal hostSend1	: AxisStreamType;
+signal hostRecv1	: AxisStreamType;
 
 begin
+	-- Connect to local Axis stream style
+	dataInReady	<= dataIn1.ready;
+	dataIn1.valid	<= dataIn.valid;
+	dataIn1.last	<= dataIn.last;
+	dataIn1.data	<= dataIn.data;
+	
+	axisConnect(hostSend1, hostSend, hostSendReady);
+	axisConnect(hostRecv, hostRecvReady, hostRecv1);
+	
 	NvmeStorageUnit0 : NvmeStorageUnit
 	port map (
 		clk		=> clk,
@@ -123,8 +142,11 @@ begin
 		axilIn		=> axilIn,
 		axilOut		=> axilOut,
 
-		hostSend	=> hostSend,
-		hostRecv	=> hostRecv,
+		hostSend	=> hostSend1,
+		hostRecv	=> hostRecv1,
+		
+		dataEnabledOut	=> dataEnabledOut,
+		dataIn		=> dataIn1,
 
 		-- NVMe interface
 		nvme_clk_p	=> nvme_clk_p,

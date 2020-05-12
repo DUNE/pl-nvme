@@ -32,16 +32,16 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	streamIn	: inout AxisStreamType := AxisInput;	--! Request queue entries
-	streamOut	: inout AxisStreamType := AxisOutput	--! replies and requests
+	streamIn	: inout AxisStreamType := AxisStreamInput;	--! Request queue entries
+	streamOut	: inout AxisStreamType := AxisStreamOutput	--! replies and requests
 );
 end component;
 
 signal clk		: std_logic := '0';
 signal reset		: std_logic := '0';
 
-signal hostReq		: AxisStreamType := AxisOutput;
-signal hostReply	: AxisStreamType := AxisInput;
+signal hostReq		: AxisStreamType := AxisStreamOutput;
+signal hostReply	: AxisStreamType := AxisStreamInput;
 
 begin
 	NvmeQueues0 : NvmeQueues

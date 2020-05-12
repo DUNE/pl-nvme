@@ -37,25 +37,25 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	hostRequestIn	: inout AxisStream := AxisInput;	--! Request queue entries
+	hostRequestIn	: inout AxisStream := AxisStreamInput;	--! Request queue entries
 	hostRequestPos	: out unsigned(log2(NumQueueEntries)-1 downto 0);		--! Current queue position for last request queue entry
 
-	hostReplyOut	: inout AxisStream := AxisOutput;	--! Replies
+	hostReplyOut	: inout AxisStream := AxisStreamOutput;	--! Replies
 	hostReplyPos	: out unsigned(log2(NumQueueEntries)-1 downto 0);		--! Current queue position for last reply queue entry
 	
 	-- Nvme read/write data interface
-	nvmeRequestIn	: inout AxisStream := AxisInput;	--! Nvme Request queue entries
-	nvmeReplyOut	: inout AxisStream := AxisOutput	--! Nvme Replies
+	nvmeRequestIn	: inout AxisStream := AxisStreamInput;	--! Nvme Request queue entries
+	nvmeReplyOut	: inout AxisStream := AxisStreamOutput	--! Nvme Replies
 );
 end component;
 
 signal clk		: std_logic := '0';
 signal reset		: std_logic := '0';
 
-signal hostReq		: AxisStream	:= AxisOutput;
-signal hostReply	: AxisStream	:= AxisInput;
-signal nvmeReq		: AxisStream	:= AxisOutput;
-signal nvmeReply	: AxisStream	:= AxisInput;
+signal hostReq		: AxisStream	:= AxisStreamOutput;
+signal hostReply	: AxisStream	:= AxisStreamInput;
+signal nvmeReq		: AxisStream	:= AxisStreamOutput;
+signal nvmeReply	: AxisStream	:= AxisStreamInput;
 
 signal hostReqPos	: unsigned(log2(NumQueueEntries)-1 downto 0);
 signal hostReplyPos	: unsigned(log2(NumQueueEntries)-1 downto 0);

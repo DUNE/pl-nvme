@@ -1,11 +1,11 @@
 [*]
 [*] GTKWave Analyzer v3.3.105 (w)1999-2020 BSI
-[*] Mon May 11 08:30:32 2020
+[*] Tue May 12 05:22:50 2020
 [*]
-[dumpfile] "/src/dune/FpgaPlay/test028-nvmewrite/sim/simu/test.ghw"
-[dumpfile_mtime] "Mon May 11 08:28:11 2020"
+[dumpfile] "/src/dune/FpgaPlay/test029-nvmewrite/sim/simu/test.ghw"
+[dumpfile_mtime] "Tue May 12 05:20:48 2020"
 [dumpfile_size] 1563035
-[savefile] "/src/dune/FpgaPlay/test028-nvmewrite/sim/testbench/test019-write.sav"
+[savefile] "/src/dune/FpgaPlay/test029-nvmewrite/sim/testbench/test019-write.sav"
 [timestart] 2705500000
 [size] 1920 1171
 [pos] -1 -1

@@ -33,7 +33,7 @@ port (
 	enable		: in std_logic;				--! Enable production of data
 
 	-- AXIS data output
-	dataStream	: inout AxisStream := AxisOutput	--! Output data stream
+	dataStream	: inout AxisStream := AxisStreamOutput	--! Output data stream
 );
 end component;
 
@@ -43,7 +43,7 @@ signal clk		: std_logic := '0';
 signal reset		: std_logic := '0';
 
 signal enable		: std_logic := '0';
-signal dataStream	: AxisStream	:= AxisInput;
+signal dataStream	: AxisStream	:= AxisStreamInput;
 
 begin
 	testData0 : TestData

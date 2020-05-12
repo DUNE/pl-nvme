@@ -35,7 +35,6 @@ use work.NvmeStoragePkg.all;
 
 package NvmeStorageIntPkg is
 	--! System constants
-	constant NvmeStorageBlockSize	: integer := 4096;	--! System block size
 	constant NvmeQueueNum		: integer := 16;	--! The number of queue entries. Has to be greater than NvmeWriteNum
 	constant NvmeWriteNum		: integer := 8;		--! The number of concurrent data write's.
 	constant PcieMaxPayloadSize	: integer := 32;	--! The maximum Pcie packet size in 32bit DWords
@@ -52,6 +51,32 @@ package NvmeStorageIntPkg is
 	function truncate(v: unsigned; n: integer) return unsigned;
 	function keepBits(numWords: unsigned) return std_logic_vector;
 	function keepBits(numWords: integer) return std_logic_vector;
+
+	--! AXI Stream interface
+	--! This implemtation of Axis makes it easy to pass and manipulate streams in VHDL. It's not not nice as it uses inout
+	--! to acheive this as VHDL is very limited when using records especialy as module in's and out's.
+	--! However this scheme simplifies the code syntax a lot at the expense of less in/out validation in initial compilation stages.
+	constant AxisStreamDataWidth	: integer := 128;
+	constant AxisStreamKeepWidth	: integer := 4;
+
+	type AxisStreamType is record
+		ready		: std_logic;
+		valid		: std_logic;
+		last		: std_logic;
+		data		: std_logic_vector(AxisStreamDataWidth-1 downto 0);
+		keep		: std_logic_vector(AxisStreamKeepWidth-1 downto 0);
+	end record;
+
+	constant AxisStreamInput	: AxisStreamType := ('0', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
+	constant AxisStreamOutput	: AxisStreamType := ('Z', '0', '0', (others => '0'), (others => '0'));
+	constant AxisStreamInOut	: AxisStreamType := ('Z', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
+	constant AxisStreamSink		: AxisStreamType := ('1', 'Z', 'Z', (others => 'Z'), (others => 'Z'));
+	type AxisStreamArrayType is array (natural range <>) of AxisStreamType;
+
+	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: inout AxisStreamType);
+	procedure axisConnect(signal streamOut: out AxisType; signal ready: in std_logic; signal streamIn: inout AxisStreamType);
+	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: in AxisType; signal ready: out std_logic);
+	
 
 	--! PCIe request packet head
 	type PcieRequestHeadType is record
@@ -169,13 +194,13 @@ package body NvmeStorageIntPkg is
 	function keepBits(numWords: unsigned) return std_logic_vector is
 	begin
 		if(numWords >= 4) then
-			return concat('1', 16);
+			return concat('1', 4);
 		elsif(numWords = 3) then
-			return concat('0', 4) & concat('1', 12);
+			return concat('0', 1) & concat('1', 3);
 		elsif(numWords = 2) then
-			return concat('0', 8) & concat('1', 8);
+			return concat('0', 2) & concat('1', 2);
 		else
-			return concat('0', 12) & concat('1', 4);
+			return concat('0', 3) & concat('1', 1);
 		end if;
 	end function;
 
@@ -183,15 +208,50 @@ package body NvmeStorageIntPkg is
 	function keepBits(numWords: integer) return std_logic_vector is
 	begin
 		if(numWords >= 4) then
-			return concat('1', 16);
+			return concat('1', 4);
 		elsif(numWords = 3) then
-			return concat('0', 4) & concat('1', 12);
+			return concat('0', 1) & concat('1', 3);
 		elsif(numWords = 2) then
-			return concat('0', 8) & concat('1', 8);
+			return concat('0', 2) & concat('1', 2);
 		else
-			return concat('0', 12) & concat('1', 4);
+			return concat('0', 3) & concat('1', 1);
 		end if;
 	end function;
+
+	
+	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: inout AxisStreamType) is
+	begin
+		streamIn	<= AxisStreamInOut;
+		streamOut	<= AxisStreamInOut;
+		
+		streamIn.ready	<= streamOut.ready;
+		streamOut.valid	<= streamIn.valid;
+		streamOut.last	<= streamIn.last;
+		streamOut.keep	<= streamIn.keep;
+		streamOut.data	<= streamIn.data;
+	end procedure;
+
+	procedure axisConnect(signal streamOut: out AxisType; signal ready: in std_logic; signal streamIn: inout AxisStreamType) is
+	begin
+		streamIn	<= AxisStreamInOut;
+		
+		streamIn.ready	<= ready;
+		streamOut.valid	<= streamIn.valid;
+		streamOut.last	<= streamIn.last;
+		streamOut.keep	<= concat(streamIn.keep(3), 4) & concat(streamIn.keep(2), 4) & concat(streamIn.keep(1), 4) & concat(streamIn.keep(0), 4);
+		streamOut.data	<= streamIn.data;
+	end procedure;
+
+	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: in AxisType; signal ready: out std_logic) is
+	begin
+		streamOut	<= AxisStreamInOut;
+		
+		ready	<= streamOut.ready;
+		streamOut.valid	<= streamIn.valid;
+		streamOut.last	<= streamIn.last;
+		streamOut.keep	<= streamIn.keep(12) & streamIn.keep(8) & streamIn.keep(4) & streamIn.keep(0);
+		streamOut.data	<= streamIn.data;
+	end procedure;
 
 
 	function to_stl(v: PcieRequestHeadType) return std_logic_vector is

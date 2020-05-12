@@ -53,8 +53,8 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	streamIn	: inout AxisArrayType(0 to NumStreams-1) := (others => AxisInput);	--! Input stream
-	streamOut	: inout AxisArrayType(0 to NumStreams-1) := (others => AxisOutput)	--! Output stream
+	streamIn	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamInput);	--! Input stream
+	streamOut	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamOutput)	--! Output stream
 );
 end;
 

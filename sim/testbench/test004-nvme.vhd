@@ -29,12 +29,12 @@ port (
 	reset		: in std_logic;
 
 	-- AXIS Interface to PCIE
-	hostReq		: inout AxisStream	:= AxisInput;
-	hostReply	: inout AxisStream	:= AxisOutput;                        
+	hostReq		: inout AxisStream	:= AxisStreamInput;
+	hostReply	: inout AxisStream	:= AxisStreamOutput;                        
 	
 	-- From Nvme reqeuest and reply stream
-	nvmeReq		: inout AxisStream	:= AxisOutput;
-	nvmeReply	: inout AxisStream	:= AxisInput
+	nvmeReq		: inout AxisStream	:= AxisStreamOutput;
+	nvmeReply	: inout AxisStream	:= AxisStreamInput
 );
 end component;
 
@@ -43,10 +43,10 @@ constant TCQ		: time := 1 ns;
 signal clk		: std_logic := '0';
 signal reset		: std_logic := '0';
 
-signal hostReply	: AxisStream	:= AxisInput;
-signal hostReq		: AxisStream	:= AxisOutput;
-signal nvmeReq		: AxisStream	:= AxisOutput;
-signal nvmeReply	: AxisStream	:= AxisInput;
+signal hostReply	: AxisStream	:= AxisStreamInput;
+signal hostReq		: AxisStream	:= AxisStreamOutput;
+signal nvmeReq		: AxisStream	:= AxisStreamOutput;
+signal nvmeReply	: AxisStream	:= AxisStreamInput;
 
 function toStdLogicVector(v: integer; b: integer) return std_logic_vector is
 begin

@@ -55,12 +55,12 @@ port (
 	axilOut		: out AxilToMasterType;			--! Axil bus output signals
 
 	-- From host to NVMe request/reply streams
-	hostSend	: inout AxisStreamType := AxisInput;	--! Host request stream
-	hostRecv	: inout AxisStreamType := AxisOutput;	--! Host reply stream
+	hostSend	: inout AxisStreamType := AxisStreamInput;	--! Host request stream
+	hostRecv	: inout AxisStreamType := AxisStreamOutput;	--! Host reply stream
 
 	-- AXIS data stream input
 	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
-	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
@@ -110,11 +110,11 @@ generic(
 port (
 	clkRx		: in std_logic;
 	resetRx		: in std_logic;
-	streamRx	: inout AxisStreamType := AxisInput;                        
+	streamRx	: inout AxisStreamType := AxisStreamInput;                        
 
 	clkTx		: in std_logic;
 	resetTx		: in std_logic;
-	streamTx	: inout AxisStreamType := AxisOutput
+	streamTx	: inout AxisStreamType := AxisStreamOutput
 );
 end component;
 
@@ -233,8 +233,8 @@ port (
 	configComplete	: out std_logic;			--! Initialisation is complete
 
 	-- From host to NVMe request/reply streams
-	streamOut	: inout AxisStreamType := AxisOutput;	--! Nvme request stream
-	streamIn	: inout AxisStreamType := AxisInput	--! Nvme reply stream
+	streamOut	: inout AxisStreamType := AxisStreamOutput;	--! Nvme request stream
+	streamIn	: inout AxisStreamType := AxisStreamInput	--! Nvme reply stream
 );
 end component;
 
@@ -247,8 +247,8 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	streamIn	: inout AxisStreamType := AxisInput;	--! Request queue entries
-	streamOut	: inout AxisStreamType := AxisOutput	--! replies and requests
+	streamIn	: inout AxisStreamType := AxisStreamInput;	--! Request queue entries
+	streamOut	: inout AxisStreamType := AxisStreamOutput	--! replies and requests
 );
 end component;
 
@@ -257,14 +257,14 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	stream1In	: inout AxisStreamType := AxisInput;	--! Single multiplexed Input stream
-	stream1Out	: inout AxisStreamType := AxisOutput;	--! Single multiplexed Ouput stream
+	stream1In	: inout AxisStreamType := AxisStreamInput;	--! Single multiplexed Input stream
+	stream1Out	: inout AxisStreamType := AxisStreamOutput;	--! Single multiplexed Ouput stream
 
-	stream2Out	: inout AxisStreamType := AxisOutput;	--! Host Requests output stream
-	stream2In	: inout AxisStreamType := AxisInput;	--! Host Replies input stream
+	stream2Out	: inout AxisStreamType := AxisStreamOutput;	--! Host Requests output stream
+	stream2In	: inout AxisStreamType := AxisStreamInput;	--! Host Replies input stream
 
-	stream3In	: inout AxisStreamType := AxisInput;	--! Nvme Requests input stream
-	stream3Out	: inout AxisStreamType := AxisOutput	--! Nvme replies output stream
+	stream3In	: inout AxisStreamType := AxisStreamInput;	--! Nvme Requests input stream
+	stream3Out	: inout AxisStreamType := AxisStreamOutput	--! Nvme replies output stream
 );
 end component;
 
@@ -278,12 +278,12 @@ port (
 	reset		: in std_logic;
 
 	-- AXIS Interface to PCIE
-	hostReq		: inout AxisStreamType := AxisInput;
-	hostReply	: inout AxisStreamType := AxisOutput;                        
+	hostReq		: inout AxisStreamType := AxisStreamInput;
+	hostReply	: inout AxisStreamType := AxisStreamOutput;                        
 	
 	-- From Nvme reqeuest and reply stream
-	nvmeReq		: inout AxisStreamType := AxisOutput;
-	nvmeReply	: inout AxisStreamType := AxisInput
+	nvmeReq		: inout AxisStreamType := AxisStreamOutput;
+	nvmeReply	: inout AxisStreamType := AxisStreamInput
 );
 end component;
 
@@ -295,8 +295,8 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	streamIn	: inout AxisArrayType(0 to NumStreams-1) := (others => AxisInput);	--! Input stream
-	streamOut	: inout AxisArrayType(0 to NumStreams-1) := (others => AxisOutput)	--! Output stream
+	streamIn	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamInput);	--! Input stream
+	streamOut	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamOutput)	--! Output stream
 );
 end component;
 
@@ -311,15 +311,15 @@ port (
 	reset		: in std_logic;				--! The active high reset line
 
 	enable		: in std_logic;				--! Enable the data writing process
-	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
 	-- To Nvme Request/reply streams
-	requestOut	: inout AxisStreamType := AxisOutput;	--! To Nvme request stream (3)
-	replyIn		: inout AxisStreamType := AxisInput;	--! from Nvme reply stream
+	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
+	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
 
 	-- From Nvme Request/reply streams
-	memReqIn	: inout AxisStreamType := AxisInput;	--! From Nvme request stream (4)
-	memReplyOut	: inout AxisStreamType := AxisOutput;	--! To Nvme reply stream
+	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream (4)
+	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
 	
 	regWrite	: in std_logic;				--! Enable write to register
 	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
@@ -337,8 +337,8 @@ signal axil1Out			: AxilToMasterType;
 signal axil1In			: AxilToSlaveType;
 
 -- Streams
-signal streamSend		: AxisArrayType(0 to NumStreams-1);
-signal streamRecv		: AxisArrayType(0 to NumStreams-1);
+signal streamSend		: AxisStreamArrayType(0 to NumStreams-1);
+signal streamRecv		: AxisStreamArrayType(0 to NumStreams-1);
 
 alias nvmeSend			is streamSend(0);
 alias nvmeRecv			is streamRecv(0);
@@ -354,26 +354,22 @@ alias writeMemSend		is streamSend(5);
 alias writeMemRecv		is streamRecv(5);
 
 signal dataIn1			: AxisStreamType;
-signal streamNone		: AxisStreamType := AxisOutput;
-signal streamSink		: AxisStreamType := AxisSink;
+signal streamNone		: AxisStreamType := AxisStreamOutput;
+signal streamSink		: AxisStreamType := AxisStreamSink;
 
 -- Nvme PCIe interface
 signal hostReq			: AxisStreamType;
 signal hostReq_ready		: std_logic_vector(3 downto 0);
 signal hostReq_morethan1	: std_logic;
 signal hostReq_user		: std_logic_vector(59 downto 0);
-signal hostReq_keep		: std_logic_vector(3 downto 0);
 
 signal hostReply		: AxisStreamType;
-signal hostReply_keep		: std_logic_vector(3 downto 0);
 
 signal nvmeReq			: AxisStreamType;
-signal nvmeReq_keep		: std_logic_vector(3 downto 0);
 
 signal nvmeReply		: AxisStreamType;
 signal nvmeReply_ready		: std_logic_vector(3 downto 0);
 signal nvmeReply_user		: std_logic_vector(32 downto 0);
-signal nvmeReply_keep		: std_logic_vector(3 downto 0);
 
 -- Register interface
 constant RegWidth		: integer := 32;
@@ -413,9 +409,9 @@ signal cfg_mgmt_read_data		: std_logic_vector(31 downto 0);
 signal cfg_mgmt_read_write_done		: std_logic;
 signal cfg_mgmt_type1_cfg_reg_access	: std_logic;
 
-signal dummy1			: AxisStreamType := AxisInput;
-signal dummy2			: AxisStreamType := AxisOutput;
-signal dummy3			: AxisStreamType := AxisOutput;
+signal dummy1			: AxisStreamType := AxisStreamInput;
+signal dummy2			: AxisStreamType := AxisStreamOutput;
+signal dummy3			: AxisStreamType := AxisStreamOutput;
 
 
 begin
@@ -656,29 +652,28 @@ begin
 		user_lnk_up		=> leds(1),
 
 		s_axis_rq_tdata		=> hostReq.data,
-		--s_axis_rq_tkeep	=> hostReq.keep(1 downto 0),
-		s_axis_rq_tkeep		=> hostReq_keep,
+		s_axis_rq_tkeep		=> hostReq.keep,
 		s_axis_rq_tlast		=> hostReq.last,
 		s_axis_rq_tready	=> hostReq_ready,
 		s_axis_rq_tuser		=> hostReq_user,
 		s_axis_rq_tvalid	=> hostReq.valid,
 		
 		m_axis_rc_tdata		=> hostReply.data,
-		m_axis_rc_tkeep		=> hostReply_keep,
+		m_axis_rc_tkeep		=> hostReply.keep,
 		m_axis_rc_tlast		=> hostReply.last,
 		m_axis_rc_tready	=> hostReply.ready,
 		--m_axis_rc_tuser	=> hostReply_user,
 		m_axis_rc_tvalid	=> hostReply.valid,
 		
 		m_axis_cq_tdata		=> nvmeReq.data,
-		m_axis_cq_tkeep		=> nvmeReq_keep,
+		m_axis_cq_tkeep		=> nvmeReq.keep,
 		m_axis_cq_tlast		=> nvmeReq.last,
 		m_axis_cq_tready	=> nvmeReq.ready,
 		--m_axis_cq_tuser	=> nvmeReq_user,
 		m_axis_cq_tvalid	=> nvmeReq.valid,
 		
 		s_axis_cc_tdata		=> nvmeReply.data,
-		s_axis_cc_tkeep		=> nvmeReply_keep,
+		s_axis_cc_tkeep		=> nvmeReply.keep,
 		s_axis_cc_tlast		=> nvmeReply.last,
 		s_axis_cc_tready	=> nvmeReply_ready,
 		s_axis_cc_tuser		=> nvmeReply_user,
@@ -755,15 +750,8 @@ begin
 	hostReq_user <= x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "1111" & "1111" when(hostReq_morethan1 = '1')
 		else x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "0000" & "1111";
 
-	hostReq_keep <= hostReq.keep(12) & hostReq.keep(8) & hostReq.keep(4) & hostReq.keep(0);	-- Indicate which words are present
-
-	hostReply.keep <= concat(hostReply_keep(3), 4) & concat(hostReply_keep(2), 4) & concat(hostReply_keep(1), 4) & concat(hostReply_keep(0), 4);
-	
-	nvmeReq.keep <= concat(nvmeReq_keep(3), 4) & concat(nvmeReq_keep(2), 4) & concat(nvmeReq_keep(1), 4) & concat(nvmeReq_keep(0), 4);
-
 	nvmeReply.ready <= nvmeReply_ready(0) and nvmeReply_ready(1) and nvmeReply_ready(2) and nvmeReply_ready(3);
 	nvmeReply_user <= (others => '0');
-	nvmeReply_keep <= nvmeReply.keep(12) & nvmeReply.keep(8) & nvmeReply.keep(4) & nvmeReply.keep(0);	-- Indicate which words are present
 	
 	cfg_mgmt_addr <= (others => '0');
 	cfg_mgmt_write <= '0';

@@ -35,6 +35,7 @@ use unisim.vcomponents.all;
 
 library work;
 use work.NvmeStoragePkg.all;
+use work.NvmeStorageIntPkg.all;
 
 
 entity AxisClockConverter is
@@ -44,11 +45,11 @@ generic(
 port (
 	clkRx		: in std_logic;
 	resetRx		: in std_logic;
-	streamRx	: inout AxisStreamType := AxisInput;                        
+	streamRx	: inout AxisStreamType := AxisStreamInput;                        
 
 	clkTx		: in std_logic;
 	resetTx		: in std_logic;
-	streamTx	: inout AxisStreamType := AxisOutput
+	streamTx	: inout AxisStreamType := AxisStreamOutput
 );
 end;
 
@@ -78,6 +79,9 @@ constant TCQ		: time := 1 ns;
 signal s_axi_aresetn	: std_logic;
 signal m_axi_aresetn	: std_logic;
 
+signal streamRx_keep	: std_logic_vector(15 downto 0);
+signal streamTx_keep	: std_logic_vector(15 downto 0);
+
 begin
 	sim: if (Simulate = True) generate
 		-- Ignore clock domain crossing for simple simulations
@@ -92,6 +96,9 @@ begin
 		s_axi_aresetn	<= not resetRx;
 		m_axi_aresetn	<= not resetTx;
 
+		streamRx_keep	<= zeros(12) & streamRx.keep;
+		streamTx.keep	<= streamTx_keep(3 downto 0);
+		
 		axis_clock_converter0 : axis_clock_converter
 		port map (
 			s_axis_aclk		=> clkRx,
@@ -99,7 +106,7 @@ begin
 			s_axis_tvalid		=> streamRx.valid,
 			s_axis_tready		=> streamRx.ready,
 			s_axis_tdata		=> streamRx.data,
-			s_axis_tkeep		=> streamRx.keep,
+			s_axis_tkeep		=> streamRx_keep,
 			s_axis_tlast		=> streamRx.last,
 
 			m_axis_aclk		=> clkTx,
@@ -107,7 +114,7 @@ begin
 			m_axis_tvalid		=> streamTx.valid,
 			m_axis_tready		=> streamTx.ready,
 			m_axis_tdata		=> streamTx.data,
-			m_axis_tkeep		=> streamTx.keep,
+			m_axis_tkeep		=> streamTx_keep,
 			m_axis_tlast		=> streamTx.last
 		);
 	end generate;

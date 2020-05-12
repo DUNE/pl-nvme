@@ -47,15 +47,15 @@ port (
 	reset		: in std_logic;				--! The active high reset line
 
 	enable		: in std_logic;				--! Enable the data writing process
-	dataIn		: inout AxisStreamType := AxisInput;	--! Raw data to save stream
+	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
 	-- To Nvme Request/reply streams
-	requestOut	: inout AxisStreamType := AxisOutput;	--! To Nvme request stream (3)
-	replyIn		: inout AxisStreamType := AxisInput;	--! from Nvme reply stream
+	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
+	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
 
 	-- From Nvme Request/reply streams
-	memReqIn	: inout AxisStreamType := AxisInput;	--! From Nvme request stream (4)
-	memReplyOut	: inout AxisStreamType := AxisOutput;	--! To Nvme reply stream
+	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream (4)
+	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
 	
 	regAddress	: in unsigned(1 downto 0);		--! Status register to read
 	regData		: out std_logic_vector(31 downto 0)	--! Status register contents
@@ -88,8 +88,8 @@ port (
 	full		: out std_logic;			--! The fifo is full (Has Fifo size words)
 	empty		: out std_logic;			--! The fifo is empty
 
-	dataIn		: inout AxisStreamType := AxisInput;	--! Input data stream
-	dataOut		: inout AxisStreamType := AxisOutput	--! Output data stream
+	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Input data stream
+	dataOut		: inout AxisStreamType := AxisStreamOutput	--! Output data stream
 );
 end component;
 

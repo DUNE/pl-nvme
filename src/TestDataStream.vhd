@@ -1,19 +1,20 @@
 --------------------------------------------------------------------------------
--- TestData.vhd Simple AXIS test data source
+--	TestDataStream.vhd Simple AXIS test data source
+--	T.Barnaby, Beam Ltd. 2020-04-07
 -------------------------------------------------------------------------------
 --!
---! @class	TestData
+--! @class	TestDataStream
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
---! @date	2020-05-12
---! @version	0.5.1
+--! @date	2020-04-07
+--! @version	0.0.1
 --!
 --! @brief
 --! This module provides a simple test data source for testing the NvmeStorage system.
 --!
 --! @details
---! This module provides a sequence of 32bit incrementing values over a n bit wide AXI4 stream (multiple of 32 bits).
---! It sets the AXI4 streams last signal in the last word transfer of a configurable BlockSize block of data.
---! the enable signal enables its operation and when set to 0 clears its state back to intial reset state.
+--! This module provides a sequence of 32bit incrementing values over a 128 bit wide AXI stream.
+--! It sets the Axi streams last signal in the last word transfer of a configurable BlockSize block of data.
+--! the enable signal enables it's operation and when set to 0 clears its state back to intial reset state.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -39,7 +40,7 @@ library work;
 use work.NvmeStoragePkg.all;
 use work.NvmeStorageIntPkg.all;
 
-entity TestData is
+entity TestDataStream is
 generic(
 	BlockSize	: integer := NvmeStorageBlockSize	--! The block size in Bytes.
 );
@@ -51,37 +52,23 @@ port (
 	enable		: in std_logic;				--! Enable production of data. Clears to reset state when set to 0.
 
 	-- AXIS data output
-	dataOut		: out AxisDataStreamType;		--! Output data stream
-	dataOutReady	: in std_logic				--! Ready signal for output data stream
+	dataOut		: inout AxisStreamType := AxisStreamOutput	--! Output data stream
 );
 end;
 
-architecture Behavioral of TestData is
+architecture Behavioral of TestDataStream is
 
 constant TCQ		: time := 1 ns;
-constant DataWidth	: integer := dataOut.data'length;	-- The bit width of the data stream
-constant BytesPerWord	: integer := (DataWidth / 8);		-- Number of bytes per Axis data word
+constant BytesPerWord	: integer := 16;	-- Number of bytes per Axis data word
 
-signal dataValid	: std_logic := '0';
 signal data		: unsigned(31 downto 0) := (others => '0');
 signal countBlock	: unsigned(log2(BlockSize/BytesPerWord)-1 downto 0) := (others => '0');
 
--- Produce the next DataWidth item
-function dataValue(v: unsigned) return std_logic_vector is
-variable ret: std_logic_vector(DataWidth-1 downto 0);
-begin
-	for i in 0 to (DataWidth/32)-1 loop
-		ret((i*32)+31 downto (i*32)) := std_logic_vector(v + i);
-	end loop;
-	
-	return ret;
-end;
-
 begin
 	-- Output incrementing data stream
-	dataOut.valid	<= dataValid;
-	dataOut.data	<= dataValue(data);
-	dataOut.last	<= '1' when(countBlock = (BlockSize/BytesPerWord) - 1) else '0';
+	dataOut.data <= std_logic_vector((data + 3) & (data + 2) & (data + 1) & data);
+	dataOut.keep <= ones(dataOut.keep'length);
+	dataOut.last <= '1' when(countBlock = (BlockSize/BytesPerWord) - 1) else '0';
 		
 	-- Generate data stream
 	process(clk)
@@ -90,18 +77,18 @@ begin
 			if(reset = '1') then
 				data		<= (others => '0');
 				countBlock	<= (others => '0');
-				dataValid	<= '0';
+				dataOut.valid	<= '0';
 			else
 				if(enable = '1') then
-					dataValid <= '1';
-					if((dataValid = '1') and (dataOutReady = '1')) then
+					dataOut.valid <= '1';
+					if((dataOut.valid = '1') and (dataOut.ready = '1')) then
 						data		<= data + 4;
 						countBlock	<= countBlock + 1;
 					end if;
 				else
 					data		<= (others => '0');
 					countBlock	<= (others => '0');
-					dataValid	<= '0';
+					dataOut.valid	<= '0';
 				end if;
 			end if;
 		end if;
