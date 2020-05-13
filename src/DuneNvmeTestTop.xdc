@@ -71,11 +71,46 @@ set_property PACKAGE_PIN M22 [get_ports {leds[5]}]
 set_property PACKAGE_PIN R23 [get_ports {leds[6]}]
 set_property PACKAGE_PIN P23 [get_ports {leds[7]}]
 
-# PCIe Nvme0 interface
+# PCie Nvme interfaces
 set_property PACKAGE_PIN H11 [get_ports nvme_reset_n]
-set_property PULLUP true [get_ports nvme_reset_n]
 set_property IOSTANDARD LVCMOS18 [get_ports nvme_reset_n]
-#set_property LOC GTHE3_COMMON_X0Y1 [get_cells nvme_clk_buf0]
-
 set_property PACKAGE_PIN K6 [get_ports {nvme_clk_p}]
 set_property PACKAGE_PIN K5 [get_ports {nvme_clk_n}]
+#set_property LOC GTHE3_COMMON_X0Y1 [get_cells nvme_clk_buf0]
+
+# PCIe Nvme0 interface
+set_property LOC GTHE3_CHANNEL_X0Y16 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST}]
+set_property LOC GTHE3_CHANNEL_X0Y17 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*gen_gthe3_channel_inst[1].GTHE3_CHANNEL_PRIM_INST}]
+set_property LOC GTHE3_CHANNEL_X0Y18 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*gen_gthe3_channel_inst[2].GTHE3_CHANNEL_PRIM_INST}]
+set_property LOC GTHE3_CHANNEL_X0Y19 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*gen_gthe3_channel_inst[3].GTHE3_CHANNEL_PRIM_INST}]
+
+set_property LOC PCIE_3_1_X0Y2 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst}]
+set_property LOC RAMB36_X8Y57 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_rep_inst/bram_rep_8k_inst/RAMB36E2[0].ramb36e2_inst}]
+set_property LOC RAMB36_X8Y58 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_rep_inst/bram_rep_8k_inst/RAMB36E2[1].ramb36e2_inst}]
+set_property LOC RAMB18_X8Y98 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_req_inst/bram_req_8k_inst/RAMB18E2[0].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y99 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_req_inst/bram_req_8k_inst/RAMB18E2[1].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y100 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_req_inst/bram_req_8k_inst/RAMB18E2[2].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y101 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_req_inst/bram_req_8k_inst/RAMB18E2[3].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y104 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[0].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y105 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[1].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y106 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[2].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y107 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[3].ramb18e2_inst}]
+
+
+# PCIe Nvme1 interface
+set_property LOC GTHE3_CHANNEL_X0Y12 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST}]
+set_property LOC GTHE3_CHANNEL_X0Y14 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*gen_gthe3_channel_inst[1].GTHE3_CHANNEL_PRIM_INST}]
+set_property LOC GTHE3_CHANNEL_X0Y13 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*gen_gthe3_channel_inst[2].GTHE3_CHANNEL_PRIM_INST}]
+set_property LOC GTHE3_CHANNEL_X0Y15 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*gen_gthe3_channel_inst[3].GTHE3_CHANNEL_PRIM_INST}]
+
+set_property LOC PCIE_3_1_X0Y1 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst}]
+set_property LOC RAMB36_X8Y45 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_rep_inst/bram_rep_8k_inst/RAMB36E2[0].ramb36e2_inst}]
+set_property LOC RAMB36_X8Y46 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_rep_inst/bram_rep_8k_inst/RAMB36E2[1].ramb36e2_inst}]
+set_property LOC RAMB18_X8Y74 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_req_inst/bram_req_8k_inst/RAMB18E2[0].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y75 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_req_inst/bram_req_8k_inst/RAMB18E2[1].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y76 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_req_inst/bram_req_8k_inst/RAMB18E2[2].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y77 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_req_inst/bram_req_8k_inst/RAMB18E2[3].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y80 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[0].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y81 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[1].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y82 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[2].ramb18e2_inst}]
+set_property LOC RAMB18_X8Y83 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[3].ramb18e2_inst}]

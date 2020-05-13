@@ -42,12 +42,12 @@ port (
 	hostRecv	: inout AxisStreamType := AxisStreamOutput;	--! Host reply stream
 
 	-- AXIS data stream input
-	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
+	dataEnabledOut	: out std_logic;				--! Indicates that data ingest is enabled
 	dataIn		: inout AxisStreamType	:= AxisStreamInput;	--! Raw data to save stream
 
 	-- NVMe interface
-	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
-	nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
+	nvme_clk	: in std_logic;				--! Nvme external clock
+	nvme_clk_gt	: in std_logic;				--! Nvme external GT clock
 	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
 	nvme_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme PCIe TX plus lanes
 	nvme_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme PCIe TX minus lanes
@@ -55,11 +55,11 @@ port (
 	nvme_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme PCIe RX minus lanes
 
 	-- Debug
-	leds		: out std_logic_vector(3 downto 0)
+	leds		: out std_logic_vector(2 downto 0)
 );
 end component;
 
-component TestData is
+component TestDataStream is
 generic(
 	BlockSize	: integer := BlockSize			--! The block size in Bytes.
 );
@@ -101,13 +101,13 @@ signal axil		: AxilBusType;
 signal hostSend		: AxisStreamType := AxisStreamOutput;
 signal hostRecv		: AxisStreamType := AxisStreamInput;
 
-signal leds		: std_logic_vector(3 downto 0);
+signal leds		: std_logic_vector(2 downto 0);
 
 signal hostReply	: AxisStreamType := AxisStreamInput;
 signal hostReq		: AxisStreamType := AxisStreamOutput;
 signal nvmeReq		: AxisStreamType := AxisStreamInput;
 signal nvmeReply	: AxisStreamType := AxisStreamOutput;
-signal testDataStream	: AxisStreamType;
+signal dataStream	: AxisStreamType;
 
 type NvmeStateType is (NVME_STATE_IDLE, NVME_STATE_WRITEDATA, NVME_STATE_READHEAD, NVME_STATE_READDATA);
 signal nvmeState	: NvmeStateType := NVME_STATE_IDLE;
@@ -135,11 +135,11 @@ begin
 		hostSend	=> hostSend,
 		hostRecv	=> hostRecv,
 		
-		dataIn		=> testDataStream,
+		dataIn		=> dataStream,
 
 		-- NVMe interface
-		nvme_clk_p	=> '0',
-		nvme_clk_n	=> '0',
+		nvme_clk	=> '0',
+		nvme_clk_gt	=> '0',
 		--nvme_exp_txp	: out std_logic_vector(0 downto 0);
 		--nvme_exp_txn	: out std_logic_vector(0 downto 0);
 		nvme_exp_rxp	=> "0000",
@@ -225,14 +225,14 @@ begin
 	end process;
 	
 	-- The test data interface
-	testData0 : TestData
+	testData0 : TestDataStream
 	port map (
 		clk		=> clk,
 		reset		=> reset,
 
 		enable		=> sendData,
 
-		dataOut		=> testDataStream
+		dataOut		=> dataStream
 	);	
 
 

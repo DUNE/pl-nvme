@@ -95,7 +95,7 @@ begin
 				if(enable = '1') then
 					dataValid <= '1';
 					if((dataValid = '1') and (dataOutReady = '1')) then
-						data		<= data + 4;
+						data		<= data + (DataWidth / 32);
 						countBlock	<= countBlock + 1;
 					end if;
 				else

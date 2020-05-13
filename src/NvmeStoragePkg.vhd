@@ -93,7 +93,7 @@ package NvmeStoragePkg is
 	constant AxisInit	: AxisType := ('0', '0', (others => '0'), (others => '0'));
 
 	-- Axis data stream
-	constant AxisDataStreamWidth : integer := 128;
+	constant AxisDataStreamWidth : integer := 256;
 
 	type AxisDataStreamType is record
 		valid		: std_logic;
@@ -132,13 +132,19 @@ package NvmeStoragePkg is
 		nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
 		nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
 		nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
+
 		nvme0_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX plus lanes
 		nvme0_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX minus lanes
 		nvme0_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX plus lanes
 		nvme0_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX minus lanes
 
+		nvme1_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX plus lanes
+		nvme1_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX minus lanes
+		nvme1_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme1 PCIe RX plus lanes
+		nvme1_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme1 PCIe RX minus lanes
+
 		-- Debug
-		leds		: out std_logic_vector(3 downto 0)
+		leds		: out std_logic_vector(5 downto 0)
 	);
 	end component;
 	

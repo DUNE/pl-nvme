@@ -199,8 +199,8 @@ port (
 	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
 	-- NVMe interface
-	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
-	nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
+	nvme_clk	: in std_logic;				--! Nvme external clock
+	nvme_clk_gt	: in std_logic;				--! Nvme external GT clock
 	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
 	nvme_exp_txp	: out std_logic_vector(3 downto 0);	--! nvme PCIe TX plus lanes
 	nvme_exp_txn	: out std_logic_vector(3 downto 0);	--! nvme PCIe TX minus lanes
@@ -208,7 +208,7 @@ port (
 	nvme_exp_rxn	: in std_logic_vector(3 downto 0);	--! nvme PCIe RX minus lanes
 
 	-- Debug
-	leds		: out std_logic_vector(3 downto 0)
+	leds		: out std_logic_vector(5 downto 0)
 );
 end component;
 
@@ -235,6 +235,9 @@ signal sys_reset_buf_n		: std_logic := 'U';
 signal pci_clk			: std_logic := 'U';
 signal pci_clk_gt		: std_logic := 'U';
 signal leds_l			: std_logic_vector(7 downto 0) := (others => '0');
+
+signal nvme_clk			: std_logic := 'U';
+signal nvme_clk_gt		: std_logic := 'U';
 
 signal reset_n			: std_logic := '0';
 signal boot_reset		: std_logic := '1';
@@ -434,6 +437,16 @@ begin
 	
 	zap12: if false generate
 	-- NVME Storage interface
+
+	-- NVME PCIE Clock, 100MHz
+	nvme_clk_buf0 : IBUFDS_GTE3
+	port map (
+		I       => nvme_clk_p,
+		IB      => nvme_clk_n,
+		O       => nvme_clk_gt,
+		ODIV2   => nvme_clk,
+		CEB     => '0'
+	);
 	axil_reset <= not axil_reset_n;
 	
 	hostSend.ready	<= '1';
@@ -462,8 +475,8 @@ begin
 		dataIn		=> testDataStream,
 
 		-- NVMe interface
-		nvme_clk_p	=> nvme_clk_p,
-		nvme_clk_n	=> nvme_clk_n,
+		nvme_clk	=> nvme_clk,
+		nvme_clk_gt	=> nvme_clk_gt,
 		nvme_reset_n	=> nvme_reset_n,
 		nvme_exp_txp	=> nvme0_exp_txp,
 		nvme_exp_txn	=> nvme0_exp_txn,

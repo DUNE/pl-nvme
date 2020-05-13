@@ -19,26 +19,28 @@ VIVADO_TARGET	?= "-url study.kingnet:3121 -allow_non_jtag"
 
 # Files for synthesis
 SYN_FILES	= ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd
+SYN_FILES	+= ../src/Ram.vhd
 SYN_FILES	+= ../src/AxilClockConverter.vhd
 SYN_FILES	+= ../src/AxisClockConverter.vhd
 SYN_FILES	+= ../src/NvmeStreamMux.vhd
 SYN_FILES	+= ../src/StreamSwitch.vhd
-SYN_FILES	+= ../src/NvmeConfig.vhd
-SYN_FILES	+= ../src/NvmeQueues.vhd
-SYN_FILES	+= ../src/NvmeStorageUnit.vhd
-SYN_FILES	+= ../src/DuneNvmeTestTop.vhd
-SYN_FILES	+= ../src/TestData.vhd
-SYN_FILES	+= ../src/NvmeWrite.vhd
 SYN_FILES	+= ../src/NvmeSim.vhd
-SYN_FILES	+= ../src/Ram.vhd
+SYN_FILES	+= ../src/NvmeQueues.vhd
+SYN_FILES	+= ../src/NvmeConfig.vhd
+SYN_FILES	+= ../src/NvmeWrite.vhd
+SYN_FILES	+= ../src/NvmeStorageUnit.vhd
 SYN_FILES	+= ../src/NvmeStorage.vhd
+SYN_FILES	+= ../src/TestData.vhd
+SYN_FILES	+= ../src/DuneNvmeTestTop.vhd
 
 # IP cores
 XCI_FILES	= ../src/ip/Clk_core.xci
 XCI_FILES	+= ../src/ip/Pcie_host.xci
 XCI_FILES	+= ../src/ip/Axil_clock_converter.xci
 XCI_FILES	+= ../src/ip/Axis_clock_converter.xci
-XCI_FILES	+= ../src/ip/Pcie_nvme0.xci
+XCI_FILES	+= ../src/ip/Pcie_nvme.xci
+#XCI_FILES	+= ../src/ip/Pcie_nvme0.xci
+#XCI_FILES	+= ../src/ip/Pcie_nvme1.xci
 
 # XDC files
 XDC_FILES	= ../src/DuneNvmeTestTop.xdc

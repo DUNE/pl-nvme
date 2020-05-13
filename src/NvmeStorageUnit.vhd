@@ -43,7 +43,8 @@ entity NvmeStorageUnit is
 generic(
 	Simulate	: boolean	:= False;		--! Generate simulation core
 	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
-	BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
+	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
+	PcieBlock	: integer	:= 0			--! The Pcie hardblock block to use
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -62,16 +63,17 @@ port (
 	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
 	-- NVMe interface
-	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
-	nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
+	nvme_clk	: in std_logic;				--! Nvme external clock
+	nvme_clk_gt	: in std_logic;				--! Nvme external GT clock
 	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
+
 	nvme_exp_txp	: out std_logic_vector(3 downto 0);	--! nvme PCIe TX plus lanes
 	nvme_exp_txn	: out std_logic_vector(3 downto 0);	--! nvme PCIe TX minus lanes
 	nvme_exp_rxp	: in std_logic_vector(3 downto 0);	--! nvme PCIe RX plus lanes
 	nvme_exp_rxn	: in std_logic_vector(3 downto 0);	--! nvme PCIe RX minus lanes
 
 	-- Debug
-	leds		: out std_logic_vector(3 downto 0)
+	leds		: out std_logic_vector(2 downto 0)
 );
 end;
 
@@ -117,107 +119,77 @@ port (
 );
 end component;
 
-component Pcie_nvme0
-	port (
-	pci_exp_txn : out std_logic_vector(3 downto 0);
-	pci_exp_txp : out std_logic_vector(3 downto 0);
-	pci_exp_rxn : in std_logic_vector(3 downto 0);
-	pci_exp_rxp : in std_logic_vector(3 downto 0);
+component Pcie_nvme
+port (
+	pci_exp_txn : out std_logic_vector ( 3 downto 0 );
+	pci_exp_txp : out std_logic_vector ( 3 downto 0 );
+	pci_exp_rxn : in std_logic_vector ( 3 downto 0 );
+	pci_exp_rxp : in std_logic_vector ( 3 downto 0 );
 	user_clk : out std_logic;
 	user_reset : out std_logic;
 	user_lnk_up : out std_logic;
-	s_axis_rq_tdata : in std_logic_vector(127 downto 0);
-	s_axis_rq_tkeep : in std_logic_vector(3 downto 0);
+	s_axis_rq_tdata : in std_logic_vector ( 127 downto 0 );
+	s_axis_rq_tkeep : in std_logic_vector ( 3 downto 0 );
 	s_axis_rq_tlast : in std_logic;
-	s_axis_rq_tready : out std_logic_vector(3 downto 0);
-	s_axis_rq_tuser : in std_logic_vector(59 downto 0);
+	s_axis_rq_tready : out std_logic_vector ( 3 downto 0 );
+	s_axis_rq_tuser : in std_logic_vector ( 59 downto 0 );
 	s_axis_rq_tvalid : in std_logic;
-	
-	m_axis_rc_tdata : out std_logic_vector(127 downto 0);
-	m_axis_rc_tkeep : out std_logic_vector(3 downto 0);
+	m_axis_rc_tdata : out std_logic_vector ( 127 downto 0 );
+	m_axis_rc_tkeep : out std_logic_vector ( 3 downto 0 );
 	m_axis_rc_tlast : out std_logic;
 	m_axis_rc_tready : in std_logic;
-	m_axis_rc_tuser : out std_logic_vector(74 downto 0);
+	m_axis_rc_tuser : out std_logic_vector ( 74 downto 0 );
 	m_axis_rc_tvalid : out std_logic;
-	
-	m_axis_cq_tdata : out std_logic_vector(127 downto 0);
-	m_axis_cq_tkeep : out std_logic_vector(3 downto 0);
+	m_axis_cq_tdata : out std_logic_vector ( 127 downto 0 );
+	m_axis_cq_tkeep : out std_logic_vector ( 3 downto 0 );
 	m_axis_cq_tlast : out std_logic;
 	m_axis_cq_tready : in std_logic;
-	m_axis_cq_tuser : out std_logic_vector(84 downto 0);
+	m_axis_cq_tuser : out std_logic_vector ( 84 downto 0 );
 	m_axis_cq_tvalid : out std_logic;
-	
-	s_axis_cc_tdata : in std_logic_vector(127 downto 0);
-	s_axis_cc_tkeep : in std_logic_vector(3 downto 0);
+	s_axis_cc_tdata : in std_logic_vector ( 127 downto 0 );
+	s_axis_cc_tkeep : in std_logic_vector ( 3 downto 0 );
 	s_axis_cc_tlast : in std_logic;
-	s_axis_cc_tready : out std_logic_vector(3 downto 0);
-	s_axis_cc_tuser : in std_logic_vector(32 downto 0);
+	s_axis_cc_tready : out std_logic_vector ( 3 downto 0 );
+	s_axis_cc_tuser : in std_logic_vector ( 32 downto 0 );
 	s_axis_cc_tvalid : in std_logic;
-	pcie_rq_seq_num : out std_logic_vector(3 downto 0);
-	pcie_rq_seq_num_vld : out std_logic;
-	pcie_rq_tag : out std_logic_vector(5 downto 0);
-	pcie_rq_tag_av : out std_logic_vector(1 downto 0);
-	pcie_rq_tag_vld : out std_logic;
-	pcie_tfc_nph_av : out std_logic_vector(1 downto 0);
-	pcie_tfc_npd_av : out std_logic_vector(1 downto 0);
-	pcie_cq_np_req : in std_logic;
-	pcie_cq_np_req_count : out std_logic_vector(5 downto 0);
-
-	cfg_phy_link_down : out std_logic;
-	cfg_phy_link_status : out std_logic_vector(1 downto 0);
-	cfg_negotiated_width : out std_logic_vector(3 downto 0);
-	cfg_current_speed : out std_logic_vector(2 downto 0);
-	cfg_max_payload : out std_logic_vector(2 downto 0);
-	cfg_max_read_req : out std_logic_vector(2 downto 0);
-	cfg_function_status : out std_logic_vector(15 downto 0);
-	cfg_function_power_state : out std_logic_vector(11 downto 0);
-	cfg_vf_status : out std_logic_vector(15 downto 0);
-	cfg_vf_power_state : out std_logic_vector(23 downto 0);
-	cfg_link_power_state : out std_logic_vector(1 downto 0);
-
-	cfg_mgmt_addr : in std_logic_vector(18 downto 0);
-	cfg_mgmt_write : in std_logic;
-	cfg_mgmt_write_data : in std_logic_vector(31 downto 0);
-	cfg_mgmt_byte_enable : in std_logic_vector(3 downto 0);
-	cfg_mgmt_read : in std_logic;
-	cfg_mgmt_read_data : out std_logic_vector(31 downto 0);
-	cfg_mgmt_read_write_done : out std_logic;
-	cfg_mgmt_type1_cfg_reg_access : in std_logic;
-
-	cfg_err_cor_out : out std_logic;
-	cfg_err_nonfatal_out : out std_logic;
-	cfg_err_fatal_out : out std_logic;
-	cfg_ltr_enable : out std_logic;
-	cfg_ltssm_state : out std_logic_vector(5 downto 0);
-	cfg_rcb_status : out std_logic_vector(3 downto 0);
-	cfg_dpa_substate_change : out std_logic_vector(3 downto 0);
-	cfg_obff_enable : out std_logic_vector(1 downto 0);
-	cfg_pl_status_change : out std_logic;
-	cfg_tph_requester_enable : out std_logic_vector(3 downto 0);
-	cfg_tph_st_mode : out std_logic_vector(11 downto 0);
-	cfg_vf_tph_requester_enable : out std_logic_vector(7 downto 0);
-	cfg_vf_tph_st_mode : out std_logic_vector(23 downto 0);
-	cfg_fc_ph : out std_logic_vector(7 downto 0);
-	cfg_fc_pd : out std_logic_vector(11 downto 0);
-	cfg_fc_nph : out std_logic_vector(7 downto 0);
-	cfg_fc_npd : out std_logic_vector(11 downto 0);
-	cfg_fc_cplh : out std_logic_vector(7 downto 0);
-	cfg_fc_cpld : out std_logic_vector(11 downto 0);
-	cfg_fc_sel : in std_logic_vector(2 downto 0);
-
-	cfg_interrupt_int : in std_logic_vector(3 downto 0);
-	cfg_interrupt_pending : in std_logic_vector(3 downto 0);
+	cfg_interrupt_int : in std_logic_vector ( 3 downto 0 );
+	cfg_interrupt_pending : in std_logic_vector ( 3 downto 0 );
 	cfg_interrupt_sent : out std_logic;
-
 	sys_clk : in std_logic;
 	sys_clk_gt : in std_logic;
 	sys_reset : in std_logic;
-	
-	int_qpll1lock_out : out std_logic_vector(0 to 0);
-	int_qpll1outrefclk_out : out std_logic_vector(0 to 0);
-	int_qpll1outclk_out : out std_logic_vector(0 to 0);
+	int_qpll1lock_out : out std_logic_vector ( 0 to 0 );
+	int_qpll1outrefclk_out : out std_logic_vector ( 0 to 0 );
+	int_qpll1outclk_out : out std_logic_vector ( 0 to 0 );
 	phy_rdy_out : out std_logic
-	);
+);
+end component;
+
+component StreamSwitch is
+generic(
+	NumStreams	: integer	:= NumStreams		--! The number of stream
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+	
+	streamIn	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamInput);	--! Input stream
+	streamOut	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamOutput)	--! Output stream
+);
+end component;
+
+component NvmeQueues is
+generic(
+	NumQueueEntries	: integer	:= NvmeQueueNum;	--! The number of entries per queue
+	Simulate	: boolean	:= False
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+	
+	streamIn	: inout AxisStreamType := AxisStreamInput;	--! Request queue entries
+	streamOut	: inout AxisStreamType := AxisStreamOutput	--! replies and requests
+);
 end component;
 
 component NvmeConfig is
@@ -234,20 +206,6 @@ port (
 	-- From host to NVMe request/reply streams
 	streamOut	: inout AxisStreamType := AxisStreamOutput;	--! Nvme request stream
 	streamIn	: inout AxisStreamType := AxisStreamInput	--! Nvme reply stream
-);
-end component;
-
-component NvmeQueues is
-generic(
-	NumQueueEntries	: integer	:= NvmeQueueNum;	--! The number of entries per queue
-	Simulate	: boolean	:= False
-);
-port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
-	
-	streamIn	: inout AxisStreamType := AxisStreamInput;	--! Request queue entries
-	streamOut	: inout AxisStreamType := AxisStreamOutput	--! replies and requests
 );
 end component;
 
@@ -283,19 +241,6 @@ port (
 	-- From Nvme reqeuest and reply stream
 	nvmeReq		: inout AxisStreamType := AxisStreamOutput;
 	nvmeReply	: inout AxisStreamType := AxisStreamInput
-);
-end component;
-
-component StreamSwitch is
-generic(
-	NumStreams	: integer	:= NumStreams		--! The number of stream
-);
-port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
-	
-	streamIn	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamInput);	--! Input stream
-	streamOut	: inout AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamOutput)	--! Output stream
 );
 end component;
 
@@ -394,8 +339,6 @@ signal writeEnable		: std_logic := 'U';
 
 
 -- Pcie_nvme signals
-signal nvme_clk			: std_logic := 'U';
-signal nvme_clk_gt		: std_logic := 'U';
 signal nvme_reset_local_n	: std_logic := '0';
 signal nvme_user_clk		: std_logic := 'U';
 signal nvme_user_reset		: std_logic := 'U';
@@ -623,18 +566,9 @@ begin
 	end generate;
 	
 	synth: if (Simulate = False) generate
-	-- NVME PCIE Clock, 100MHz
-	nvme_clk_buf0 : IBUFDS_GTE3
-	port map (
-		I       => nvme_clk_p,
-		IB      => nvme_clk_n,
-		O       => nvme_clk_gt,
-		ODIV2   => nvme_clk,
-		CEB     => '0'
-	);
-	
+
 	-- The PCIe to NVMe interface
-	pcie_nvme_0 : Pcie_nvme0
+	pcie_nvme0 : Pcie_nvme
 	port map (
 		sys_clk			=> nvme_clk,
 		sys_clk_gt		=> nvme_clk_gt,
@@ -678,63 +612,9 @@ begin
 		s_axis_cc_tuser		=> nvmeReply_user,
 		s_axis_cc_tvalid	=> nvmeReply.valid,
 
-		--pcie_rq_seq_num		=> pcie_rq_seq_num,
-		--pcie_rq_seq_num_vld		=> pcie_rq_seq_num_vld,
-		--pcie_rq_tag			=> pcie_rq_tag,
-		--pcie_rq_tag_av		=> pcie_rq_tag_av,
-		--pcie_rq_tag_vld		=> pcie_rq_tag_vld,
-		--pcie_tfc_nph_av		=> pcie_tfc_nph_av,
-		--pcie_tfc_npd_av		=> pcie_tfc_npd_av,
-		pcie_cq_np_req			=> '1',					-- ?
-		--pcie_cq_np_req_count		=> pcie_cq_np_req_count,
-
-		--cfg_phy_link_down		=> --cfg_phy_link_down,
-		--cfg_phy_link_status		=> --cfg_phy_link_status,
-		--cfg_negotiated_width		=> --cfg_negotiated_width,
-		--cfg_current_speed		=> --cfg_current_speed,
-		--cfg_max_payload		=> --cfg_max_payload,
-		--cfg_max_read_req		=> --cfg_max_read_req,
-		--cfg_function_status		=> --cfg_function_status,
-		--cfg_function_power_state	=> --cfg_function_power_state,
-		--cfg_vf_status			=> --cfg_vf_status,
-		--cfg_vf_power_state		=> --cfg_vf_power_state,
-		--cfg_link_power_state		=> --cfg_link_power_state,
-
-		cfg_mgmt_addr			=> cfg_mgmt_addr,
-		cfg_mgmt_write			=> cfg_mgmt_write,
-		cfg_mgmt_write_data		=> cfg_mgmt_write_data,
-		cfg_mgmt_byte_enable		=> "1111",
-		cfg_mgmt_read			=> cfg_mgmt_read,
-		cfg_mgmt_read_data		=> cfg_mgmt_read_data,
-		cfg_mgmt_read_write_done	=> cfg_mgmt_read_write_done,
-		cfg_mgmt_type1_cfg_reg_access	=> cfg_mgmt_type1_cfg_reg_access,
-
-		--cfg_err_cor_out		=> --cfg_err_cor_out,
-		--cfg_err_nonfatal_out		=> --cfg_err_nonfatal_out,
-		--cfg_err_fatal_out		=> --cfg_err_fatal_out,
-		--cfg_local_error		=> --cfg_local_error,
-		--cfg_ltr_enable		=> --cfg_ltr_enable,
-		--cfg_ltssm_state		=> --cfg_ltssm_state,
-		--cfg_rcb_status		=> --cfg_rcb_status,
-		--cfg_dpa_substate_change	=> --cfg_dpa_substate_change,
-		--cfg_obff_enable		=> --cfg_obff_enable,
-		--cfg_pl_status_change		=> --cfg_pl_status_change,
-		--cfg_tph_requester_enable	=> --cfg_tph_requester_enable,
-		--cfg_tph_st_mode		=> --cfg_tph_st_mode,
-		--cfg_vf_tph_requester_enable	=> --cfg_vf_tph_requester_enable,
-		--cfg_vf_tph_st_mode		=> --cfg_vf_tph_st_mode,
-		--cfg_fc_ph			=> --cfg_fc_ph,
-		--cfg_fc_pd			=> --cfg_fc_pd,
-		--cfg_fc_nph			=> --cfg_fc_nph,
-		--cfg_fc_npd			=> --cfg_fc_npd,
-		--cfg_fc_cplh			=> --cfg_fc_cplh,
-		--cfg_fc_cpld			=> --cfg_fc_cpld,
-		cfg_fc_sel			=> "000",				-- ?
-
-
-		cfg_interrupt_int			=> "0000",			-- ?
-		cfg_interrupt_pending			=> "0000"
-		--cfg_interrupt_sent			=> --cfg_interrupt_sent,
+		cfg_interrupt_int	=> "0000",
+		cfg_interrupt_pending	=> "0000"
+		--cfg_interrupt_sent	=> --cfg_interrupt_sent,
 	);
 
 	-- Interface between Axis streams and PCIe Gen3 streams
@@ -760,7 +640,6 @@ begin
 	
 
 	leds(2) <= '0';
-	leds(3) <= '0';
 	end generate;
 	
 	-- Raw Host to Nvme communications

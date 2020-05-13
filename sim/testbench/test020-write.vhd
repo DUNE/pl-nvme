@@ -58,7 +58,7 @@ port (
 	nvme0_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX minus lanes
 
 	-- Debug
-	leds		: out std_logic_vector(3 downto 0)
+	leds		: out std_logic_vector(5 downto 0)
 );
 end component;
 
@@ -107,7 +107,7 @@ signal hostSendReady	: std_logic := '0';
 signal hostRecv		: AxisType;
 signal hostRecvReady	: std_logic := '0';
 
-signal leds		: std_logic_vector(3 downto 0);
+signal leds		: std_logic_vector(5 downto 0);
 
 signal hostSend1	: AxisStreamType;
 signal hostRecv1	: AxisStreamType;

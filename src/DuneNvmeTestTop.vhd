@@ -58,10 +58,16 @@ port (
 	nvme_clk_p	: in std_logic;
 	nvme_clk_n	: in std_logic;
 	nvme_reset_n	: out std_logic;
+
 	nvme0_exp_txp	: out std_logic_vector(3 downto 0);
 	nvme0_exp_txn	: out std_logic_vector(3 downto 0);
 	nvme0_exp_rxp	: in std_logic_vector(3 downto 0);
 	nvme0_exp_rxn	: in std_logic_vector(3 downto 0);
+
+	nvme1_exp_txp	: out std_logic_vector(3 downto 0);
+	nvme1_exp_txn	: out std_logic_vector(3 downto 0);
+	nvme1_exp_rxp	: in std_logic_vector(3 downto 0);
+	nvme1_exp_rxn	: in std_logic_vector(3 downto 0);
 
 	leds		: out std_logic_vector(7 downto 0)
 );
@@ -265,13 +271,19 @@ begin
 		nvme_clk_p	=> nvme_clk_p,
 		nvme_clk_n	=> nvme_clk_n,
 		nvme_reset_n	=> nvme_reset_n,
+
 		nvme0_exp_txp	=> nvme0_exp_txp,
 		nvme0_exp_txn	=> nvme0_exp_txn,
 		nvme0_exp_rxp	=> nvme0_exp_rxp,
 		nvme0_exp_rxn	=> nvme0_exp_rxn,
 
+		nvme1_exp_txp	=> nvme1_exp_txp,
+		nvme1_exp_txn	=> nvme1_exp_txn,
+		nvme1_exp_rxp	=> nvme1_exp_rxp,
+		nvme1_exp_rxn	=> nvme1_exp_rxn,
+
 		-- Debug
-		leds		=> leds_l(3 downto 0)
+		leds		=> leds_l(5 downto 0)
 	);
 
 	-- The test data interface
@@ -291,6 +303,6 @@ begin
 		obuf_led_i: OBUF port map (I => leds_l(i), O => leds(i));
 	end generate;
 
-	leds_l(4) <= pci_reset_n;
+	leds_l(6) <= '0';
 end;
 

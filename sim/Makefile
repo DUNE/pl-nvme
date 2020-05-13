@@ -34,7 +34,7 @@ FILES_BASE	+= ../src/NvmeStreamMux.vhd ../src/Ram.vhd
 #FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo32k/Fifo32k_sim_netlist.vhdl
 
 FILES_SYSTEM	= ../src/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd ../src/StreamSwitch.vhd ../src/NvmeQueues.vhd
-FILES_SYSTEM	+= ../src/TestData.vhd ../src/NvmeWrite.vhd
+FILES_SYSTEM	+= ../src/TestDataStream.vhd ../src/TestData.vhd ../src/NvmeWrite.vhd
 
 # Test files
 FILES_test001-leds += testbench/${TEST}.vhd ${FILES_BASE} ../src/LedCount.vhd
