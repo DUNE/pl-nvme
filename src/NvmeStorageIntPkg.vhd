@@ -38,12 +38,18 @@ package NvmeStorageIntPkg is
 	constant NvmeQueueNum		: integer := 16;	--! The number of queue entries. Has to be greater than NvmeWriteNum
 	constant NvmeWriteNum		: integer := 8;		--! The number of concurrent data write's.
 	constant PcieMaxPayloadSize	: integer := 32;	--! The maximum Pcie packet size in 32bit DWords
-	
+
+	--! Nvme drive settings
+	constant NvmeBlockSize		: integer := 512;	--! The NVMe's formatted block size
+	constant NvmeTotalBlocks	: integer := 134217728;	--! The total number of 4k blocks available
+	constant NvmeDoorbellStride	: integer := 4;		--! The doorbell register stride
+
 	--! Generaly useful functions
 	function to_stl(v: integer; b: integer) return std_logic_vector;
 	function to_stl(v: unsigned; b: integer) return std_logic_vector;
 	function to_stl(v: unsigned) return std_logic_vector;
 	function log2(v: integer) return integer;
+	function log2_roundup(v: integer) return integer;
 	function concat(v: std_logic; n: integer) return std_logic_vector;
 	function zeros(n: integer) return std_logic_vector;
 	function zeros(n: integer) return unsigned;
@@ -134,6 +140,15 @@ package NvmeStorageIntPkg is
 	end record;
 
 	function to_NvmeReplyHeadType(v: std_logic_vector) return NvmeReplyHeadType;
+
+	--! Simple register access
+	type RegAccessType is record
+		write		: std_logic;
+		address		: unsigned(7 downto 0);
+		writeData	: std_logic_vector(31 downto 0);
+	end record;
+	
+	subtype RegReturnType is std_logic_vector(31 downto 0);
 end;
 
 package body NvmeStorageIntPkg is
@@ -157,6 +172,14 @@ package body NvmeStorageIntPkg is
 	begin
 		for i in 1 to 30 loop  -- Works for up to 30 bit integers
 			if(2**i > v) then return(i-1); end if;
+		end loop;
+		return(30);
+	end;
+
+	function log2_roundup(v: integer) return integer is
+	begin
+		for i in 1 to 30 loop  -- Works for up to 32 bit integers
+			if(2**i >= v) then return(i); end if;
 		end loop;
 		return(30);
 	end;

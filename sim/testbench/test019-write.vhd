@@ -169,10 +169,10 @@ begin
 		if(False) then
 			-- Test Read/Write NvmeWrite registers
 			wait for 100 ns;
-			busRead(clk, axil.toSlave, axil.toMaster, 16#0100#);
-			busRead(clk, axil.toSlave, axil.toMaster, 16#0104#);
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0100#, 16#00000004#);
-			busRead(clk, axil.toSlave, axil.toMaster, 16#0100#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0040#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0044#);
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#040#, 16#00000004#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0040#);
 
 			wait;
 		end if;
@@ -184,8 +184,8 @@ begin
 
 			-- Write to NvmeStorage control register to start NvmeWrite processing
 			wait for 100 ns;
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 2);		-- Number of blocks
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16);		-- Number of blocks
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 2);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 16);		-- Number of blocks
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
 
 			wait for 11000 ns;

@@ -20,9 +20,11 @@ VIVADO_TARGET	?= "-url study.kingnet:3121 -allow_non_jtag"
 # Files for synthesis
 SYN_FILES	= ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd
 SYN_FILES	+= ../src/Ram.vhd
-SYN_FILES	+= ../src/AxilClockConverter.vhd
+SYN_FILES	+= ../src/RegAccessClockConvertor.vhd
 SYN_FILES	+= ../src/AxisClockConverter.vhd
+SYN_FILES	+= ../src/AxisDataConvertFifo.vhd
 SYN_FILES	+= ../src/NvmeStreamMux.vhd
+SYN_FILES	+= ../src/PcieStreamMux.vhd
 SYN_FILES	+= ../src/StreamSwitch.vhd
 SYN_FILES	+= ../src/NvmeSim.vhd
 SYN_FILES	+= ../src/NvmeQueues.vhd

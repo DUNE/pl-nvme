@@ -126,7 +126,7 @@ package NvmeStoragePkg is
 		-- AXIS data stream input
 		dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
 		dataIn		: in AxisDataStreamType;		--! Raw data input stream
-		dataInReady	: out std_logic;			--! Raw data input ready
+		dataIn_ready	: out std_logic;			--! Raw data input ready
 
 		-- NVMe interface
 		nvme_clk_p	: in std_logic;				--! Nvme external clock +ve

@@ -87,7 +87,7 @@ port (
 	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
 	
 	regWrite	: in std_logic;				--! Enable write to register
-	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
+	regAddress	: in unsigned(3 downto 0);		--! Register to read/write
 	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut	: out std_logic_vector(31 downto 0)	--! Register contents
 );
@@ -95,17 +95,11 @@ end;
 
 architecture Behavioral of NvmeWrite is
 
---! Set the fields in the PCIe TLP header
-function setHeader(request: integer; address: integer; count: integer; tag: integer) return std_logic_vector is
-begin
-	return to_stl(set_PcieRequestHeadType(3, request, address, count, tag));
-end function;
-
 constant TCQ		: time := 1 ns;
 constant SimDelay	: boolean := False;			--! Input data delay after each packet for simulation tests
 constant SimWaitReply	: boolean := False;			--! Wait for each write command to return a reply
 
-constant NvmeBlocks	: integer := BlockSize / 512;		--! The number of Nvme blocks per NvmeStorage system block
+constant NvmeBlocks	: integer := BlockSize / NvmeBlockSize;		--! The number of Nvme blocks per NvmeStorage system block
 constant RamSize	: integer := (NvmeWriteNum * BlockSize) / 16;	-- One block per write buffer
 constant AddressWidth	: integer := log2(RamSize);
 constant BlockSizeWidth	: integer := log2(BlockSize);
@@ -190,6 +184,12 @@ signal error		: RegisterType := (others => '0');	-- The system errors status
 signal timeUs		: RegisterType := (others => '0');	-- The time in us
 signal timeCounter	: integer range 0 to (1 us / ClockPeriod) - 1 := 0;
 
+--! Set the fields in the PCIe TLP header
+function setHeader(request: integer; address: integer; count: integer; tag: integer) return std_logic_vector is
+begin
+	return to_stl(set_PcieRequestHeadType(3, request, address, count, tag));
+end function;
+
 function incrementPos(v: integer) return integer is
 begin
 	if(v = NvmeWriteNum-1) then
@@ -224,9 +224,9 @@ begin
 			if(reset = '1') then
 				dataChunkStart	<= (others => '0');
 				dataChunkSize	<= (others => '0');
-			elsif((regWrite = '1') and (regAddress = "00")) then
+			elsif((regWrite = '1') and (regAddress = 0)) then
 				dataChunkStart	<= unsigned(regDataIn);
-			elsif((regWrite = '1') and (regAddress = "01")) then
+			elsif((regWrite = '1') and (regAddress = 1)) then
 				dataChunkSize	<= unsigned(regDataIn);
 			end if;
 		end if;
@@ -412,7 +412,7 @@ begin
 
 				when STATE_QUEUE_1 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						requestOut.data	<= zeros(29) & std_logic_vector(dataChunkStart + buffers(bufferOutNum).blockNumber) & zeros(3 + 64);
+						requestOut.data	<= zeros(32-log2(NvmeBlocks)) & std_logic_vector(dataChunkStart + buffers(bufferOutNum).blockNumber) & zeros(log2(NvmeBlocks) + 64);
 						state		<= STATE_QUEUE_2;
 					end if;
 

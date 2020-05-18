@@ -64,12 +64,14 @@ const BUInt	PcieMaxPayloadSize = 32;		///< The Pcie maximim packet payload in 32
 const BUInt	RegIdent		= 0x000;	///< The ident and version
 const BUInt	RegControl		= 0x004;	///< The control register
 const BUInt	RegStatus		= 0x008;	///< The status register
+const BUInt	RegTotalBlocks		= 0x00C;	///< The total number of blocks
+const BUInt	RegLostBlocks		= 0x010;	///< The number of blocks currently read
 
-const BUInt	RegDataChunkStart	= 0x100;	///< The data chunk size register
-const BUInt	RegDataChunkSize	= 0x104;	///< The data chunk size register
-const BUInt	RegWriteError		= 0x108;	///< The write error status
-const BUInt	RegWriteNumBlocks	= 0x10C;	///< The number of blocks written
-const BUInt	RegWriteTime		= 0x110;	///< The write time in microseconds
+const BUInt	RegDataChunkStart	= 0x040;	///< The data chunk start register
+const BUInt	RegDataChunkSize	= 0x044;	///< The data chunk size register
+const BUInt	RegWriteError		= 0x048;	///< The write error status
+const BUInt	RegWriteNumBlocks	= 0x04C;	///< The number of blocks written
+const BUInt	RegWriteTime		= 0x050;	///< The write time in microseconds
 
 class NvmeRequestPacket {
 public:
@@ -77,10 +79,6 @@ public:
 				memset(this, 0, sizeof(*this));
 			}
 
-#ifdef ZAP
-	BUInt32		source;			///< 
-	BUInt32		fill0[3];		///< 
-#endif
 	BUInt64		address;		///< The 64bit read/write address
 	BUInt32		numWords:11;		///< The number of 32bit data words to transfer
 	BUInt32		request:4;		///< The request (0 - read, 1 - write etc.)
@@ -99,10 +97,6 @@ public:
 				memset(this, 0, sizeof(*this));
 			}
 
-#ifdef ZAP
-	BUInt32		source;			///< 
-	BUInt32		fill0[3];		///< 
-#endif
 	BUInt32		address:12;		///< The lower 12 bits of the address
 	BUInt32		error:4;		///< An error number
 	BUInt32		numBytes:13;		///< The total number of bytes to be transfered
@@ -112,7 +106,8 @@ public:
 	BUInt32		fill2:2;		///< 
 	BUInt32		requesterId:16;		///< The requestors ID
 	BUInt32		tag:8;			///< The requests tag
-	BUInt32		fill3:23;		///< 
+	BUInt32		completerId:16;		///< The completer id
+	BUInt32		fill3:7;		///< 
 	BUInt32		reply:1;		///< This bit indicates a reply (we have used an unused bit for this)
 	BUInt32		data[PcieMaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
 };
@@ -135,7 +130,8 @@ public:
 	
 	int		init();
 	void		close();
-	
+
+	void		setNvme(BUInt n);
 	void		reset();
 
 	// Send a queued request to the NVMe
@@ -163,7 +159,7 @@ public:
 	int		packetSend(const NvmeReplyPacket& packet);
 	
 	// Debug
-	void		dumpRegs();
+	void		dumpRegs(int nvmeNum = -1);
 	void		dumpDmaRegs(bool c2h, int chan);
 	void		dumpStatus();
 
@@ -186,6 +182,8 @@ protected:
 	BSemaphore		oqueueReplySem;			///< Semaphore when a queue reply packet has been received
 
 	pthread_t		othread;
+	BUInt32			onvmeNum;			///< The nvme to communicate with, 0 is both
+	BUInt32			onvmeRegbase;			///< The register base address
 	BUInt32			oqueueNum;
 
 	BUInt32			oqueueAdminMem[4096];

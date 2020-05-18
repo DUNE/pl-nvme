@@ -51,8 +51,10 @@ port (
 	reset		: in std_logic;				--! The active high reset line
 
 	-- Control and status interface
-	axilIn		: in AxilToSlaveType;			--! Axil bus input signals
-	axilOut		: out AxilToMasterType;			--! Axil bus output signals
+	regWrite	: in std_logic;				--! Enable write to register
+	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
+	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
+	regDataOut	: out std_logic_vector(31 downto 0);	--! Register contents
 
 	-- From host to NVMe request/reply streams
 	hostSend	: inout AxisStreamType := AxisStreamInput;	--! Host request stream
@@ -99,8 +101,28 @@ port (
 	reset1		: in std_logic;
 
 	-- Bus1
-	axil1Out	: out AxilToSlaveType;
-	axil1In		: in AxilToMasterType
+	axilOut	: out AxilToSlaveType;
+	axilIn		: in AxilToMasterType
+);
+end component;
+
+component RegAccessClockConvertor is
+port (
+	clk1		: in std_logic;				--! The interface clock line
+	reset1		: in std_logic;				--! The active high reset line
+	
+	regWrite1	: in std_logic;				--! Enable write to register
+	regAddress1	: in unsigned(5 downto 0);		--! Register to read/write
+	regDataIn1	: in std_logic_vector(31 downto 0);	--! Register write data
+	regDataOut1	: out std_logic_vector(31 downto 0);	--! Register contents
+
+	clk2		: in std_logic;				--! The interface clock line
+	reset2		: in std_logic;				--! The active high reset line
+
+	regWrite2	: out std_logic;				--! Enable write to register
+	regAddress2	: out unsigned(5 downto 0);		--! Register to read/write
+	regDataIn2	: out std_logic_vector(31 downto 0);	--! Register write data
+	regDataOut2	: in std_logic_vector(31 downto 0)	--! Register contents
 );
 end component;
 
@@ -209,7 +231,7 @@ port (
 );
 end component;
 
-component NvmeStreamMux is
+component PcieStreamMux is
 port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
@@ -266,19 +288,15 @@ port (
 	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
 	
 	regWrite	: in std_logic;				--! Enable write to register
-	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
+	regAddress	: in unsigned(3 downto 0);		--! Register to read/write
 	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut	: out std_logic_vector(31 downto 0)	--! Register contents
 );
 end component;
 
-signal reset_local_run		: std_logic := '0';
-signal reset_local_done		: std_logic := '0';
+signal reset_local		: std_logic := '0';
 signal reset_local_active	: std_logic := '0';
 signal reset_local_counter	: integer range 0 to ResetCycles := 0;
-signal reset_local		: std_logic := '0';
-signal axil1Out			: AxilToMasterType;
-signal axil1In			: AxilToSlaveType;
 
 -- Streams
 signal streamSend		: AxisStreamArrayType(0 to NumStreams-1);
@@ -322,10 +340,17 @@ subtype RegDataType		is std_logic_vector(RegWidth-1 downto 0);
 type StateType			is (STATE_START, STATE_IDLE, STATE_WRITE, STATE_READ1, STATE_READ2);
 signal state			: StateType := STATE_START;
 
-signal regAddress		: unsigned(7 downto 0) := (others => '0');
+signal regWrite1		: std_logic;				--! Enable write to register
+signal regAddress1		: unsigned(5 downto 0);			--! Register to read/write
+signal regDataIn1		: std_logic_vector(31 downto 0);	--! Register write data
+signal regDataOut0		: std_logic_vector(31 downto 0);	--! Register contents
+signal regDataOut1		: std_logic_vector(31 downto 0);	--! Register contents
+
 signal reg_id			: RegDataType := x"56010200";
 signal reg_control		: RegDataType := (others => '0');
 signal reg_status		: RegDataType := (others => '0');
+signal reg_totalBlocks		: RegDataType := to_stl(NvmeTotalBlocks, RegWidth);
+signal reg_blocksLost		: RegDataType := (others => '0');
 signal reg_nvmeWrite		: RegDataType := (others => '0');
 signal writeNvmeWrite		: std_logic := '0';
 
@@ -357,23 +382,25 @@ signal dummy3			: AxisStreamType := AxisStreamOutput;
 
 
 begin
-	-- AXI Lite bus clock domain crossing
-	axilClockConverter0 : AxilClockConverter
+	regClockConvertor : RegAccessClockConvertor
 	port map (
-		clk0		=> clk,
-		reset0		=> reset,
-
-		-- Bus0
-		axil0In		=> axilIn,
-		axil0Out	=> axilOut,
-
 		clk1		=> clk,
 		reset1		=> reset,
-		--clk1		=> nvme_user_clk,
 
-		-- Bus1
-		axil1In		=> axil1Out,
-		axil1Out	=> axil1In
+		regWrite1	=> regWrite,
+		regAddress1	=> regAddress,
+		regDataIn1	=> regDataIn,
+		regDataOut1	=> regDataOut0,
+
+		--clk2		=> clk,				--! **** Needs to operate from Nvme clock
+		--reset2	=> reset,
+		clk2		=> nvme_user_clk,
+		reset2		=> nvme_user_reset,
+
+		regWrite2	=> regWrite1,
+		regAddress2	=> regAddress1,
+		regDataIn2	=> regDataIn1,
+		regDataOut2	=> regDataOut1
 	);
 
 	axisClockConverter0 :  AxisClockConverter
@@ -411,93 +438,22 @@ begin
 
 	
 	-- Register access
-	axil1Out.rdata <=	reg_id when(regAddress = 0) else
-				reg_control when(regAddress = 1) else
-				reg_status when(regAddress = 2) else
-				reg_nvmeWrite when((regAddress >= 64) and (regAddress < 128)) else
-				x"FFFFFFFF";
+	regDataOut1 <= reg_id when(regAddress1 = 0) else
+			reg_control when(regAddress1 = 1) else
+			reg_status when(regAddress1 = 2) else
+			reg_totalBlocks when(regAddress1 = 3) else
+			reg_blocksLost when(regAddress1 = 4) else
+			reg_nvmeWrite when((regAddress1 >= 16) and (regAddress1 < 32)) else
+			x"FFFFFFFF";
 
-	writeNvmeWrite <= axil1In.wvalid when((regAddress >= 64) and (regAddress < 128)) else '0';
+	regDataOut <= reg_status when(reset_local_active = '1') else regDataOut0;
+	writeNvmeWrite <= regWrite1 when((regAddress1 >= 16) and (regAddress1 < 32)) else '0';
 	
 	-- Status register bits
-	reg_status(0)		<= reset_local_run;
+	reg_status(0)		<= reset_local_active;
 	reg_status(1)		<= configComplete;
 	reg_status(2)		<= '0';
 	reg_status(31 downto 3)	<= (others => '0');
-		
-	-- Always return OK to read and write requests
-	axil1Out.rresp <= "00";
-	axil1Out.bresp <= "00";
-	axil1Out.bvalid <= '1';
-
-	-- Process register access
-	process(clk)
-	begin
-		if(rising_edge(clk)) then
-			if(reset = '1') then
-				reg_control	<= (others => '0');
-				axil1Out.arready	<= '0';
-				axil1Out.rvalid	<= '0';
-				axil1Out.awready	<= '0';
-				axil1Out.wready	<= '0';
-				state		<= STATE_IDLE;
-			else
-				if(reset_local_done = '1') then
-					reset_local_run <= '0';
-				end if;
-				
-				case(state) is
-				when STATE_START =>
-					axil1Out.arready	<= '0';
-					axil1Out.rvalid		<= '0';
-					axil1Out.awready	<= '0';
-					axil1Out.wready		<= '0';
-					state			<= STATE_IDLE;
-
-				when STATE_IDLE =>
-					if(axil1In.awvalid= '1') then
-						regAddress		<= unsigned(axil1In.awaddr(9 downto 2));
-						axil1Out.awready	<= '1';
-						state			<= STATE_WRITE;
-
-					elsif(axil1In.arvalid= '1') then
-						regAddress		<= unsigned(axil1In.araddr(9 downto 2));
-						axil1Out.arready	<= '1';
-						state			<= STATE_READ1;
-					end if;
-
-				when STATE_WRITE =>
-					axil1Out.awready	<= '0';
-
-					if(axil1In.wvalid = '1') then
-						if(regAddress = 1) then
-							if(axil1In.wdata(0) = '1') then
-								reg_control	<= (others => '0');
-								reset_local_run	<= '1';
-							else
-								reg_control <= axil1In.wdata;
-							end if;
-						end if;
-
-						axil1Out.wready	<= '1';
-						state		<= STATE_START;
-					end if;
-
-				when STATE_READ1 =>
-					axil1Out.arready	<= '0';
-					axil1Out.rvalid		<= '1';
-					state			<= STATE_READ2;
-
-				when STATE_READ2 =>
-					if(axil1In.rready = '1') then
-						axil1Out.rvalid	<= '0';
-						state		<= STATE_START;
-					end if;
-				end case;
-				
-			end if;
-		end if;
-	end process; 
 	
 	-- Perform reset of Nvme subsystem. This implements a 100ms reset suitable for the Nvme Pcie reset.
 	-- Local state machines and external Nvme devices use this reset_local signal.
@@ -505,25 +461,23 @@ begin
 	nvme_reset_local_n	<= not reset_local;
 	nvme_reset_n		<= nvme_reset_local_n;
 	
+	-- Process reset
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
 				reset_local_active <= '0';
-				reset_local_done <= '0';
 			else
-				if((reset_local_done = '1') and (reset_local_run = '0')) then
-					reset_local_done <= '0';
+				if((regWrite = '1') and (regAddress = 1)) then
+					if(regDataIn(0) = '1') then
+						reset_local_counter	<= ResetCycles;
+						reset_local_active	<= '1';
+					end if;
 				end if;
 				
-				if((reset_local_done = '0') and (reset_local_run = '1') and (reset_local_active = '0')) then
-					reset_local_counter	<= ResetCycles;
-					reset_local_active	<= '1';
-
-				elsif(reset_local_active = '1') then
+				if(reset_local_active = '1') then
 					if(reset_local_counter = 0) then
 						reset_local_active	<= '0';
-						reset_local_done	<= '1';
 					else
 						reset_local_counter <= reset_local_counter - 1;
 					end if;
@@ -532,8 +486,24 @@ begin
 		end if;
 	end process;
 
+	-- Process register access
+	process(nvme_user_clk)
+	begin
+		if(rising_edge(nvme_user_clk)) then
+			if(nvme_user_reset = '1') then
+				reg_control	<= (others => '0');
+			else
+				if(regWrite1 = '1') then
+					if(regAddress1 = 1) then
+						reg_control <= regDataIn1;
+					end if;
+				end if;
+			end if;
+		end if;
+	end process; 
+	
 	-- Host to Nvme stream Mux/DeMux
-	nvmeStreamMux0 : NvmeStreamMux
+	pcieStreamMux0 : PcieStreamMux
 	port map (
 		clk		=> nvme_user_clk,
 		reset		=> nvme_user_reset,
@@ -723,8 +693,8 @@ begin
 		memReplyOut	=> writeMemSend,
 
 		regWrite	=> writeNvmeWrite,
-		regAddress	=> regAddress(5 downto 0),
-		regDataIn	=> axil1In.wdata,
+		regAddress	=> regAddress1(3 downto 0),
+		regDataIn	=> regDataIn1,
 		regDataOut	=> reg_nvmeWrite
 	);
 

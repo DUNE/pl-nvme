@@ -65,7 +65,7 @@ port (
 	-- AXIS data stream input
 	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
 	dataIn		: in AxisDataStreamType;		--! Raw data input stream
-	dataInReady	: out std_logic;			--! Raw data input ready
+	dataIn_ready	: out std_logic;			--! Raw data input ready
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
@@ -92,8 +92,8 @@ architecture Behavioral of NvmeStorage is
 component NvmeStorageUnit is
 generic(
 	Simulate	: boolean	:= Simulate;		--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
-	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
+	ClockPeriod	: time		:= ClockPeriod;		--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= BlockSize;		--! System block size
 	PcieBlock	: integer	:= 0			--! The Pcie hardblock block to use
 );
 port (
@@ -101,8 +101,10 @@ port (
 	reset		: in std_logic;				--! The active high reset line
 
 	-- Control and status interface
-	axilIn		: in AxilToSlaveType;			--! Axil bus input signals
-	axilOut		: out AxilToMasterType;			--! Axil bus output signals
+	regWrite	: in std_logic;				--! Enable write to register
+	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
+	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
+	regDataOut	: out std_logic_vector(31 downto 0);	--! Register contents
 
 	-- From host to NVMe request/reply streams
 	hostSend	: inout AxisStreamType := AxisStreamInput;	--! Host request stream
@@ -127,19 +129,98 @@ port (
 );
 end component;
 
+component AxisDataConvertFifo is
+generic(
+	Simulate	: boolean	:= False;		--! Enable simulation core
+	FifoSizeBytes	: integer	:= BlockSize		--! The Fifo size in bytes
+);
+port (
+	clk		: in std_logic;
+	reset		: in std_logic;
+
+	streamRx	: in AxisDataStreamType;
+	streamRx_ready	: out std_logic;
+
+	streamTx	: inout AxisStreamType := AxisStreamOutput
+);
+end component;
+
+component NvmeStreamMux is
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+	
+	hostIn		: inout AxisStreamType := AxisStreamInput;	--! Host multiplexed Input stream
+	hostOut		: inout AxisStreamType := AxisStreamOutput;	--! Host multiplexed Ouput stream
+
+	nvme0In		: inout AxisStreamType := AxisStreamInput;	--! Nvme0 Replies input stream
+	nvme0Out	: inout AxisStreamType := AxisStreamOutput;	--! Nvme0 Requests output stream
+
+	nvme1In		: inout AxisStreamType := AxisStreamInput;	--! Nvme1 Requests input stream
+	nvme1Out	: inout AxisStreamType := AxisStreamOutput	--! Nvme1 replies output stream
+);
+end component;
+
 constant TCQ		: time := 1 ns;
 
 signal nvme_clk		: std_logic := 'U';
 signal nvme_clk_gt	: std_logic := 'U';
 
-signal dataIn0		: AxisStreamType := AxisStreamOutput;
 signal hostSend0	: AxisStreamType;
 signal hostRecv0	: AxisStreamType;
 
-signal dataIn1		: AxisStreamType := AxisStreamOutput;
-signal hostSend1	: AxisStreamType;
-signal hostRecv1	: AxisStreamType;
+signal axilIn0		: AxilToSlaveType;
+signal axilOut0		: AxilToMasterType;
+signal data0		: AxisStreamType := AxisStreamOutput;
+signal nvme0Send	: AxisStreamType;
+signal nvme0Recv	: AxisStreamType;
+
+signal axilIn1		: AxilToSlaveType;
 signal axilOut1		: AxilToMasterType;
+signal data1		: AxisStreamType := AxisStreamOutput;
+signal nvme1Send	: AxisStreamType;
+signal nvme1Recv	: AxisStreamType;
+
+signal regWrite		: std_logic := '0';					--! Enable write to register
+signal regAddress	: unsigned(9 downto 0) := (others => '0');		--! Register to read/write
+signal regWrite0	: std_logic := '0';
+signal regWrite1	: std_logic := '0';
+signal readNvme1	: std_logic := '0';
+signal regDataOut0	: std_logic_vector(31 downto 0);
+signal regDataOut1	: std_logic_vector(31 downto 0);
+
+signal enabled_n	: std_logic := '0';
+signal dataSelect	: std_logic := '0';
+signal dataIn_ready_l	: std_logic := 'U';
+signal dataIn0		: AxisDataStreamType;
+signal dataIn0_ready	: std_logic := 'U';
+signal dataIn1		: AxisDataStreamType;
+signal dataIn1_ready	: std_logic := 'U';
+
+signal dataEnabledOut0	: std_logic := 'U';
+signal dataEnabledOut1	: std_logic := 'U';
+
+function busPass(axil: AxilToSlaveType; enable: std_logic) return AxilToSlaveType is
+variable ret: AxilToSlaveType;
+begin
+	ret.awaddr	:= axil.awaddr;
+	ret.awprot	:= axil.awprot;
+	ret.awvalid	:= axil.awvalid;
+	ret.wdata	:= axil.wdata;
+	ret.wstrb	:= axil.wstrb;
+	if(enable = '1') then
+		ret.wvalid := axil.wvalid;
+	else
+		ret.wvalid := '0';
+	end if;
+	ret.bready	:= axil.bready;
+	ret.araddr	:= axil.araddr;
+	ret.arprot	:= axil.arprot;
+	ret.arvalid	:= axil.arvalid;
+	ret.rready	:= axil.rready;
+	
+	return ret;
+end;
 
 begin
 	-- NVME PCIE Clock, 100MHz
@@ -152,15 +233,109 @@ begin
 		CEB     => '0'
 	);
 	
-	-- Connect to local Axis stream style
-	dataInReady	<= dataIn0.ready;
-	dataIn0.valid	<= dataIn.valid;
-	dataIn0.last	<= dataIn.last;
-	dataIn0.data	<= dataIn.data(dataIn1.data'length-1 downto 0);
+	-- Register processing. Depending on the read or write address set, pass to appropriate NvmeStorageUnit module.
+	-- Bus ready returns		
+	axilOut.awready	<= axilIn.awvalid;
+	axilOut.arready	<= axilIn.arvalid;
+	axilOut.rvalid	<= '1';
+	axilOut.wready	<= axilIn.wvalid;
+
+	-- Always return OK to read and write requests
+	axilOut.rresp	<= "00";
+	axilOut.bresp	<= "00";
+	axilOut.bvalid	<= '1';
+
+	regWrite	<= axilIn.wvalid;
 	
+	regWrite0	<= regWrite when(regAddress < 512) else '0';
+	regWrite1	<= regWrite when((regAddress < 256) or (regAddress >= 512)) else '0';
+	readNvme1	<= '1' when(regAddress >= 512) else '0';
+	axilOut.rdata	<= regDataOut1 when(readNvme1 = '1') else regDataOut0;
+
+	process(clk)
+	begin
+		if(rising_edge(clk)) then
+			if(reset = '1') then
+				regAddress <= (others => '0');
+			else
+				if(axilIn.awvalid = '1') then
+					regAddress <= unsigned(axilIn.awaddr(9 downto 0));
+				elsif(axilIn.arvalid = '1') then
+					regAddress <= unsigned(axilIn.araddr(9 downto 0));
+				end if;
+			end if;
+		end if;
+	end process;
+	
+	-- Connect to local Axis stream style
+	enabled_n	<= not dataEnabledOut0;
+	dataEnabledOut	<= dataEnabledOut0;
+
+	dataIn_ready_l	<= '0' when(enabled_n = '1') else dataIn0_ready when(dataSelect = '0') else dataIn1_ready;
+	dataIn_ready	<= dataIn_ready_l;
+
+	dataIn0.valid	<= dataIn.valid when(dataSelect = '0') else '0';
+	dataIn0.last	<= dataIn.last;
+	dataIn0.data	<= dataIn.data;
+
+	dataIn1.valid	<= dataIn.valid when(dataSelect = '1') else '0';
+	dataIn1.last	<= dataIn.last;
+	dataIn1.data	<= dataIn.data;
+
+	dataConvert0 : AxisDataConvertFifo
+	port map (
+		clk		=> clk,
+		reset		=> enabled_n,
+
+		streamRx	=> dataIn0,
+		streamRx_ready	=> dataIn0_ready,
+
+		streamTx	=> data0
+	);
+
+	dataConvert1 : AxisDataConvertFifo
+	port map (
+		clk		=> clk,
+		reset		=> enabled_n,
+
+		streamRx	=> dataIn1,
+		streamRx_ready	=> dataIn1_ready,
+
+		streamTx	=> data1
+	);
+
+	process(clk)
+	begin
+		if(rising_edge(clk)) then
+			if(reset = '1') then
+				dataSelect <= '0';
+			else
+				if((dataIn.valid = '1') and (dataIn.last = '1') and (dataIn_ready_l = '1')) then
+					dataSelect <= not dataSelect;
+				end if;
+			end if;
+		end if;
+	end process;
+
+	-- Connect to local Axis stream style
 	axisConnect(hostSend0, hostSend, hostSendReady);
 	axisConnect(hostRecv, hostRecvReady, hostRecv0);
-	
+
+	nvmeStreamMux0 : NvmeStreamMux
+	port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		hostIn		=> hostSend0,
+		hostOut		=> hostRecv0,
+
+		nvme0In		=> nvme0Send,
+		nvme0Out	=> nvme0Recv,
+
+		nvme1In		=> nvme1Send,
+		nvme1Out	=> nvme1Recv
+	);
+
 	nvmeStorageUnit0 : NvmeStorageUnit
 	generic map (
 		PcieBlock	=> 0			--! The Pcie hardblock block to use
@@ -169,18 +344,18 @@ begin
 		clk		=> clk,
 		reset		=> reset,
 
-		axilIn		=> axilIn,
-		axilOut		=> axilOut,
+		regWrite	=> regWrite0,	
+		regAddress	=> regAddress(7 downto 2),
+		regDataIn	=> axilIn.wdata,
+		regDataOut	=> regDataOut0,
 
-		hostSend	=> hostSend0,
-		hostRecv	=> hostRecv0,
+		hostSend	=> nvme0Recv,
+		hostRecv	=> nvme0Send,
 		
-		dataEnabledOut	=> dataEnabledOut,
-		dataIn		=> dataIn0,
+		dataEnabledOut	=> dataEnabledOut0,
+		dataIn		=> data0,
 
 		-- NVMe interface
-		--nvme_clk_p	=> nvme_clk_p,
-		--nvme_clk_n	=> nvme_clk_n,
 		nvme_clk	=> nvme_clk,
 		nvme_clk_gt	=> nvme_clk_gt,
 		nvme_exp_txp	=> nvme0_exp_txp,
@@ -191,10 +366,6 @@ begin
 		leds		=> leds(2 downto 0)
 	);
 
-	dataIn1.valid	<= '0';
-	hostSend1.valid	<= '0';
-	hostRecv1.ready	<= '0';
-
 	nvmeStorageUnit1 : NvmeStorageUnit
 	generic map (
 		PcieBlock	=> 1			--! The Pcie hardblock block to use
@@ -203,18 +374,18 @@ begin
 		clk		=> clk,
 		reset		=> reset,
 
-		axilIn		=> axilIn,
-		axilOut		=> axilOut1,
+		regWrite	=> regWrite1,
+		regAddress	=> regAddress(7 downto 2),
+		regDataIn	=> axilIn.wdata,
+		regDataOut	=> regDataOut1,
 
-		hostSend	=> hostSend1,
-		hostRecv	=> hostRecv1,
+		hostSend	=> nvme1Recv,
+		hostRecv	=> nvme1Send,
 		
-		--dataEnabledOut	=> dataEnabledOut,
-		dataIn		=> dataIn1,
+		dataEnabledOut	=> dataEnabledOut1,
+		dataIn		=> data1,
 
 		-- NVMe interface
-		--nvme_clk_p	=> nvme_clk_p,
-		--nvme_clk_n	=> nvme_clk_n,
 		nvme_clk	=> nvme_clk,
 		nvme_clk_gt	=> nvme_clk_gt,
 		nvme_exp_txp	=> nvme1_exp_txp,

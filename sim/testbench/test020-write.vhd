@@ -26,7 +26,7 @@ component NvmeStorage is
 generic(
 	Simulate	: boolean	:= True;		--! Generate simulation core
 	--ClockPeriod	: time		:= 10 ms;		--! Clock period for timers (125 MHz)
-	ClockPeriod	: time		:= 4 ns;			--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
 	BlockSize	: integer	:= Blocksize
 );
 port (
@@ -46,16 +46,23 @@ port (
 	-- AXIS data stream input
 	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
 	dataIn		: in AxisDataStreamType;		--! Raw data input stream
-	dataInReady	: out std_logic;			--! Raw data input ready
+	dataIn_ready	: out std_logic;			--! Raw data input ready
 
 	-- NVMe interface
 	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
 	nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
 	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
+
 	nvme0_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX plus lanes
 	nvme0_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX minus lanes
 	nvme0_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX plus lanes
 	nvme0_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX minus lanes
+
+	nvme1_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX plus lanes
+	nvme1_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX minus lanes
+	nvme1_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme1 PCIe RX plus lanes
+	nvme1_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme1 PCIe RX minus lanes
+
 
 	-- Debug
 	leds		: out std_logic_vector(5 downto 0)
@@ -79,7 +86,7 @@ port (
 );
 end component;
 
-component NvmeStreamMux is
+component PcieStreamMux is
 port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
@@ -145,20 +152,49 @@ begin
 		wait;
 	end process;
 	
+
+	stop : process
+	begin
+		--wait for 400 ns;
+		wait for 14000 ns;
+		assert false report "simulation ended ok" severity failure;
+	end process;
+
 	run : process
 	begin
 		axil.toSlave <= ((others => '0'), (others => '0'), '0', (others => '0'), (others => '0'), '0', '0', (others => '0'), (others => '0'), '0', '0');
 		wait until reset = '0';
 
 		if(False) then
-			-- Test Read/Write NvmeWrite registers
+			-- Test Read/Write NvmeStorageUnit's registers
 			wait for 100 ns;
-			busRead(clk, axil.toSlave, axil.toMaster, 16#0100#);
-			busRead(clk, axil.toSlave, axil.toMaster, 16#0104#);
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0100#, 16#00000004#);
-			busRead(clk, axil.toSlave, axil.toMaster, 16#0100#);
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#40000000#);
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0204#, 16#48000000#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0004#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0204#);
 
 			wait;
+		end if;
+		
+		if(False) then
+			-- Test Read/Write NvmeWrite registers
+			wait for 100 ns;
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0040#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0044#);
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0040#, 16#00000004#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0040#);
+
+			wait;
+		end if;
+		
+		if(True) then
+			-- Perform local reset
+			wait for 100 ns;
+			busWrite(clk, axil.toSlave, axil.toMaster, 4, 16#00000001#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0008#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0008#);
+			wait for 200 ns;
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0008#);
 		end if;
 		
 		if(True) then
@@ -168,8 +204,8 @@ begin
 
 			-- Write to NvmeStorage control register to start NvmeWrite processing
 			wait for 100 ns;
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 2);		-- Number of blocks
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16);		-- Number of blocks
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 2);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 16);		-- Number of blocks
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
 
 			wait for 11000 ns;
@@ -239,21 +275,27 @@ begin
 		hostRecvReady	=> hostRecvReady,
 		
 		dataIn		=> dataStream,
-		dataInReady	=> dataStreamReady,
+		dataIn_ready	=> dataStreamReady,
 
 		-- NVMe interface
 		nvme_clk_p	=> '0',
 		nvme_clk_n	=> '0',
-		--nvme_exp_txp	: out std_logic_vector(0 downto 0);
-		--nvme_exp_txn	: out std_logic_vector(0 downto 0);
+
+		--nvme0_exp_txp	: out std_logic_vector(0 downto 0);
+		--nvme0_exp_txn	: out std_logic_vector(0 downto 0);
 		nvme0_exp_rxp	=> "0000",
 		nvme0_exp_rxn	=> "0000",
+
+		--nvme1_exp_txp	: out std_logic_vector(0 downto 0);
+		--nvme1_exp_txn	: out std_logic_vector(0 downto 0);
+		nvme1_exp_rxp	=> "0000",
+		nvme1_exp_rxn	=> "0000",
 
 		leds		=> leds
 	);
 
 	-- Host to Nvme stream Mux/DeMux
-	nvmeStreamMux0 : NvmeStreamMux
+	pcieStreamMux0 : PcieStreamMux
 	port map (
 		clk		=> clk,
 		reset		=> reset,
@@ -362,12 +404,5 @@ begin
 				end case;
 			end if;
 		end if;
-	end process;
-
-	stop : process
-	begin
-		--wait for 2000 ns;
-		wait for 14000 ns;
-		assert false report "simulation ended ok" severity failure;
 	end process;
 end;

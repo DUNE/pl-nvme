@@ -67,6 +67,7 @@ public:
 	int		test6();				///< Run test6
 	int		test7();				///< Run test7
 	int		test8();				///< Run test8
+	int		test9();				///< Run test8
 
 	int		test_misc();				///< Collection of misc tests
 
@@ -322,6 +323,7 @@ int Control::test4(){
 	BUInt32	numBlocks = 8;
 	
 	printf("Test4: Read blocks\n");
+	//onvmeNum = 2;
 	
 	if(e = configureNvme())
 		return e;
@@ -331,8 +333,25 @@ int Control::test4(){
 
 	nvmeRequest(1, 1, 0x02, 0x01800000, block, 0x00000000, numBlocks-1);	// Perform read
 
-	printf("DataBlock:\n");
+	printf("DataBlock0:\n");
 	bhd32a(odataBlockMem, numBlocks*512/4);
+
+#ifndef ZAP	
+	nvmeRequest(1, 1, 0x02, 0x01800000, (block + 1) * 8, 0x00000000, numBlocks-1);	// Perform read
+
+	printf("DataBlock1: Data value: %8.8x\n", (block + 1) * 0x800);
+	bhd32a(odataBlockMem, numBlocks*512/4);
+#endif
+	
+
+#ifdef ZAP
+	block = (262144 * 8);
+	printf("Block (512): %u data value: %8.8x\n", block, (block * 512) / 4);
+	nvmeRequest(1, 1, 0x02, 0x01800000, block - 8, 0x00000000, numBlocks-1);	// Perform read
+
+	printf("DataBlocks at: %u\n", block - 1);
+	bhd32a(odataBlockMem, 2*512/4);
+#endif
 
 #ifndef ZAP
 	block = (262144 * 8);
@@ -383,22 +402,23 @@ int Control::test6(){
 	//numBlocks = 2621440;		// 10 GByte
 	
 	printf("Test6: Enable FPGA write blocks\n");
-	
+
+	setNvme(0);
 	if(e = configureNvme())
 		return e;
+
+	setNvme(1);
+	if(e = configureNvme())
+		return e;
+
+	setNvme(2);
 
 	//dumpRegs();
 	
 	// Set number of blocks to write
 	writeNvmeStorageReg(RegDataChunkSize, numBlocks);
+	dumpRegs();
 	
-	printf("Stats\n");
-	printf("NvmeWrite: dataChunkStart: %8.8x\n", readNvmeStorageReg(RegDataChunkStart));
-	printf("NvmeWrite: dataChunkSize:  %8.8x\n", readNvmeStorageReg(RegDataChunkSize));
-	printf("NvmeWrite: status:         %8.8x\n", readNvmeStorageReg(RegWriteError));
-	printf("NvmeWrite: numBlocks:      %u\n", n = readNvmeStorageReg(RegWriteNumBlocks));
-	printf("NvmeWrite: timeUs:         %u\n", t = readNvmeStorageReg(RegWriteTime));
-
 	// Start off NvmeWrite engine
 	printf("\nStart NvmeWrite engine\n");
 	writeNvmeStorageReg(4, 0x00000004);
@@ -458,12 +478,11 @@ int Control::test6(){
 #endif
 
 	printf("Stats\n");
-	printf("NvmeWrite: dataChunkStart: %8.8x\n", readNvmeStorageReg(RegDataChunkStart));
-	printf("NvmeWrite: dataChunkSize:  %8.8x\n", readNvmeStorageReg(RegDataChunkSize));
-	printf("NvmeWrite: status:         %8.8x\n", readNvmeStorageReg(RegWriteError));
-	printf("NvmeWrite: numBlocks:      %u\n", n = readNvmeStorageReg(RegWriteNumBlocks));
-	printf("NvmeWrite: timeUs:         %u\n", t = readNvmeStorageReg(RegWriteTime));
-	
+	dumpRegs(0);
+	dumpRegs(1);
+
+	n = readNvmeStorageReg(RegWriteNumBlocks);
+	t = readNvmeStorageReg(RegWriteTime);
 	r = (4096.0 * n / (1e-6 * t));
 	printf("NvmeWrite: rate:      %f MBytes/s\n", r / (1024 * 1024));
 
@@ -524,6 +543,43 @@ int Control::test8(){
 	return 0;
 }
 
+int Control::test9(){
+	int	e;
+	BUInt32	nvmeNum = onvmeNum;
+	BUInt32	cmd0;
+
+	printf("Test dual Nvme\n");
+	
+	onvmeNum = 0;
+	nvmeNum = onvmeNum;
+
+	// Perform reset
+	reset();
+	
+	onvmeNum = 0;
+	writeNvmeStorageReg(4, 0x80000000);
+
+	onvmeNum = 1;
+	writeNvmeStorageReg(4, 0x88000000);
+
+	onvmeNum = 2;
+	//writeNvmeStorageReg(4, 0x88800000);
+
+	onvmeNum = 0;
+	dumpRegs();
+
+	onvmeNum = 1;
+	dumpRegs();
+
+	onvmeNum = 2;
+	dumpRegs();
+	
+	printf("NvmeRegisters\n");
+	onvmeNum = nvmeNum;
+	dumpNvmeRegisters();
+
+	return 0;
+}
 
 int Control::test_misc(){
 	BUInt32	address = 0;
@@ -591,6 +647,7 @@ void usage(void) {
 	fprintf(stderr, " -help,-h              - Help on command line parameters\n");
 	fprintf(stderr, " -v                    - Verbose\n");
 	fprintf(stderr, " -l                    - List tests\n");
+	fprintf(stderr, " -n <nvmeNum>          - Operate on: 0: Nvme0, 1: Nvme1, 2: Both Nvme's\n");
 }
 
 static struct option options[] = {
@@ -598,6 +655,7 @@ static struct option options[] = {
 		{ "help",		0, NULL, 0 },
 		{ "v",			0, NULL, 0 },
 		{ "l",			0, NULL, 0 },
+		{ "n",			1, NULL, 0 },
 		{ 0,0,0,0 }
 };
 int main(int argc, char** argv){
@@ -620,6 +678,9 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(s, "l")){
 			listTests = 1;
+		}
+		else if(!strcmp(s, "n")){
+			control.setNvme(atoi(optarg));
 		}
 		else {
 			fprintf(stderr, "Error: No option: %s\n", s);
@@ -671,6 +732,9 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(test, "test8")){
 			err = control.test8();
+		}
+		else if(!strcmp(test, "test9")){
+			err = control.test9();
 		}
 		else if(!strcmp(test, "test_misc")){
 			err = control.test_misc();

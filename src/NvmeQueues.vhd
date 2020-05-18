@@ -130,6 +130,11 @@ begin
 	queueArray(to_integer(queueNum)) <= queueArray(to_integer(queueNum)) + 1;
 end;
 
+function doorbellAddress(queueNum: integer; reply: integer) return unsigned is
+begin
+	return to_unsigned(((2 * queueNum) + reply) * NvmeDoorbellStride, 8);
+end;
+
 begin
 	-- Queue memory
 	queueMem0 : Ram
@@ -260,7 +265,7 @@ begin
 						ramAddressWrite <= ramAddressWrite + 1;
 						if(streamIn.last = '1') then
 							-- Perform bus master write request to doorbell register on Nvme (0x1000, 0x1008, 0x1010 ...)
-							doorbellReqHead.address	<= to_unsigned(16#000010#, doorbellReqHead.address'length - 8) & to_unsigned(queueIn * 8, 8);
+							doorbellReqHead.address	<= to_unsigned(16#000010#, doorbellReqHead.address'length - 8) & doorbellAddress(queueIn, 0);
 							doorbellReqHead.tag	<= x"44";
 							doorbellReqHead.requesterId	<= to_unsigned(2, doorbellReqHead.requesterId'length);
 							doorbellReqHead.request	<= "0001";
@@ -313,7 +318,7 @@ begin
 						streamOut.last	<= '0';
 
 						-- Perform bus master write request to doorbell register on Nvme (0x1000, 0x1008, 0x1010 ...)
-						doorbellReqHead.address	<= to_unsigned(16#000010#, doorbellReqHead.address'length - 8) & to_unsigned(queueIn * 8 + 4, 8);
+						doorbellReqHead.address	<= to_unsigned(16#000010#, doorbellReqHead.address'length - 8) & doorbellAddress(queueIn, 1);
 						doorbellReqHead.tag	<= x"44";
 						doorbellReqHead.requesterId	<= requestHead1.requesterId;
 						doorbellReqHead.request	<= "0001";

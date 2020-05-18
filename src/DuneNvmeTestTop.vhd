@@ -265,7 +265,7 @@ begin
 		-- AXIS data stream input
 		dataEnabledOut	=> dataEnabled,
 		dataIn		=> dataStream,
-		dataInReady	=> dataStream_ready,
+		dataIn_ready	=> dataStream_ready,
 
 		-- NVMe interface
 		nvme_clk_p	=> nvme_clk_p,

@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- NvmeStreamMux.vhd Multiplex/De-multiplex a streams into two using header
+-- NvmeStreamMux.vhd Multiplex/De-multiplex a streams into two based on unit number header
 -------------------------------------------------------------------------------
 --!
 --! @class	NvmeStreamMux
@@ -11,8 +11,8 @@
 --! This module Multiplex/De-multiplex a stream a 128bit Axis stream into two streams using the 128bit header
 --!
 --! @details
---! This uses bit 95 in the Pcie header to determin if packets are Pcie requests or replies and then
---! routes the packets appropriately. It is used to handle the quad stream nature of the Xilinx Pcie Gen3 hardblock.
+--! This uses bit 96 in the Pcie header to determine which Nume device the packet should be sent too.
+--! It is used to pass requests from the host to the appropriate NvmeStorageUnit engine and get replies.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -43,14 +43,14 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 	
-	stream1In	: inout AxisStreamType := AxisStreamInput;	--! Single multiplexed Input stream
-	stream1Out	: inout AxisStreamType := AxisStreamOutput;	--! Single multiplexed Ouput stream
+	hostIn		: inout AxisStreamType := AxisStreamInput;	--! Host multiplexed Input stream
+	hostOut		: inout AxisStreamType := AxisStreamOutput;	--! Host multiplexed Ouput stream
 
-	stream2In	: inout AxisStreamType := AxisStreamInput;	--! Host Replies input stream
-	stream2Out	: inout AxisStreamType := AxisStreamOutput;	--! Host Requests output stream
+	nvme0In		: inout AxisStreamType := AxisStreamInput;	--! Nvme0 Replies input stream
+	nvme0Out	: inout AxisStreamType := AxisStreamOutput;	--! Nvme0 Requests output stream
 
-	stream3In	: inout AxisStreamType := AxisStreamInput;	--! Nvme Requests input stream
-	stream3Out	: inout AxisStreamType := AxisStreamOutput	--! Nvme replies output stream
+	nvme1In		: inout AxisStreamType := AxisStreamInput;	--! Nvme1 Requests input stream
+	nvme1Out	: inout AxisStreamType := AxisStreamOutput	--! Nvme1 replies output stream
 );
 end;
 
@@ -58,35 +58,41 @@ architecture Behavioral of NvmeStreamMux is
 
 constant TCQ		: time := 1 ns;
 
-type DemuxStateType	is (DEMUX_STATE_START, DEMUX_STATE_SENDPACKET2, DEMUX_STATE_SENDPACKET3);
+type DemuxStateType	is (DEMUX_STATE_START, DEMUX_STATE_SENDPACKET0, DEMUX_STATE_SENDPACKET1);
 signal demuxState	: DemuxStateType := DEMUX_STATE_START;
-signal demuxReply	: std_logic;
+signal isReply		: std_logic;
+signal nvmeNumber	: std_logic;
 
-type MuxStateType	is (MUX_STATE_START, MUX_STATE_SENDPACKET2, MUX_STATE_SENDPACKET3);
+type MuxStateType	is (MUX_STATE_START, MUX_STATE_SENDPACKET0, MUX_STATE_SENDPACKET1);
 signal muxState		: MuxStateType := MUX_STATE_START;
 signal muxReply		: std_logic;
-signal muxStream2	: std_logic;
-signal muxStream2Data	: std_logic_vector(127 downto 0);
+signal nvme1Stream	: std_logic;
+signal nvme1StreamData	: std_logic_vector(127 downto 0);
 
 begin
 	-- De-multiplex host -> nvme streams. Expects 128 bit header word providing destination stream number
-	demuxReply <= stream1In.data(95);
+	isReply		<= hostIn.data(95);
+	nvmeNumber 	<= hostIn.data(80) when(isReply = '1') else hostIn.data(28);
 
-	stream1In.ready <= stream3Out.ready when((demuxState = DEMUX_STATE_START) and (stream1In.valid = '1') and (demuxReply = '1'))
-		else stream2Out.ready when((demuxState = DEMUX_STATE_START) and (stream1In.valid = '1') and (demuxReply = '0'))
-		else stream2Out.ready when(demuxState = DEMUX_STATE_SENDPACKET2)
-		else stream3Out.ready when(demuxState = DEMUX_STATE_SENDPACKET3)
-		else stream2Out.ready and stream3Out.ready;
+	hostIn.ready <= nvme1Out.ready when((demuxState = DEMUX_STATE_START) and (hostIn.valid = '1') and (nvmeNumber = '1'))
+		else nvme0Out.ready when((demuxState = DEMUX_STATE_START) and (hostIn.valid = '1') and (nvmeNumber = '0'))
+		else nvme0Out.ready when(demuxState = DEMUX_STATE_SENDPACKET0)
+		else nvme1Out.ready when(demuxState = DEMUX_STATE_SENDPACKET1)
+		else nvme0Out.ready and nvme1Out.ready;
 		
-	stream2Out.valid <= stream1In.valid when((demuxState = DEMUX_STATE_SENDPACKET2) or ((demuxState = DEMUX_STATE_START) and (demuxReply = '0'))) else '0';
-	stream2Out.last <= stream1In.last;
-	stream2Out.keep <= stream1In.keep;
-	stream2Out.data <= stream1In.data;
+	nvme0Out.valid <= hostIn.valid when((demuxState = DEMUX_STATE_SENDPACKET0) or ((demuxState = DEMUX_STATE_START) and (nvmeNumber = '0'))) else '0';
+	nvme0Out.last <= hostIn.last;
+	nvme0Out.keep <= hostIn.keep;
+	nvme0Out.data <= hostIn.data;
 	
-	stream3Out.valid <= stream1In.valid when((demuxState = DEMUX_STATE_SENDPACKET3) or ((demuxState = DEMUX_STATE_START) and (demuxReply = '1'))) else '0';
-	stream3Out.last <= stream1In.last;
-	stream3Out.keep <= stream1In.keep;
-	stream3Out.data <= stream1In.data;
+	nvme1Out.valid <= hostIn.valid when((demuxState = DEMUX_STATE_SENDPACKET1) or ((demuxState = DEMUX_STATE_START) and (nvmeNumber = '1'))) else '0';
+	nvme1Out.last <= hostIn.last;
+	nvme1Out.keep <= hostIn.keep;
+	
+	-- Mask out Nvme number from packets header
+	nvme1Out.data <= hostIn.data(127 downto 32) & x"0" & hostIn.data(27 downto 0) when((demuxState = DEMUX_STATE_START) and (isReply = '0'))
+		else hostIn.data(127 downto 81) & '0' & hostIn.data(79 downto 0) when((demuxState = DEMUX_STATE_START) and (isReply = '1'))
+		else hostIn.data;
 
 	-- De-multiplexor
 	process(clk)
@@ -97,23 +103,23 @@ begin
 			else
 				case(demuxState) is
 				when DEMUX_STATE_START =>
-					if((stream1In.valid = '1') and (stream1In.ready = '1')) then
-						if(stream1In.last = '1') then
+					if((hostIn.valid = '1') and (hostIn.ready = '1')) then
+						if(hostIn.last = '1') then
 							demuxState <= DEMUX_STATE_START;
-						elsif(demuxReply = '1') then
-							demuxState <= DEMUX_STATE_SENDPACKET3;
+						elsif(nvmeNumber = '1') then
+							demuxState <= DEMUX_STATE_SENDPACKET1;
 						else
-							demuxState <= DEMUX_STATE_SENDPACKET2;
+							demuxState <= DEMUX_STATE_SENDPACKET0;
 						end if;
 					end if;
 
-				when DEMUX_STATE_SENDPACKET2 =>
-					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream1In.last = '1')) then
+				when DEMUX_STATE_SENDPACKET0 =>
+					if((hostIn.valid = '1') and (hostIn.ready = '1') and (hostIn.last = '1')) then
 						demuxState <= DEMUX_STATE_START;
 					end if;
 
-				when DEMUX_STATE_SENDPACKET3 =>
-					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream1In.last = '1')) then
+				when DEMUX_STATE_SENDPACKET1 =>
+					if((hostIn.valid = '1') and (hostIn.ready = '1') and (hostIn.last = '1')) then
 						demuxState <= DEMUX_STATE_START;
 					end if;
 				end case;
@@ -122,17 +128,20 @@ begin
 	end process;
 	
 	
-	-- Multiplex streams.
-	muxStream2 <= '1' when(((muxState = MUX_STATE_START) and (stream2In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET2)) else '0';
-	muxStream2Data <= stream2In.data(127 downto 96) & '1' & stream2In.data(94 downto 0) when(muxState = MUX_STATE_START) else stream2In.data;
-	
-	stream1Out.valid <= stream2In.valid when(muxStream2 = '1') else stream3In.valid;
-	stream1Out.last <= stream2In.last when(muxStream2 = '1') else stream3In.last;
-	stream1Out.keep <= stream2In.keep when(muxStream2 = '1') else stream3In.keep;
-	stream1Out.data <= muxStream2Data when(muxStream2 = '1')  else stream3In.data;
+	-- Multiplex streams. Sets the Nvme number to 1 in the Nvme1 reply streams in appropriate location for request and reply packets
+	nvme1Stream <= '0' when(((muxState = MUX_STATE_START) and (nvme0In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET0)) else '1';
 
-	stream2In.ready <= stream1Out.ready when(muxStream2 = '1') else '0';
-	stream3In.ready <= stream1Out.ready when(muxStream2 = '0') else '0';
+	nvme1StreamData <= nvme1In.data(127 downto 81) & '1' & nvme1In.data(79 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '1'))
+		else nvme1In.data(127 downto 32) & x"1" & nvme1In.data(27 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '0'))
+		else nvme1In.data;
+	
+	hostOut.valid <= nvme0In.valid when(nvme1Stream = '0') else nvme1In.valid;
+	hostOut.last <= nvme0In.last when(nvme1Stream = '0') else nvme1In.last;
+	hostOut.keep <= nvme0In.keep when(nvme1Stream = '0') else nvme1In.keep;
+	hostOut.data <= nvme0In.data when(nvme1Stream = '0')  else nvme1StreamData;
+
+	nvme0In.ready <= hostOut.ready when(nvme1Stream = '0') else '0';
+	nvme1In.ready <= hostOut.ready when(nvme1Stream = '1') else '0';
 
 	process(clk)
 	begin
@@ -142,27 +151,27 @@ begin
 			else
 				case(muxState) is
 				when MUX_STATE_START =>
-					if((stream2In.valid = '1') and (stream2In.ready = '1')) then
-						if(stream2In.last = '1') then
+					if((nvme0In.valid = '1') and (nvme0In.ready = '1')) then
+						if(nvme0In.last = '1') then
 							muxState <= MUX_STATE_START;
 						else
-							muxState <= MUX_STATE_SENDPACKET2;
+							muxState <= MUX_STATE_SENDPACKET0;
 						end if;
-					elsif((stream3In.valid = '1') and (stream3In.ready = '1')) then
-						if(stream3In.last = '1') then
+					elsif((nvme1In.valid = '1') and (nvme1In.ready = '1')) then
+						if(nvme1In.last = '1') then
 							muxState <= MUX_STATE_START;
 						else
-							muxState <= MUX_STATE_SENDPACKET3;
+							muxState <= MUX_STATE_SENDPACKET1;
 						end if;
 					end if;
 
-				when MUX_STATE_SENDPACKET2 =>
-					if((stream2In.valid = '1') and (stream2In.ready = '1') and (stream2In.last = '1')) then
+				when MUX_STATE_SENDPACKET0 =>
+					if((nvme0In.valid = '1') and (nvme0In.ready = '1') and (nvme0In.last = '1')) then
 						muxState <= MUX_STATE_START;
 					end if;
 
-				when MUX_STATE_SENDPACKET3 =>
-					if((stream3In.valid = '1') and (stream3In.ready = '1') and (stream3In.last = '1')) then
+				when MUX_STATE_SENDPACKET1 =>
+					if((nvme1In.valid = '1') and (nvme1In.ready = '1') and (nvme1In.last = '1')) then
 						muxState <= MUX_STATE_START;
 					end if;
 
