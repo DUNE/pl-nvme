@@ -390,7 +390,7 @@ type StateType			is (STATE_START, STATE_IDLE, STATE_WRITE, STATE_READ1, STATE_RE
 signal state			: StateType := STATE_START;
 
 signal regWrite1		: std_logic;				--! Enable write to register
-signal regAddress1		: unsigned(5 downto 0);			--! Register to read/write
+signal regAddress1		: unsigned(5 downto 0) := (others => '0');	--! Register to read/write
 signal regDataIn1		: std_logic_vector(31 downto 0);	--! Register write data
 signal regDataOut0		: std_logic_vector(31 downto 0);	--! Register contents
 signal regDataOut1		: std_logic_vector(31 downto 0);	--! Register contents
@@ -489,7 +489,6 @@ begin
 		streamTx	=> dataIn1
 	);
 
-	
 	-- Register access
 	regDataOut1 <= reg_id when(regAddress1 = 0) else
 			reg_control when(regAddress1 = 1) else

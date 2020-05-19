@@ -165,11 +165,12 @@ begin
 		axil.toSlave <= ((others => '0'), (others => '0'), '0', (others => '0'), (others => '0'), '0', '0', (others => '0'), (others => '0'), '0', '0');
 		wait until reset = '0';
 
-		if(False) then
+		if(True) then
 			-- Test Read/Write NvmeStorageUnit's registers
 			wait for 100 ns;
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#40000000#);
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0204#, 16#48000000#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0000#);
 			busRead(clk, axil.toSlave, axil.toMaster, 16#0004#);
 			busRead(clk, axil.toSlave, axil.toMaster, 16#0204#);
 
@@ -191,6 +192,7 @@ begin
 			-- Perform local reset
 			wait for 100 ns;
 			busWrite(clk, axil.toSlave, axil.toMaster, 4, 16#00000001#);
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0000#);
 			busRead(clk, axil.toSlave, axil.toMaster, 16#0008#);
 			busRead(clk, axil.toSlave, axil.toMaster, 16#0008#);
 			wait for 200 ns;

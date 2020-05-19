@@ -72,6 +72,7 @@ GFLAGS	= --ieee=synopsys --warn-no-unused
 GFLAGS	+= -fexplicit
 GFLAGS	+= -Psimu
 SFLAGS	= --assert-level=error
+SFLAGS	+= --ieee-asserts=disable-at-0
 #SFLAGS += --stop-time=300ns
 SFLAGS += --stop-time=30us
 

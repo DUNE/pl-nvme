@@ -166,17 +166,15 @@ constant TCQ		: time := 1 ns;
 signal nvme_clk		: std_logic := 'U';
 signal nvme_clk_gt	: std_logic := 'U';
 
+signal rvalid_delay	: unsigned(4 downto 0) := (others => '0');
+
 signal hostSend0	: AxisStreamType;
 signal hostRecv0	: AxisStreamType;
 
-signal axilIn0		: AxilToSlaveType;
-signal axilOut0		: AxilToMasterType;
 signal data0		: AxisStreamType := AxisStreamOutput;
 signal nvme0Send	: AxisStreamType;
 signal nvme0Recv	: AxisStreamType;
 
-signal axilIn1		: AxilToSlaveType;
-signal axilOut1		: AxilToMasterType;
 signal data1		: AxisStreamType := AxisStreamOutput;
 signal nvme1Send	: AxisStreamType;
 signal nvme1Recv	: AxisStreamType;
@@ -200,28 +198,6 @@ signal dataIn1_ready	: std_logic := 'U';
 signal dataEnabledOut0	: std_logic := 'U';
 signal dataEnabledOut1	: std_logic := 'U';
 
-function busPass(axil: AxilToSlaveType; enable: std_logic) return AxilToSlaveType is
-variable ret: AxilToSlaveType;
-begin
-	ret.awaddr	:= axil.awaddr;
-	ret.awprot	:= axil.awprot;
-	ret.awvalid	:= axil.awvalid;
-	ret.wdata	:= axil.wdata;
-	ret.wstrb	:= axil.wstrb;
-	if(enable = '1') then
-		ret.wvalid := axil.wvalid;
-	else
-		ret.wvalid := '0';
-	end if;
-	ret.bready	:= axil.bready;
-	ret.araddr	:= axil.araddr;
-	ret.arprot	:= axil.arprot;
-	ret.arvalid	:= axil.arvalid;
-	ret.rready	:= axil.rready;
-	
-	return ret;
-end;
-
 begin
 	-- NVME PCIE Clock, 100MHz
 	nvme_clk_buf0 : IBUFDS_GTE3
@@ -237,7 +213,7 @@ begin
 	-- Bus ready returns		
 	axilOut.awready	<= axilIn.awvalid;
 	axilOut.arready	<= axilIn.arvalid;
-	axilOut.rvalid	<= '1';
+	axilOut.rvalid	<= rvalid_delay(4);
 	axilOut.wready	<= axilIn.wvalid;
 
 	-- Always return OK to read and write requests
@@ -256,13 +232,19 @@ begin
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				regAddress <= (others => '0');
+				regAddress	<= (others => '0');
+				rvalid_delay	<= (others => '0');
 			else
 				if(axilIn.awvalid = '1') then
 					regAddress <= unsigned(axilIn.awaddr(9 downto 0));
 				elsif(axilIn.arvalid = '1') then
 					regAddress <= unsigned(axilIn.araddr(9 downto 0));
+					rvalid_delay(0) <= '1';
+				else
+					-- rvalid delay to handle clock domain crossing latency
+					rvalid_delay <= shift_left(rvalid_delay, 1);
 				end if;
+				
 			end if;
 		end if;
 	end process;
@@ -303,7 +285,7 @@ begin
 
 		streamTx	=> data1
 	);
-
+	
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
