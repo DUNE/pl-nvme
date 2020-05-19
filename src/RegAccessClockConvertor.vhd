@@ -8,9 +8,14 @@
 --! @version	0.0.1
 --!
 --! @brief
---! This module passes register access signals acrossd a clock domain
+--! This module passes register access signals across a clock domain
 --!
 --! @details
+--! This is a very simple, low utilisation clock domain crossing unit for the register interface.
+--! It is designed to work with asynchronous clocks of the same frequency.
+--! It assumes the write signal is delayed by 1 cycle from the address and data transitions to
+--! make sure all bits are stable before the actual register write.
+--! For reads you need to wait 5 cycles.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>

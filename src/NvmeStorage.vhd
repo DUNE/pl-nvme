@@ -166,6 +166,7 @@ constant TCQ		: time := 1 ns;
 signal nvme_clk		: std_logic := 'U';
 signal nvme_clk_gt	: std_logic := 'U';
 
+signal wvalid_delay	: std_logic := '0';
 signal rvalid_delay	: unsigned(4 downto 0) := (others => '0');
 
 signal hostSend0	: AxisStreamType;
@@ -214,14 +215,14 @@ begin
 	axilOut.awready	<= axilIn.awvalid;
 	axilOut.arready	<= axilIn.arvalid;
 	axilOut.rvalid	<= rvalid_delay(4);
-	axilOut.wready	<= axilIn.wvalid;
+	axilOut.wready	<= axilIn.wvalid and wvalid_delay;
 
 	-- Always return OK to read and write requests
 	axilOut.rresp	<= "00";
 	axilOut.bresp	<= "00";
 	axilOut.bvalid	<= '1';
 
-	regWrite	<= axilIn.wvalid;
+	regWrite	<= wvalid_delay;	-- Delayed to make sure bits are stable across CDC
 	
 	regWrite0	<= regWrite when(regAddress < 512) else '0';
 	regWrite1	<= regWrite when((regAddress < 256) or (regAddress >= 512)) else '0';
@@ -234,6 +235,7 @@ begin
 			if(reset = '1') then
 				regAddress	<= (others => '0');
 				rvalid_delay	<= (others => '0');
+				wvalid_delay	<= '0';
 			else
 				if(axilIn.awvalid = '1') then
 					regAddress <= unsigned(axilIn.awaddr(9 downto 0));
@@ -245,6 +247,7 @@ begin
 					rvalid_delay <= shift_left(rvalid_delay, 1);
 				end if;
 				
+				wvalid_delay <= axilIn.wvalid;
 			end if;
 		end if;
 	end process;
