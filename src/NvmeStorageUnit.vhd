@@ -11,9 +11,12 @@
 --! This is the main Nvme control module for a single Nvme device.
 --!
 --! @details
---! Communication is performed over an AXI lite bus and AXI request and reply streams.
---! The AXI lite bus interface provides access to high level control and status registers.
---! The AXI streams allow communication with the Nvme storage device itself.
+--! This module manages a single Nvme device. It is controlled via a simple regsiter access interface
+--! and an optional bi-directional PCIe packet stream.
+--! An AXI4 data stream, blocked into BlockSize Bytes using the "last" signal, is written sequentially
+--! to the Nvme device. The DataChunkStart and DataChunkSize registers define the starting block number
+--! and the number of blocks to write.
+--! See the NvmeStorageManual for more details.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -141,7 +144,53 @@ port (
 );
 end component;
 
-component Pcie_nvme
+component Pcie_nvme0
+port (
+	pci_exp_txn : out std_logic_vector ( 3 downto 0 );
+	pci_exp_txp : out std_logic_vector ( 3 downto 0 );
+	pci_exp_rxn : in std_logic_vector ( 3 downto 0 );
+	pci_exp_rxp : in std_logic_vector ( 3 downto 0 );
+	user_clk : out std_logic;
+	user_reset : out std_logic;
+	user_lnk_up : out std_logic;
+	s_axis_rq_tdata : in std_logic_vector ( 127 downto 0 );
+	s_axis_rq_tkeep : in std_logic_vector ( 3 downto 0 );
+	s_axis_rq_tlast : in std_logic;
+	s_axis_rq_tready : out std_logic_vector ( 3 downto 0 );
+	s_axis_rq_tuser : in std_logic_vector ( 59 downto 0 );
+	s_axis_rq_tvalid : in std_logic;
+	m_axis_rc_tdata : out std_logic_vector ( 127 downto 0 );
+	m_axis_rc_tkeep : out std_logic_vector ( 3 downto 0 );
+	m_axis_rc_tlast : out std_logic;
+	m_axis_rc_tready : in std_logic;
+	m_axis_rc_tuser : out std_logic_vector ( 74 downto 0 );
+	m_axis_rc_tvalid : out std_logic;
+	m_axis_cq_tdata : out std_logic_vector ( 127 downto 0 );
+	m_axis_cq_tkeep : out std_logic_vector ( 3 downto 0 );
+	m_axis_cq_tlast : out std_logic;
+	m_axis_cq_tready : in std_logic;
+	m_axis_cq_tuser : out std_logic_vector ( 84 downto 0 );
+	m_axis_cq_tvalid : out std_logic;
+	s_axis_cc_tdata : in std_logic_vector ( 127 downto 0 );
+	s_axis_cc_tkeep : in std_logic_vector ( 3 downto 0 );
+	s_axis_cc_tlast : in std_logic;
+	s_axis_cc_tready : out std_logic_vector ( 3 downto 0 );
+	s_axis_cc_tuser : in std_logic_vector ( 32 downto 0 );
+	s_axis_cc_tvalid : in std_logic;
+	cfg_interrupt_int : in std_logic_vector ( 3 downto 0 );
+	cfg_interrupt_pending : in std_logic_vector ( 3 downto 0 );
+	cfg_interrupt_sent : out std_logic;
+	sys_clk : in std_logic;
+	sys_clk_gt : in std_logic;
+	sys_reset : in std_logic;
+	int_qpll1lock_out : out std_logic_vector ( 0 to 0 );
+	int_qpll1outrefclk_out : out std_logic_vector ( 0 to 0 );
+	int_qpll1outclk_out : out std_logic_vector ( 0 to 0 );
+	phy_rdy_out : out std_logic
+);
+end component;
+
+component Pcie_nvme1
 port (
 	pci_exp_txn : out std_logic_vector ( 3 downto 0 );
 	pci_exp_txp : out std_logic_vector ( 3 downto 0 );
@@ -382,6 +431,7 @@ signal dummy3			: AxisStreamType := AxisStreamOutput;
 
 
 begin
+	-- Register access over clock domain crossing
 	regClockConvertor : RegAccessClockConvertor
 	port map (
 		clk1		=> clk,
@@ -403,6 +453,7 @@ begin
 		regDataOut2	=> regDataOut1
 	);
 
+	-- Host request packets across clock domain crossing
 	axisClockConverter0 :  AxisClockConverter
 	port map (
 		clkRx		=> clk,
@@ -414,6 +465,7 @@ begin
 		streamTx	=> hostSend1
 	);
 
+	-- Host reply packets across clock domain crossing
 	axisClockConverter1 :  AxisClockConverter
 	port map (
 		clkRx		=> nvme_user_clk,
@@ -425,6 +477,7 @@ begin
 		streamTx	=> hostRecv
 	);
 	
+	-- Data stream across clock domain crossing
 	axisClockConverter2 :  AxisClockConverter
 	port map (
 		clkRx		=> clk,
@@ -446,11 +499,11 @@ begin
 			reg_nvmeWrite when((regAddress1 >= 16) and (regAddress1 < 32)) else
 			x"FFFFFFFF";
 
-	regDataOut <= reg_status when(reset_local_active = '1') else regDataOut0;
+	regDataOut <= zeros(31) & reset_local_active when(reset_local_active = '1') else regDataOut0;
 	writeNvmeWrite <= regWrite1 when((regAddress1 >= 16) and (regAddress1 < 32)) else '0';
 	
 	-- Status register bits
-	reg_status(0)		<= reset_local_active;
+	reg_status(0)		<= '0';
 	reg_status(1)		<= configComplete;
 	reg_status(2)		<= '0';
 	reg_status(31 downto 3)	<= (others => '0');
@@ -537,8 +590,9 @@ begin
 	
 	synth: if (Simulate = False) generate
 
+	genpci0: if(PcieBlock = 0) generate
 	-- The PCIe to NVMe interface
-	pcie_nvme0 : Pcie_nvme
+	pcie_nvme_0 : Pcie_nvme0
 	port map (
 		sys_clk			=> nvme_clk,
 		sys_clk_gt		=> nvme_clk_gt,
@@ -586,7 +640,61 @@ begin
 		cfg_interrupt_pending	=> "0000"
 		--cfg_interrupt_sent	=> --cfg_interrupt_sent,
 	);
+	end generate;
+	
+	genpci1: if(PcieBlock = 1) generate
+	-- The PCIe to NVMe interface
+	pcie_nvme_1 : Pcie_nvme1
+	port map (
+		sys_clk			=> nvme_clk,
+		sys_clk_gt		=> nvme_clk_gt,
+		sys_reset		=> nvme_reset_local_n,
+		phy_rdy_out		=> leds(0),
 
+		pci_exp_txn		=> nvme_exp_txn,
+		pci_exp_txp		=> nvme_exp_txp,
+		pci_exp_rxn		=> nvme_exp_rxn,
+		pci_exp_rxp		=> nvme_exp_rxp,
+
+		user_clk		=> nvme_user_clk,
+		user_reset		=> nvme_user_reset,
+		user_lnk_up		=> leds(1),
+
+		s_axis_rq_tdata		=> hostReq.data,
+		s_axis_rq_tkeep		=> hostReq.keep,
+		s_axis_rq_tlast		=> hostReq.last,
+		s_axis_rq_tready	=> hostReq_ready,
+		s_axis_rq_tuser		=> hostReq_user,
+		s_axis_rq_tvalid	=> hostReq.valid,
+		
+		m_axis_rc_tdata		=> hostReply.data,
+		m_axis_rc_tkeep		=> hostReply.keep,
+		m_axis_rc_tlast		=> hostReply.last,
+		m_axis_rc_tready	=> hostReply.ready,
+		--m_axis_rc_tuser	=> hostReply_user,
+		m_axis_rc_tvalid	=> hostReply.valid,
+		
+		m_axis_cq_tdata		=> nvmeReq.data,
+		m_axis_cq_tkeep		=> nvmeReq.keep,
+		m_axis_cq_tlast		=> nvmeReq.last,
+		m_axis_cq_tready	=> nvmeReq.ready,
+		--m_axis_cq_tuser	=> nvmeReq_user,
+		m_axis_cq_tvalid	=> nvmeReq.valid,
+		
+		s_axis_cc_tdata		=> nvmeReply.data,
+		s_axis_cc_tkeep		=> nvmeReply.keep,
+		s_axis_cc_tlast		=> nvmeReply.last,
+		s_axis_cc_tready	=> nvmeReply_ready,
+		s_axis_cc_tuser		=> nvmeReply_user,
+		s_axis_cc_tvalid	=> nvmeReply.valid,
+
+		cfg_interrupt_int	=> "0000",
+		cfg_interrupt_pending	=> "0000"
+		--cfg_interrupt_sent	=> --cfg_interrupt_sent,
+	);
+	end generate;
+	
+	
 	-- Interface between Axis streams and PCIe Gen3 streams
 	hostReq.ready <= hostReq_ready(0);
 
