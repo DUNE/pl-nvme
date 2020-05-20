@@ -343,6 +343,7 @@ begin
 		-- NVMe interface
 		nvme_clk	=> nvme_clk,
 		nvme_clk_gt	=> nvme_clk_gt,
+		nvme_reset_n	=> nvme_reset_n,
 		nvme_exp_txp	=> nvme0_exp_txp,
 		nvme_exp_txn	=> nvme0_exp_txn,
 		nvme_exp_rxp	=> nvme0_exp_rxp,
