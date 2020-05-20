@@ -30,6 +30,7 @@ SYN_FILES	+= ../src/NvmeSim.vhd
 SYN_FILES	+= ../src/NvmeQueues.vhd
 SYN_FILES	+= ../src/NvmeConfig.vhd
 SYN_FILES	+= ../src/NvmeWrite.vhd
+SYN_FILES	+= ../src/NvmeRead.vhd
 SYN_FILES	+= ../src/NvmeStorageUnit.vhd
 SYN_FILES	+= ../src/NvmeStorage.vhd
 SYN_FILES	+= ../src/TestData.vhd

@@ -106,7 +106,7 @@ package NvmeStoragePkg is
 	component NvmeStorage is
 	generic(
 		Simulate	: boolean	:= False;		--! Generate simulation core
-		ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
+		ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
 		BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
 	);
 	port (

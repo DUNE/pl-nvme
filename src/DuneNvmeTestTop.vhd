@@ -248,6 +248,9 @@ begin
 	axil_reset <= not axil_reset_n;
 	
 	nvmeStorage0 : NvmeStorage
+	generic map (
+		ClockPeriod	=> 8 ns
+	)
 	port map (
 		clk		=> axil_clk,
 		reset		=> axil_reset,

@@ -37,6 +37,7 @@ FILES_BASE	+= ../src/NvmeStreamMux.vhd ../src/AxisDataConvertFifo.vhd ../src/Reg
 
 FILES_SYSTEM	= ../src/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd ../src/StreamSwitch.vhd ../src/NvmeQueues.vhd
 FILES_SYSTEM	+= ../src/TestDataStream.vhd ../src/TestData.vhd ../src/NvmeWrite.vhd
+FILES_SYSTEM	+= ../src/NvmeRead.vhd
 
 # Test files
 FILES_test001-leds += testbench/${TEST}.vhd ${FILES_BASE} ../src/LedCount.vhd

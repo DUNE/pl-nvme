@@ -35,6 +35,7 @@ use work.NvmeStoragePkg.all;
 use work.NvmeStorageIntPkg.all;
 
 package TestPkg is
+	procedure pcieRequestWriteHead(signal clk: std_logic; signal stream: inout AxisStreamType; requesterId: in integer; request: in integer; address: in integer; tag: in integer; count: in integer);
 	procedure pcieRequestWrite(signal clk: std_logic; signal stream: inout AxisStreamType; requesterId: in integer; request: in integer; address: in integer; tag: in integer; count: in integer; data: in integer);
 	procedure pcieRequestRead(signal clk: std_logic; signal stream: inout AxisStreamType; requesterId: in integer; request: in integer; address: in integer; tag: in integer; count: in integer);
 	procedure pcieReply(signal clk: std_logic; signal stream: inout AxisStreamType; requesterId: in integer; status: in integer; address: in integer; tag: in integer; count: in integer; data: in integer);
@@ -43,6 +44,22 @@ package TestPkg is
 end;
 
 package body TestPkg is
+	procedure pcieRequestWriteHead(signal clk: std_logic; signal stream: inout AxisStreamType; requesterId: in integer; request: in integer; address: in integer; tag: in integer; count: in integer) is
+	variable packetHead	: PcieRequestHeadType;
+	begin
+		packetHead.address := to_unsigned(address, packetHead.address'length);
+		packetHead.tag := to_unsigned(tag, packetHead.tag'length);
+		packetHead.count := to_unsigned(count, packetHead.count'length);
+		packetHead.request := to_unsigned(request, packetHead.request'length);
+		packetHead.requesterId := to_unsigned(requesterId, packetHead.requesterId'length);
+
+		-- Send Header
+		wait until rising_edge(clk);
+		stream.data <= to_stl(packetHead);
+		stream.keep <= ones(4);
+		stream.valid <= '1';
+	end procedure;
+
 	procedure pcieRequestWrite(signal clk: std_logic; signal stream: inout AxisStreamType; requesterId: in integer; request: in integer; address: in integer; tag: in integer; count: in integer; data: in integer) is
 	variable packetHead	: PcieRequestHeadType;
 	variable c		: integer;
@@ -60,7 +77,7 @@ package body TestPkg is
 		-- Send Header
 		wait until rising_edge(clk);
 		stream.data <= to_stl(packetHead);
-		stream.keep <= concat('1', 16);
+		stream.keep <= ones(4);
 		stream.valid <= '1';
 
 		while(c > 0) loop
@@ -95,7 +112,7 @@ package body TestPkg is
 		-- Write address
 		wait until rising_edge(clk);
 		stream.data <= to_stl(packetHead);
-		stream.keep <= concat('1', 16);
+		stream.keep <= ones(4);
 		stream.valid <= '1';
 		stream.last <= '1';
 
@@ -122,7 +139,7 @@ package body TestPkg is
 		-- Write address
 		wait until rising_edge(clk);
 		stream.data <= to_stl(d, 32) &to_stl(packetHead);
-		stream.keep <= concat('1', 16);
+		stream.keep <= ones(4);
 		stream.valid <= '1';
 		d := d + 1;
 
@@ -134,7 +151,7 @@ package body TestPkg is
 			c := c - 1;
 		end loop;
 		stream.last <= '1';
-		stream.keep <= concat('0', 4) & concat('1', 12);		-- Hard coded for multiple of 4 data words
+		stream.keep <= "0111";		-- Hard coded for multiple of 4 data words
 
 		wait until rising_edge(clk) and (stream.ready = '1');
 		stream.valid <= '0';

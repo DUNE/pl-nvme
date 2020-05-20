@@ -165,7 +165,7 @@ begin
 		axil.toSlave <= ((others => '0'), (others => '0'), '0', (others => '0'), (others => '0'), '0', '0', (others => '0'), (others => '0'), '0', '0');
 		wait until reset = '0';
 
-		if(True) then
+		if(False) then
 			-- Test Read/Write NvmeStorageUnit's registers
 			wait for 100 ns;
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#40000000#);
@@ -188,7 +188,7 @@ begin
 			wait;
 		end if;
 		
-		if(True) then
+		if(False) then
 			-- Perform local reset
 			wait for 100 ns;
 			busWrite(clk, axil.toSlave, axil.toMaster, 4, 16#00000001#);
@@ -199,23 +199,61 @@ begin
 			busRead(clk, axil.toSlave, axil.toMaster, 16#0008#);
 		end if;
 		
-		if(True) then
+		if(False) then
 			-- Start off TestData source and start writing data to Nvme
 			wait for 100 ns;
 			sendData <= '1';
 
 			-- Write to NvmeStorage control register to start NvmeWrite processing
 			wait for 100 ns;
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 2);		-- Number of blocks
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 16);		-- Number of blocks
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 2);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 16);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16#00000004#);	-- Start
 
 			wait for 11000 ns;
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000000#);	-- Stop
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16#00000000#);	-- Stop
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16#00000004#);	-- Start
 			wait;	
 		end if;
 		
+		if(True) then
+			-- Start off Reading data from block 8
+			wait for 100 ns;
+
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0188#, 8);		-- Start blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#018C#, 1);		-- Number blocks
+			busRead(clk, axil.toSlave, axil.toMaster, 16#0188#);
+
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0180#, 16#00000001#);	-- Start
+
+			wait for 11000 ns;
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0180#, 16#00000000#);	-- Stop
+			wait;	
+		end if;
+		
+		if(False) then
+			-- Send command to IO queue to read a block
+			wait for 100 ns;
+
+			-- Write to DataQueue
+			pcieRequestWriteHead(clk, hostReq, 1, 1, 16#02010000#, 16#22#, 16);
+
+			wait until rising_edge(clk) and (hostReq.ready = '1');
+			hostReq.data <= zeros(64) & x"00000001" & x"01000002";	-- Namespace 1, From stream1, opcode 2
+			wait until rising_edge(clk) and (hostReq.ready = '1');
+			hostReq.data <= zeros(32) & x"01F00000" & zeros(64);	-- Data source address to host
+			wait until rising_edge(clk) and (hostReq.ready = '1');
+			hostReq.data <= zeros(32) & x"00000000" & zeros(64);	-- Block number
+			wait until rising_edge(clk) and (hostReq.ready = '1');
+			hostReq.data <= zeros(96) & to_stl(0, 32);		-- WriteMethod, NumBlocks (0 is 1 block)
+			hostReq.last <= '1';
+			wait until rising_edge(clk) and (hostReq.ready = '1');
+			hostReq.last <= '0';
+			hostReq.valid <= '0';
+			
+			wait;
+		end if;
+
 		--wait for 1000 ns;
 		
 		-- Perform local reset
@@ -235,10 +273,10 @@ begin
 		--pcieRequestWrite(clk, hostReq, 1, 1, 16#1000#, 16#22#, 1, 16#40#);
 
 		-- Write to AdminQueue
-		pcieRequestWrite(clk, hostReq, 1, 1, 16#02000000#, 16#22#, 16, 16#00000010#);
+		--pcieRequestWrite(clk, hostReq, 1, 1, 16#02000000#, 16#22#, 16, 16#00000010#);
 
 		-- Write to DataQueue
-		pcieRequestWrite(clk, hostReq, 1, 1, 16#02010000#, 16#22#, 16, 16#00000010#);
+		--pcieRequestWrite(clk, hostReq, 1, 1, 16#02010000#, 16#22#, 16, 16#00000010#);
 
 		-- Perform NVMe data write
 		-- Write to DataWriteQueue doorbell register
@@ -258,8 +296,8 @@ begin
 		dataOutReady	=> dataStreamReady
 	);	
 
-	axisConnect(hostSend1, hostSend, hostSendReady);
-	axisConnect(hostRecv, hostrecvReady, hostRecv1);
+	axisConnect(hostSend, hostSendReady, hostSend1);
+	axisConnect(hostRecv1, hostRecv, hostrecvReady);
 	
 	hostReply.ready <= '1';
 	

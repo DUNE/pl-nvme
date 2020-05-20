@@ -8,7 +8,6 @@
 #create_clock -period 5.000 -name sys_clk_p -waveform {0.000 2.500} [get_ports sys_clk_p]
 create_clock -period 10.000 -name pci_clk [get_ports pci_clk_p]
 create_clock -period 10.000 -name nvme_clk [get_ports nvme_clk_p]
-#set_clock_groups -name async_pcie_host_nvme -asynchronous -group {pci_clk} -group {nvme_clk}
 set_clock_groups -name async_host_nvme -asynchronous -group [get_clocks -include_generated_clocks pci_clk] -group [get_clocks -include_generated_clocks nvme_clk]
 
 # Asynchronous resets
@@ -21,7 +20,7 @@ set_false_path -through [get_pins pcie_host0/inst/pcie3_ip_i/U0/pcie3_uscale_top
 set_false_path -through [get_nets pcie_host0/inst/cfg_max*]
 set_false_path -to [get_pins -hier *sync_reg[0]/D]
 
-set_output_delay -clock [get_clocks nvme_clk] 0.0 [get_ports -filter NAME=~leds*]
+set_output_delay -clock [get_clocks nvme_clk] -max 0.0 [get_ports -filter NAME=~leds*]
 set_false_path -to [get_ports -filter NAME=~leds*]
 
 # General settings

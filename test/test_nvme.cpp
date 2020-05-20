@@ -67,7 +67,8 @@ public:
 	int		test6();				///< Run test6
 	int		test7();				///< Run test7
 	int		test8();				///< Run test8
-	int		test9();				///< Run test8
+	int		test9();				///< Run test9
+	int		test10();				///< Run test10
 
 	int		test_misc();				///< Collection of misc tests
 
@@ -581,6 +582,53 @@ int Control::test9(){
 	return 0;
 }
 
+int Control::test10(){
+	int	e;
+	int	a;
+	BUInt32	v;
+	BUInt32	n;
+	BUInt32	t;
+	double	r;
+	double	ts;
+	BUInt	numBlocks = 1;			// 1 GByte
+	//BUInt	numBlocks = 262144;		// 1 GByte
+	//BUInt	numBlocks = 2621440;		// 10 GByte
+
+	//numBlocks = 8;
+	//numBlocks = 2621440;		// 10 GByte
+	
+	printf("Test10: Read 1 block using NvmeRead functionality\n");
+
+	setNvme(0);
+	if(e = configureNvme())
+		return e;
+
+	setNvme(1);
+	if(e = configureNvme())
+		return e;
+
+	//setNvme(2);
+	setNvme(0);
+
+	//dumpRegs();
+	
+	// Set number of blocks to write
+	writeNvmeStorageReg(RegReadBlock, 0);
+	writeNvmeStorageReg(RegReadNumBlocks, numBlocks);
+	dumpRegs();
+	
+	// Start off NvmeRead engine
+	printf("\nStart NvmeRead engine\n");
+	writeNvmeStorageReg(RegReadControl, 0x00000001);
+
+	sleep(2);
+	dumpRegs();
+
+	return 0;
+}
+
+
+
 int Control::test_misc(){
 	BUInt32	address = 0;
 	BUInt32	data[8];
@@ -735,6 +783,9 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(test, "test9")){
 			err = control.test9();
+		}
+		else if(!strcmp(test, "test10")){
+			err = control.test10();
 		}
 		else if(!strcmp(test, "test_misc")){
 			err = control.test_misc();

@@ -88,27 +88,6 @@ constant TCQ		: time := 1 ns;
 constant NumStreams	: integer := 8;
 constant ResetCycles	: integer := (100 ms / ClockPeriod);
 
-component AxilClockConverter is
-generic(
-	Simulate	: boolean	:= Simulate
-);
-port (
-	clk0		: in std_logic;
-	reset0		: in std_logic;
-
-	-- Bus0
-	axil0In		: in AxilToSlaveType;
-	axil0Out	: out AxilToMasterType;
-
-	clk1		: in std_logic;
-	reset1		: in std_logic;
-
-	-- Bus1
-	axilOut	: out AxilToSlaveType;
-	axilIn		: in AxilToMasterType
-);
-end component;
-
 component RegAccessClockConvertor is
 port (
 	clk1		: in std_logic;				--! The interface clock line
@@ -343,6 +322,26 @@ port (
 );
 end component;
 
+component NvmeRead is
+generic(
+	Simulate	: boolean := False;			--! Generate simulation core
+	BlockSize	: integer := NvmeStorageBlockSize	--! System block size
+);
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+
+	-- To Nvme Request/reply streams
+	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
+	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
+
+	regWrite	: in std_logic;				--! Enable write to register
+	regAddress	: in unsigned(3 downto 0);		--! Register to read/write
+	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
+	regDataOut	: out std_logic_vector(31 downto 0)	--! Register contents
+);
+end component;
+
 signal reset_local		: std_logic := '0';
 signal reset_local_active	: std_logic := '0';
 signal reset_local_counter	: integer range 0 to ResetCycles := 0;
@@ -363,6 +362,8 @@ alias writeSend			is streamSend(4);
 alias writeRecv			is streamRecv(4);
 alias writeMemSend		is streamSend(5);
 alias writeMemRecv		is streamRecv(5);
+alias readSend			is streamSend(6);
+alias readRecv			is streamRecv(6);
 
 signal dataIn1			: AxisStreamType;
 signal streamNone		: AxisStreamType := AxisStreamOutput;
@@ -401,7 +402,9 @@ signal reg_status		: RegDataType := (others => '0');
 signal reg_totalBlocks		: RegDataType := to_stl(NvmeTotalBlocks, RegWidth);
 signal reg_blocksLost		: RegDataType := (others => '0');
 signal reg_nvmeWrite		: RegDataType := (others => '0');
-signal writeNvmeWrite		: std_logic := '0';
+signal reg_nvmeRead		: RegDataType := (others => '0');
+signal nvmeWrite_write		: std_logic := '0';
+signal nvmeRead_write		: std_logic := '0';
 
 -- Nvme configuration signals
 signal configStart		: std_logic := 'U';
@@ -496,10 +499,12 @@ begin
 			reg_totalBlocks when(regAddress1 = 3) else
 			reg_blocksLost when(regAddress1 = 4) else
 			reg_nvmeWrite when((regAddress1 >= 16) and (regAddress1 < 32)) else
+			reg_nvmeRead when((regAddress1 >= 32) and (regAddress1 < 48)) else
 			x"FFFFFFFF";
 
 	regDataOut <= zeros(31) & reset_local_active when(reset_local_active = '1') else regDataOut0;
-	writeNvmeWrite <= regWrite1 when((regAddress1 >= 16) and (regAddress1 < 32)) else '0';
+	nvmeWrite_write <= regWrite1 when((regAddress1 >= 16) and (regAddress1 < 32)) else '0';
+	nvmeRead_write <= regWrite1 when((regAddress1 >= 32) and (regAddress1 < 48)) else '0';
 	
 	-- Status register bits
 	reg_status(0)		<= '0';
@@ -727,7 +732,7 @@ begin
 	
 	-- Full switched communications
 	gen03: if true generate
-	set1: for i in 6 to 7 generate
+	set1: for i in 7 to 7 generate
 		streamSend(i).valid	<= '0';
 		streamRecv(i).ready	<= '1';
 	end generate;
@@ -799,10 +804,25 @@ begin
 		memReqIn	=> writeMemRecv,
 		memReplyOut	=> writeMemSend,
 
-		regWrite	=> writeNvmeWrite,
+		regWrite	=> nvmeWrite_write,
 		regAddress	=> regAddress1(3 downto 0),
 		regDataIn	=> regDataIn1,
 		regDataOut	=> reg_nvmeWrite
+	);
+
+	-- The Data read processing
+	nvmeRead0: NvmeRead
+	port map (
+		clk		=> nvme_user_clk,
+		reset		=> nvme_user_reset,
+
+		requestOut	=> readSend,
+		replyIn		=> readRecv,
+
+		regWrite	=> nvmeRead_write,
+		regAddress	=> regAddress1(3 downto 0),
+		regDataIn	=> regDataIn1,
+		regDataOut	=> reg_nvmeRead
 	);
 
 	end generate;

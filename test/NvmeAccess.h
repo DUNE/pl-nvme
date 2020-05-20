@@ -73,6 +73,11 @@ const BUInt	RegWriteError		= 0x048;	///< The write error status
 const BUInt	RegWriteNumBlocks	= 0x04C;	///< The number of blocks written
 const BUInt	RegWriteTime		= 0x050;	///< The write time in microseconds
 
+const BUInt	RegReadControl		= 0x080;	///< The read data control register
+const BUInt	RegReadStatus		= 0x084;	///< The read data status register
+const BUInt	RegReadBlock		= 0x088;	///< The read data starting block register
+const BUInt	RegReadNumBlocks	= 0x08C;	///< The read data number of blocks register
+
 class NvmeRequestPacket {
 public:
 			NvmeRequestPacket(){
