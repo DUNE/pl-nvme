@@ -63,6 +63,7 @@ port (
 	hostRecvReady	: in std_logic;				--! Host reply stream ready line
 
 	-- AXIS data stream input
+	dataDropBlocks	: in std_logic;				--! If set to '1' drop complete input blocks and account for the loss
 	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
 	dataIn		: in AxisDataStreamType;		--! Raw data input stream
 	dataIn_ready	: out std_logic;			--! Raw data input ready

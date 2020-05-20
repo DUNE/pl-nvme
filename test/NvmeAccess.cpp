@@ -42,9 +42,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this code. If not, see <https://www.gnu.org/licenses/>.
  */
-#define	LDEBUG1		1		// High level debug
-#define	LDEBUG2		1		// Debug host to NVMe queued requests
-#define	LDEBUG3		1		// Debug NVMe to host queued requests (bus master)
+#define	LDEBUG1		0		// High level debug
+#define	LDEBUG2		0		// Debug host to NVMe queued requests
+#define	LDEBUG3		0		// Debug NVMe to host queued requests (bus master)
 #define	LDEBUG4		0		// Xlinux PCIe DMA IP register debug
 
 #include <NvmeAccess.h>
@@ -667,6 +667,7 @@ void NvmeAccess::dumpRegs(int nvmeNum){
 	printf("Error:          %8.8x\n", oregs[nvmeRegbase/4 + 18]);
 	printf("NumBlocks:      %8.8x\n", oregs[nvmeRegbase/4 + 19]);
 	printf("TimeUs:         %8.8x\n", oregs[nvmeRegbase/4 + 20]);
+	printf("PeakLatencyUs:  %8.8x\n", oregs[nvmeRegbase/4 + 21]);
 
 	printf("ReadControl:    %8.8x\n", oregs[nvmeRegbase/4 + 32]);
 	printf("ReadStatus:     %8.8x\n", oregs[nvmeRegbase/4 + 33]);

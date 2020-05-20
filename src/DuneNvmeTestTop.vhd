@@ -266,6 +266,7 @@ begin
 		hostRecvReady	=> hostRecv_ready,
 
 		-- AXIS data stream input
+		dataDropBlocks	=> '0',
 		dataEnabledOut	=> dataEnabled,
 		dataIn		=> dataStream,
 		dataIn_ready	=> dataStream_ready,

@@ -72,6 +72,7 @@ const BUInt	RegDataChunkSize	= 0x044;	///< The data chunk size register
 const BUInt	RegWriteError		= 0x048;	///< The write error status
 const BUInt	RegWriteNumBlocks	= 0x04C;	///< The number of blocks written
 const BUInt	RegWriteTime		= 0x050;	///< The write time in microseconds
+const BUInt	RegWritePeakLatency	= 0x054;	///< The write peak block write latency in microseconds
 
 const BUInt	RegReadControl		= 0x080;	///< The read data control register
 const BUInt	RegReadStatus		= 0x084;	///< The read data status register

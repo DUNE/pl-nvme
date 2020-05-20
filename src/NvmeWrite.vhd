@@ -98,11 +98,14 @@ architecture Behavioral of NvmeWrite is
 constant TCQ		: time := 1 ns;
 constant SimDelay	: boolean := False;			--! Input data delay after each packet for simulation tests
 constant SimWaitReply	: boolean := False;			--! Wait for each write command to return a reply
+constant DoWrite	: boolean := True;			--! Perform write blocks
+constant DoTrim		: boolean := True;			--! Perform trim/deallocate functionality
 
 constant NvmeBlocks	: integer := BlockSize / NvmeBlockSize;		--! The number of Nvme blocks per NvmeStorage system block
 constant RamSize	: integer := (NvmeWriteNum * BlockSize) / 16;	-- One block per write buffer
 constant AddressWidth	: integer := log2(RamSize);
 constant BlockSizeWidth	: integer := log2(BlockSize);
+constant TrimNum	: integer := (32768 / NvmeBlocks);	--! The number of 4k blocks trimmed in one trim instructions
 
 component Ram is
 generic(
@@ -129,6 +132,7 @@ type BufferType is record
 	inUse1		: std_logic;				--! inUse1 and inUse2 are used to indicate buffer is in use when different
 	inUse2		: std_logic;
 	blockNumber	: unsigned(31 downto 0);		--! The first block number in the buffer
+	startTime	: unsigned(31 downto 0);		--! The start time for this buffer transaction
 end record;
 
 subtype RegisterType	is unsigned(31 downto 0);
@@ -136,7 +140,8 @@ type BufferArrayType	is array (0 to NvmeWriteNum-1) of BufferType;
 
 type InStateType	is (INSTATE_IDLE, INSTATE_INIT, INSTATE_CHOOSE, INSTATE_INPUT_BLOCK, INSTATE_DELAY, INSTATE_COMPLETE);
 type StateType		is (STATE_IDLE, STATE_INIT, STATE_RUN, STATE_COMPLETE,
-				STATE_QUEUE_HEAD, STATE_QUEUE_0, STATE_QUEUE_1, STATE_QUEUE_2, STATE_QUEUE_3,
+				STATE_WQUEUE_HEAD, STATE_WQUEUE_0, STATE_WQUEUE_1, STATE_WQUEUE_2, STATE_WQUEUE_3,
+				STATE_TQUEUE_HEAD, STATE_TQUEUE_0, STATE_TQUEUE_1, STATE_TQUEUE_2, STATE_TQUEUE_3,
 				STATE_WAIT_REPLY);
 type ReplyStateType	is (REPSTATE_IDLE, REPSTATE_INIT, REPSTATE_COMPLETE, REPSTATE_QUEUE_REPLY1, REPSTATE_QUEUE_REPLY2);
 
@@ -147,7 +152,10 @@ signal replyState	: ReplyStateType := REPSTATE_QUEUE_REPLY1;
 signal blockNumberIn	: unsigned(31 downto 0) := (others => '0');		--! Input block number
 signal numBlocksProc	: unsigned(31 downto 0) := (others => '0');		--! Number of block write requests sent
 signal numBlocksDone	: unsigned(31 downto 0) := (others => '0');		--! Number of block write completions received
+signal numBlocksTrimmed	: unsigned(31 downto 0) := (others => '0');		--! Number of blocks trimmed
 
+signal trimQueueProc	: unsigned(3 downto 0) := (others => '0');		--! The number of trim tasks in progress
+signal trimQueueDone	: unsigned(3 downto 0) := (others => '0');		--! The number of trim tasks completed
 
 -- Input buffers
 signal writeEnable	: std_logic := '0';
@@ -156,7 +164,7 @@ signal readEnable	: std_logic := '0';
 signal readAddress	: unsigned(AddressWidth-1 downto 0) := (others => '0');
 signal readData		: std_logic_vector(127 downto 0) := (others => '0');
 
-signal buffers		: BufferArrayType := (others => ('Z', 'Z', (others => 'Z')));
+signal buffers		: BufferArrayType := (others => ('Z', 'Z', (others => 'Z'), (others => 'Z')));
 signal bufferInNum	: integer range 0 to NvmeWriteNum-1 := 0;
 signal bufferOutNum	: integer range 0 to NvmeWriteNum-1 := 0;
 
@@ -182,6 +190,7 @@ signal dataChunkStart	: RegisterType := (others => '0');	-- The data chunk start
 signal dataChunkSize	: RegisterType := (others => '0');	-- The data chunk size in blocks
 signal error		: RegisterType := (others => '0');	-- The system errors status
 signal timeUs		: RegisterType := (others => '0');	-- The time in us
+signal peakLatency	: RegisterType := (others => '0');	-- The peak latency in us
 signal timeCounter	: integer range 0 to (1 us / ClockPeriod) - 1 := 0;
 
 --! Set the fields in the PCIe TLP header
@@ -209,13 +218,24 @@ begin
 	return x"05" & zeros(32-8-log2(NvmeWriteNum)-(BlockSizeWidth)) & to_stl(bufferNum, log2(NvmeWriteNum)) & zeros(BlockSizeWidth);
 end;
 
+function numTrimBlocks(total: unsigned; current: unsigned) return unsigned is
+begin
+	if((current + TrimNum) > total) then
+		return truncate(((total - current) * NvmeBlocks) - 1, 16);
+	else
+		return to_unsigned(32768-1, 16);
+	end if;
+end;
+
 begin
 	-- Register access
 	regDataOut	<= std_logic_vector(dataChunkStart) when(regAddress = 0)
 			else std_logic_vector(dataChunkSize) when(regAddress = 1)
 			else std_logic_vector(error) when(regAddress = 2)
 			else std_logic_vector(numBlocksDone) when(regAddress = 3)
-			else std_logic_vector(timeUs);
+			else std_logic_vector(timeUs) when(regAddress = 4)
+			else std_logic_vector(peakLatency) when(regAddress = 5)
+			else ones(32);
 	
 	-- Register process
 	process(clk)
@@ -359,6 +379,8 @@ begin
 				bufferOutNum		<= 0;
 				numBlocksProc		<= (others => '0');
 				processQueueOut		<= 0;
+				numBlocksTrimmed	<= (others => '0');
+				trimQueueProc		<= (others => '0');
 				state			<= STATE_IDLE;
 			else
 				case(state) is
@@ -373,6 +395,7 @@ begin
 					timeCounter	<= 0;
 					numBlocksProc	<= (others => '0');
 					processQueueOut	<= 0;
+					numBlocksTrimmed<= (others => '0');
 					state		<= STATE_RUN;
 					
 				when STATE_RUN =>
@@ -380,13 +403,18 @@ begin
 						if(numBlocksProc >= dataChunkSize) then
 							state <= STATE_COMPLETE;
 						
-						elsif(processQueueOut /= processQueueIn) then
-							bufferOutNum	<= processQueue(processQueueOut);
-							processQueueOut	<= incrementPos(processQueueOut);
-
+						elsif(DoWrite and (processQueueOut /= processQueueIn)) then
+							bufferOutNum		<= processQueue(processQueueOut);
+							processQueueOut		<= incrementPos(processQueueOut);
+							buffers(bufferOutNum).startTime	<= timeUs;
 							requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
 							requestOut.valid	<= '1';
-							state			<= STATE_QUEUE_HEAD;
+							state			<= STATE_WQUEUE_HEAD;
+
+						elsif(DoTrim and (numBlocksTrimmed < dataChunkSize) and ((trimQueueProc - trimQueueDone) < 4)) then
+							requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
+							requestOut.valid	<= '1';
+							state			<= STATE_TQUEUE_HEAD;
 						end if;
 					else
 						state <= STATE_COMPLETE;
@@ -397,34 +425,35 @@ begin
 						state <= STATE_IDLE;
 					end if;
 
-				when STATE_QUEUE_HEAD =>
+				-- Write blocks request
+				when STATE_WQUEUE_HEAD =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.data	<= zeros(64) & x"00000001" & x"04" & to_stl(bufferOutNum, 8) & x"0001";	-- Namespace 1, From stream4, opcode 1
-						state		<= STATE_QUEUE_0;
+						state		<= STATE_WQUEUE_0;
 					end if;
 
-				when STATE_QUEUE_0 =>
+				when STATE_WQUEUE_0 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.data	<= zeros(32) & pcieAddress(bufferOutNum) & zeros(64);
 						--requestOut.data	<= zeros(32) & x"01800000" & zeros(64);	-- Data source address from host
-						state		<= STATE_QUEUE_1;
+						state		<= STATE_WQUEUE_1;
 					end if;
 
-				when STATE_QUEUE_1 =>
+				when STATE_WQUEUE_1 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.data	<= zeros(32-log2(NvmeBlocks)) & std_logic_vector(dataChunkStart + buffers(bufferOutNum).blockNumber) & zeros(log2(NvmeBlocks) + 64);
-						state		<= STATE_QUEUE_2;
+						state		<= STATE_WQUEUE_2;
 					end if;
 
-				when STATE_QUEUE_2 =>
+				when STATE_WQUEUE_2 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.data	<= zeros(96) & to_stl(NvmeBlocks-1, 32);	-- WriteMethod, NumBlocks (0 is 1 block)
 						requestOut.last	<= '1';
 						numBlocksProc	<= numBlocksProc + 1;
-						state		<= STATE_QUEUE_3;
+						state		<= STATE_WQUEUE_3;
 					end if;
 
-				when STATE_QUEUE_3 =>
+				when STATE_WQUEUE_3 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.last		<= '0';
 						requestOut.valid	<= '0';
@@ -435,6 +464,50 @@ begin
 							state <= STATE_RUN;
 						end if;
 					end if;
+
+				-- Trim/deallocate request
+				when STATE_TQUEUE_HEAD =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.data	<= zeros(64) & x"00000001" & x"04F" & to_stl(trimQueueProc(3 downto 0)) & x"0008";	-- Namespace 1, From stream4, opcode 8
+						state		<= STATE_TQUEUE_0;
+					end if;
+
+				when STATE_TQUEUE_0 =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.data	<= zeros(128);
+						state		<= STATE_TQUEUE_1;
+					end if;
+
+				when STATE_TQUEUE_1 =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.data	<= zeros(32-log2(NvmeBlocks)) & std_logic_vector(dataChunkStart + numBlocksTrimmed) & zeros(log2(NvmeBlocks) + 64);
+						state		<= STATE_TQUEUE_2;
+					end if;
+
+				when STATE_TQUEUE_2 =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.data	<= zeros(96) & x"0200" & to_stl(numTrimBlocks(dataChunkSize, numBlocksTrimmed));	-- Deallocate, NumBlocks (0 is 1 block)
+						requestOut.last	<= '1';
+						state		<= STATE_TQUEUE_3;
+					end if;
+
+				when STATE_TQUEUE_3 =>
+					if(requestOut.valid = '1' and requestOut.ready = '1') then
+						requestOut.last		<= '0';
+						requestOut.valid	<= '0';
+						numBlocksTrimmed	<= numBlocksTrimmed + TrimNum;
+						trimQueueProc		<= trimQueueProc + 1;
+						
+						if(SimWaitReply) then
+							if(trimQueueDone = trimQueueProc) then
+								state <= STATE_RUN;
+							end if;
+						else
+							state <= STATE_RUN;
+						end if;
+					end if;
+
+
 
 				when STATE_WAIT_REPLY =>
 					if(numBlocksProc > numBlocksDone) then
@@ -471,6 +544,8 @@ begin
 				replyIn.ready	<= '0';
 				error		<= (others => '0');
 				numBlocksDone	<= (others => '0');
+				peakLatency	<= (others => '0');
+				trimQueueDone	<= (others => '0');
 				replyState 	<= REPSTATE_IDLE;
 			else
 				case(replyState) is
@@ -488,6 +563,7 @@ begin
 					replyIn.ready	<= '1';
 					error		<= (others => '0');
 					numBlocksDone	<= (others => '0');
+					peakLatency	<= (others => '0');
 					replyState 	<= REPSTATE_QUEUE_REPLY1;
 					
 				when REPSTATE_COMPLETE =>
@@ -520,10 +596,18 @@ begin
 						if(error = 0) then
 							error(15 downto 0) <= '0' & nvmeReplyHead.status;
 						end if;
+						
+						if(nvmeReplyHead.cid(7 downto 4) = x"F") then
+							trimQueueDone <= trimQueueDone + 1;
+						else
+							numBlocksDone		<= numBlocksDone + 1;
+							p			:= to_integer(nvmeReplyHead.cid(log2(NvmeWriteNum)-1 downto 0));
+							buffers(p).inUse2	<= buffers(p).inUse1;
 
-						numBlocksDone		<= numBlocksDone + 1;
-						p			:= to_integer(nvmeReplyHead.cid(2 downto 0));
-						buffers(p).inUse2	<= buffers(p).inUse1;
+							if((timeUs - buffers(p).startTime) > peaklatency) then
+								peaklatency <= timeUs - buffers(p).startTime;
+							end if;
+						end if;
 
 						replyState		<= REPSTATE_QUEUE_REPLY1;
 					end if;

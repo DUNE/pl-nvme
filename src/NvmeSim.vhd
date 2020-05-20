@@ -327,12 +327,7 @@ begin
 							nvmeReply1.ready	<= '0';
 							waitingForReply		<= '0';
 
-							if(queue = 1) then
-								state		<= STATE_READ_DATA_START;
-								--state		<= STATE_REPLY_QUEUE;		-- For testing, ignore actual reading of data across Pcie
-							elsif(queue = 2) then
-								state		<= STATE_WRITE_DATA_START;
-							else
+							if(queue = 0) then
 								-- Writes an entry into the Admin reply queue. Simply uses info in that last queued request. So only one request at a time.
 								-- Note data sent to queue is just the header reapeated so junk data ATM.
 								-- Perform bus master read request for data to write to NVMe
@@ -344,6 +339,14 @@ begin
 								nvmeReq.keep 		<= ones(nvmeReq.keep'length);
 								nvmeReq.valid 		<= '1';
 								state			<= STATE_QUEUE_REPLY_HEAD;
+							else
+								if(unsigned(queueRequest(0)(7 downto 0)) = 1) then
+									state <= STATE_READ_DATA_START;
+								elsif(unsigned(queueRequest(0)(7 downto 0)) = 2) then
+									state <= STATE_WRITE_DATA_START;
+								else
+									state <= STATE_REPLY_QUEUE;
+								end if;
 							end if;
 						end if;
 					end if;

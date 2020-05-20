@@ -44,6 +44,7 @@ port (
 	hostRecvReady	: in std_logic;				--! Host reply stream ready line
 
 	-- AXIS data stream input
+	dataDropBlocks	: in std_logic;				--! If set to '1' drop complete input blocks and account for the loss
 	dataEnabledOut	: out std_logic;			--! Indicates that data ingest is enabled
 	dataIn		: in AxisDataStreamType;		--! Raw data input stream
 	dataIn_ready	: out std_logic;			--! Raw data input ready
@@ -199,7 +200,7 @@ begin
 			busRead(clk, axil.toSlave, axil.toMaster, 16#0008#);
 		end if;
 		
-		if(False) then
+		if(True) then
 			-- Start off TestData source and start writing data to Nvme
 			wait for 100 ns;
 			sendData <= '1';
@@ -207,7 +208,8 @@ begin
 			-- Write to NvmeStorage control register to start NvmeWrite processing
 			wait for 100 ns;
 			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 2);		-- Number of blocks
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 16);		-- Number of blocks
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 16);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 16386);		-- Number of blocks
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16#00000004#);	-- Start
 
 			wait for 11000 ns;
@@ -216,7 +218,7 @@ begin
 			wait;	
 		end if;
 		
-		if(True) then
+		if(False) then
 			-- Start off Reading data from block 8
 			wait for 100 ns;
 
@@ -314,6 +316,7 @@ begin
 		hostRecv	=> hostRecv,
 		hostRecvReady	=> hostRecvReady,
 		
+		dataDropBlocks	=> '0',
 		dataIn		=> dataStream,
 		dataIn_ready	=> dataStreamReady,
 

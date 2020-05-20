@@ -356,7 +356,7 @@ int Control::test4(){
 	printf("Perform block read\n");
 	memset(odataBlockMem, 0x01, sizeof(odataBlockMem));
 
-#ifndef ZAP
+#ifdef ZAP
 	// Test read of a single 512 byte block
 	numBlocks = 1;
 	nvmeRequest(1, 1, 0x02, 0x01800000, block, 0x00000000, numBlocks-1);	// Perform read
@@ -568,10 +568,8 @@ int Control::test8(){
 	if(e = configureNvme())
 		return e;
 
-	//nvmeRequest(1, 1, 0x08, 0x01800000, 0, 0x00000000, (1 << 25) | 1);	// Perform trim of 2 blocks
-
 	for(block = 0; block < numBlocks; block += (maxBlocks/8)){
-		nvmeRequest(1, 1, 0x08, 0x01800000, block * 8, 0x00000000, (1 << 25) | maxBlocks-1);	// Perform trim of 32k 512 Byte blocks
+		nvmeRequest(1, 1, 0x08, 0x00000000, block * 8, 0x00000000, (1 << 25) | maxBlocks-1);	// Perform trim of 32k 512 Byte blocks
 	}
 
 
