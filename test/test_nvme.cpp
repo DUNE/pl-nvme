@@ -223,7 +223,7 @@ int Control::configureNvme(){
 
 		//dumpNvmeRegisters();
 
-		cmd0 = ((oqueueNum - 1) << 16) | 0x0001;
+		cmd0 = ((oqueueNum - 1) << 16);
 
 #ifdef ZAP
 		// Test the queue engine
@@ -233,10 +233,10 @@ int Control::configureNvme(){
 			for(int c = 0; c < 10; c++){
 				printf("Do: %d\n", c);
 
-				nvmeRequest(0, 0, 0x05, 0x02110000, cmd0, 0x00000001);
+				nvmeRequest(0, 0, 0x05, 0x02110000, cmd0 | 1, 0x00000001);
 				sleep(1);
 
-				nvmeRequest(0, 0, 0x04, 0x02110000, cmd0, 0x00000001);
+				nvmeRequest(0, 0, 0x04, 0x02110000, cmd0 | 1, 0x00000001);
 				sleep(1);
 			}
 		}
@@ -244,10 +244,10 @@ int Control::configureNvme(){
 			for(int c = 0; c < 10; c++){
 				printf("Do: %d\n", c);
 
-				nvmeRequest(0, 0, 0x05, 0x00110000, cmd0, 0x00000001);
+				nvmeRequest(0, 0, 0x05, 0x00110000, cmd0 | 1, 0x00000001);
 				sleep(1);
 
-				nvmeRequest(0, 0, 0x04, 0x00110000, cmd0, 0x00000001);
+				nvmeRequest(0, 0, 0x04, 0x00110000, cmd0 | 1, 0x00000001);
 				sleep(1);
 			}
 		}
@@ -259,26 +259,50 @@ int Control::configureNvme(){
 			if(overbose)
 				printf("Create IO queue 1 for replies\n");
 
-			nvmeRequest(1, 0, 0x05, 0x02110000, cmd0, 0x00000001);
+			nvmeRequest(1, 0, 0x05, 0x02110000, cmd0 | 1, 0x00000001);
 
 			// Create an IO queue
 			if(overbose)
 				printf("Create IO queue 1 for requests\n");
 
-			nvmeRequest(1, 0, 0x01, 0x02010000, cmd0, 0x00010001);
+			nvmeRequest(1, 0, 0x01, 0x02010000, cmd0 | 1, 0x00010001);
+
+			// Create an IO queue
+			if(overbose)
+				printf("Create IO queue 2 for replies\n");
+
+			nvmeRequest(1, 0, 0x05, 0x02120000, cmd0 | 2, 0x00000001);
+
+			// Create an IO queue
+			if(overbose)
+				printf("Create IO queue 1 for requests\n");
+
+			nvmeRequest(1, 0, 0x01, 0x02020000, cmd0 | 2, 0x00020001);
 		}
 		else {
 			// Create an IO queue
 			if(overbose)
 				printf("Create IO queue 1 for replies\n");
 
-			nvmeRequest(1, 0, 0x05, 0x01110000, cmd0, 0x00000001);
+			nvmeRequest(1, 0, 0x05, 0x01110000, cmd0 | 1, 0x00000001);
 
 			// Create an IO queue
 			if(overbose)
 				printf("Create IO queue 1 for requests\n");
 
-			nvmeRequest(1, 0, 0x01, 0x01010000, cmd0, 0x00010001);
+			nvmeRequest(1, 0, 0x01, 0x01010000, cmd0 | 1, 0x00010001);
+
+			// Create an IO queue
+			if(overbose)
+				printf("Create IO queue 2 for replies\n");
+
+			nvmeRequest(1, 0, 0x05, 0x01120000, cmd0 | 2, 0x00000001);
+
+			// Create an IO queue
+			if(overbose)
+				printf("Create IO queue 2 for requests\n");
+
+			nvmeRequest(1, 0, 0x01, 0x01020000, cmd0 | 2, 0x00020001);
 		}
 	}
 #endif
@@ -331,6 +355,16 @@ int Control::test4(){
 
 	printf("Perform block read\n");
 	memset(odataBlockMem, 0x01, sizeof(odataBlockMem));
+
+#ifndef ZAP
+	// Test read of a single 512 byte block
+	numBlocks = 1;
+	nvmeRequest(1, 1, 0x02, 0x01800000, block, 0x00000000, numBlocks-1);	// Perform read
+
+	printf("DataBlock0:\n");
+	bhd32a(odataBlockMem, numBlocks*512/4);
+	return 0;
+#endif
 
 	nvmeRequest(1, 1, 0x02, 0x01800000, block, 0x00000000, numBlocks-1);	// Perform read
 
@@ -590,25 +624,17 @@ int Control::test10(){
 	BUInt32	t;
 	double	r;
 	double	ts;
-	BUInt	numBlocks = 1;			// 1 GByte
+	BUInt	numBlocks = 2;			// 
 	//BUInt	numBlocks = 262144;		// 1 GByte
 	//BUInt	numBlocks = 2621440;		// 10 GByte
 
 	//numBlocks = 8;
 	//numBlocks = 2621440;		// 10 GByte
 	
-	printf("Test10: Read 1 block using NvmeRead functionality\n");
+	printf("Test10: Read blocks using NvmeRead functionality\n");
 
-	setNvme(0);
 	if(e = configureNvme())
 		return e;
-
-	setNvme(1);
-	if(e = configureNvme())
-		return e;
-
-	//setNvme(2);
-	setNvme(0);
 
 	//dumpRegs();
 	

@@ -103,7 +103,7 @@ signal queueReadOut		: integer range 0 to NumQueue-1 := 0;
 type StateType			is (STATE_IDLE, STATE_READ_QUEUE_START, STATE_READ_QUEUE,
 					STATE_QUEUE_REPLY_HEAD, STATE_QUEUE_REPLY_DATA,
 					STATE_READ_DATA_START, STATE_READ_DATA_RECV_START, STATE_READ_DATA_RECV,
-					STATE_WRITE_DATA_START, STATE_WRITE_DATA_PACKET_START, STATE_WRITE_DATA,
+					STATE_WRITE_DATA_START, STATE_WRITE_DATA_HEAD, STATE_WRITE_DATA,
 					STATE_REPLY_QUEUE);
 type QueueRequestType		is array(0 to 15) of std_logic_vector(31 downto 0);
 
@@ -122,6 +122,7 @@ signal queueRequestPos		: integer := 0;
 signal waitingForReply		: std_logic := '0';
 
 signal data			: std_logic_vector(127 downto 0);
+signal readData			: unsigned(127 downto 0);
 
 function queueNext(pos: integer) return integer is
 begin
@@ -152,6 +153,7 @@ begin
 
 
 	nvmeReq.data		<= zeros(16)  & queueRequest(0)(31 downto 16) & zeros(96) when(state = STATE_QUEUE_REPLY_DATA)
+					else to_stl(readData) when(state = STATE_WRITE_DATA)
 					else to_stl(nvmeRequestHead);
 	nvmeReply1Head		<= to_PcieReplyHeadType(nvmeReply1.data);
 
@@ -366,7 +368,7 @@ begin
 					nvmeRequestHead.tag	<= x"44";
 					nvmeRequestHead.request	<= "0000";
 					nvmeRequestHead.count	<= to_unsigned(NumWordsRead, nvmeRequestHead.count'length);				-- Test size of 32 DWords
-					
+
 					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
 						count		<= nvmeRequestHead.count;	-- Note ignoring 1 DWord in first 128 bits
 						nvmeReq.last 	<= '0';
@@ -399,52 +401,64 @@ begin
 								state		<= STATE_READ_DATA_RECV_START;
 							end if;
 						end if;
-						count <= count - 4;
-						chunkCount <= chunkCount - 4;
+
+						count		<= count - 4;
+						chunkCount	<= chunkCount - 4;
 					end if;
 
 
 				when STATE_WRITE_DATA_START =>
 					-- Perform bus master write request for data to write to NVMe
+					-- Initialise the header
 					nvmeRequestHead.address	<= unsigned(queueRequest(6));
-					--nvmeRequestHead.address	<= to_unsigned(16#05000000#, nvmeRequestHead.address'length);
 					nvmeRequestHead.tag	<= x"44";
 					nvmeRequestHead.request	<= "0001";
-					nvmeRequestHead.count	<= to_unsigned(NumWordsRead, nvmeRequestHead.count'length);				-- Test size of 32 DWords
+
+					count		<= to_unsigned(NumWordsRead, count'length);	-- Note hard coded length of 1 block
+					readData	<= (others => '0');
+					waitingForReply	<= '0';
+					state		<= STATE_WRITE_DATA_HEAD;
+
+				when STATE_WRITE_DATA_HEAD =>
+					-- Send the updated header
+
+					if(count > PcieMaxPayloadSize) then
+						nvmeRequestHead.count	<= to_unsigned(PcieMaxPayloadSize, nvmeRequestHead.count'length);
+						chunkCount		<= to_unsigned(PcieMaxPayloadSize, chunkCount'length);
+					else
+						nvmeRequestHead.count	<= count;
+						chunkCount		<= count;
+					end if;
 					
 					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
-						count		<= nvmeRequestHead.count;	-- Note ignoring 1 DWord in first 128 bits
 						nvmeReq.last 	<= '0';
-						nvmeReq.valid 	<= '0';
-						nvmeReply1.ready <= '1';
-						waitingForReply	<= '0';
-						state		<= STATE_WRITE_DATA_PACKET_START;
+						state		<= STATE_WRITE_DATA;
 					else
 						nvmeReq.keep 	<= ones(nvmeReq.keep'length);
 						nvmeReq.last 	<= '0';
 						nvmeReq.valid 	<= '1';
 					end if;
 
-				when STATE_WRITE_DATA_PACKET_START =>
-					-- Write random data
-					if(nvmeReply1.valid = '1' and nvmeReply1.ready = '1') then
-						chunkCount 	<= nvmeReply1Head.count;
-						state		<= STATE_WRITE_DATA;
-					end if;
-
 				when STATE_WRITE_DATA =>
 					-- Read in write data ignoring it
-					if(nvmeReply1.valid = '1' and nvmeReply1.ready = '1') then
+					if(nvmeReq.valid = '1' and nvmeReq.ready = '1') then
 						if(chunkCount = 4) then
+							nvmeReq.last 	<= '0';
+							nvmeReq.valid 	<= '0';
+
 							if(count = 4) then
 								nvmeReply1.ready<= '0';
 								state		<= STATE_REPLY_QUEUE;
 							else
-								state		<= STATE_WRITE_DATA_PACKET_START;
+								nvmeRequestHead.address <= nvmeRequestHead.address + (nvmeRequestHead.count * 4);
+								state		<= STATE_WRITE_DATA_HEAD;
 							end if;
+						elsif(chunkCount = 8) then
+							nvmeReq.last 	<= '1';
 						end if;
-						count <= count - 4;
-						chunkCount <= chunkCount - 4;
+						readData	<= readData + 1;
+						count		<= count - 4;
+						chunkCount	<= chunkCount - 4;
 					end if;
 
 
@@ -454,7 +468,7 @@ begin
 					-- Send reply queue header
 					-- Writes an entry into the DataWRite reply queue. Simply uses info in that last queued request. So only one request at a time.
 					-- Note data sent to queue is just the header reapeated so junk data ATM.
-					nvmeRequestHead.address	<= to_unsigned(16#02100000#, nvmeRequestHead.address'length);
+					nvmeRequestHead.address	<= x"021" & to_unsigned(queue, 4) & zeros(16);
 					nvmeRequestHead.tag	<= x"44";
 					nvmeRequestHead.request	<= "0001";
 					nvmeRequestHead.count	<= to_unsigned(16#0004#, nvmeRequestHead.count'length);	-- 16 Byte queue entry

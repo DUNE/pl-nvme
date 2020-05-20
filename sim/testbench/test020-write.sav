@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.105 (w)1999-2020 BSI
-[*] Wed May 20 06:19:38 2020
+[*] Wed May 20 09:37:37 2020
 [*]
 [dumpfile] "/src/dune/FpgaPlay/test031-nvmewrite/sim/simu/test.ghw"
-[dumpfile_mtime] "Wed May 20 06:06:17 2020"
-[dumpfile_size] 2834231
+[dumpfile_mtime] "Wed May 20 09:37:15 2020"
+[dumpfile_size] 2880561
 [savefile] "/src/dune/FpgaPlay/test031-nvmewrite/sim/testbench/test020-write.sav"
-[timestart] 378700000
+[timestart] 3952900000
 [size] 1920 1171
 [pos] -1 -1
-*-26.418455 571000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-26.418455 4120600000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.test.
 [treeopen] top.test.axil.
@@ -19,6 +19,7 @@
 [treeopen] top.test.nvmestorage0.datain.
 [treeopen] top.test.nvmestorage0.nvme0send.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.
+[treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.requestout.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmewrite0.buffers.[0].
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmewrite0.buffers.[1].
@@ -38,7 +39,7 @@
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.streamsend.[0].
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.streamsend.[2].
 [sst_width] 259
-[signals_width] 806
+[signals_width] 726
 [sst_expanded] 1
 [sst_vpaned_height] 768
 @28
@@ -101,6 +102,10 @@ top.test.axil.tomaster.rvalid
 -Registers
 @800200
 -NvmeRead
+@28
+top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.enabled
+@29
+top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.complete
 @22
 #{top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.regaddress[3:0]} top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.regaddress[3] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.regaddress[2] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.regaddress[1] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.regaddress[0]
 #{top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[31:0]} top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[31] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[30] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[29] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[28] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[27] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[26] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[25] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[24] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[23] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[22] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[21] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[20] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[19] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[18] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[17] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[16] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[15] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[14] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[13] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[12] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[11] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[10] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[9] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[8] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[7] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[6] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[5] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[4] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[3] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[2] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[1] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.control[0]
@@ -166,11 +171,13 @@ top.test.nvmestorage0.data0.last
 @22
 #{top.test.nvmestorage0.data0.data[127:0]} top.test.nvmestorage0.data0.data[127] top.test.nvmestorage0.data0.data[126] top.test.nvmestorage0.data0.data[125] top.test.nvmestorage0.data0.data[124] top.test.nvmestorage0.data0.data[123] top.test.nvmestorage0.data0.data[122] top.test.nvmestorage0.data0.data[121] top.test.nvmestorage0.data0.data[120] top.test.nvmestorage0.data0.data[119] top.test.nvmestorage0.data0.data[118] top.test.nvmestorage0.data0.data[117] top.test.nvmestorage0.data0.data[116] top.test.nvmestorage0.data0.data[115] top.test.nvmestorage0.data0.data[114] top.test.nvmestorage0.data0.data[113] top.test.nvmestorage0.data0.data[112] top.test.nvmestorage0.data0.data[111] top.test.nvmestorage0.data0.data[110] top.test.nvmestorage0.data0.data[109] top.test.nvmestorage0.data0.data[108] top.test.nvmestorage0.data0.data[107] top.test.nvmestorage0.data0.data[106] top.test.nvmestorage0.data0.data[105] top.test.nvmestorage0.data0.data[104] top.test.nvmestorage0.data0.data[103] top.test.nvmestorage0.data0.data[102] top.test.nvmestorage0.data0.data[101] top.test.nvmestorage0.data0.data[100] top.test.nvmestorage0.data0.data[99] top.test.nvmestorage0.data0.data[98] top.test.nvmestorage0.data0.data[97] top.test.nvmestorage0.data0.data[96] top.test.nvmestorage0.data0.data[95] top.test.nvmestorage0.data0.data[94] top.test.nvmestorage0.data0.data[93] top.test.nvmestorage0.data0.data[92] top.test.nvmestorage0.data0.data[91] top.test.nvmestorage0.data0.data[90] top.test.nvmestorage0.data0.data[89] top.test.nvmestorage0.data0.data[88] top.test.nvmestorage0.data0.data[87] top.test.nvmestorage0.data0.data[86] top.test.nvmestorage0.data0.data[85] top.test.nvmestorage0.data0.data[84] top.test.nvmestorage0.data0.data[83] top.test.nvmestorage0.data0.data[82] top.test.nvmestorage0.data0.data[81] top.test.nvmestorage0.data0.data[80] top.test.nvmestorage0.data0.data[79] top.test.nvmestorage0.data0.data[78] top.test.nvmestorage0.data0.data[77] top.test.nvmestorage0.data0.data[76] top.test.nvmestorage0.data0.data[75] top.test.nvmestorage0.data0.data[74] top.test.nvmestorage0.data0.data[73] top.test.nvmestorage0.data0.data[72] top.test.nvmestorage0.data0.data[71] top.test.nvmestorage0.data0.data[70] top.test.nvmestorage0.data0.data[69] top.test.nvmestorage0.data0.data[68] top.test.nvmestorage0.data0.data[67] top.test.nvmestorage0.data0.data[66] top.test.nvmestorage0.data0.data[65] top.test.nvmestorage0.data0.data[64] top.test.nvmestorage0.data0.data[63] top.test.nvmestorage0.data0.data[62] top.test.nvmestorage0.data0.data[61] top.test.nvmestorage0.data0.data[60] top.test.nvmestorage0.data0.data[59] top.test.nvmestorage0.data0.data[58] top.test.nvmestorage0.data0.data[57] top.test.nvmestorage0.data0.data[56] top.test.nvmestorage0.data0.data[55] top.test.nvmestorage0.data0.data[54] top.test.nvmestorage0.data0.data[53] top.test.nvmestorage0.data0.data[52] top.test.nvmestorage0.data0.data[51] top.test.nvmestorage0.data0.data[50] top.test.nvmestorage0.data0.data[49] top.test.nvmestorage0.data0.data[48] top.test.nvmestorage0.data0.data[47] top.test.nvmestorage0.data0.data[46] top.test.nvmestorage0.data0.data[45] top.test.nvmestorage0.data0.data[44] top.test.nvmestorage0.data0.data[43] top.test.nvmestorage0.data0.data[42] top.test.nvmestorage0.data0.data[41] top.test.nvmestorage0.data0.data[40] top.test.nvmestorage0.data0.data[39] top.test.nvmestorage0.data0.data[38] top.test.nvmestorage0.data0.data[37] top.test.nvmestorage0.data0.data[36] top.test.nvmestorage0.data0.data[35] top.test.nvmestorage0.data0.data[34] top.test.nvmestorage0.data0.data[33] top.test.nvmestorage0.data0.data[32] top.test.nvmestorage0.data0.data[31] top.test.nvmestorage0.data0.data[30] top.test.nvmestorage0.data0.data[29] top.test.nvmestorage0.data0.data[28] top.test.nvmestorage0.data0.data[27] top.test.nvmestorage0.data0.data[26] top.test.nvmestorage0.data0.data[25] top.test.nvmestorage0.data0.data[24] top.test.nvmestorage0.data0.data[23] top.test.nvmestorage0.data0.data[22] top.test.nvmestorage0.data0.data[21] top.test.nvmestorage0.data0.data[20] top.test.nvmestorage0.data0.data[19] top.test.nvmestorage0.data0.data[18] top.test.nvmestorage0.data0.data[17] top.test.nvmestorage0.data0.data[16] top.test.nvmestorage0.data0.data[15] top.test.nvmestorage0.data0.data[14] top.test.nvmestorage0.data0.data[13] top.test.nvmestorage0.data0.data[12] top.test.nvmestorage0.data0.data[11] top.test.nvmestorage0.data0.data[10] top.test.nvmestorage0.data0.data[9] top.test.nvmestorage0.data0.data[8] top.test.nvmestorage0.data0.data[7] top.test.nvmestorage0.data0.data[6] top.test.nvmestorage0.data0.data[5] top.test.nvmestorage0.data0.data[4] top.test.nvmestorage0.data0.data[3] top.test.nvmestorage0.data0.data[2] top.test.nvmestorage0.data0.data[1] top.test.nvmestorage0.data0.data[0]
 @28
+top.test.nvmestorage0.nvmestreammux0.nvme1stream
 top.test.nvmestorage0.nvme0send.ready
 top.test.nvmestorage0.nvme0send.valid
 top.test.nvmestorage0.nvme1send.ready
 top.test.nvmestorage0.nvme1send.valid
 top.test.nvmestorage0.hostrecv0.ready
+top.test.nvmestorage0.hostrecv0.valid
 @1000200
 -NvmeStorage
 @800200
@@ -178,10 +185,10 @@ top.test.nvmestorage0.hostrecv0.ready
 @420
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.muxstate
 @28
+top.test.nvmestorage0.nvmestorageunit0.hostsend.ready
+top.test.nvmestorage0.nvmestorageunit0.hostsend.valid
 top.test.nvmestorage0.nvmestorageunit0.hostrecv.ready
-@29
 top.test.nvmestorage0.nvmestorageunit0.hostrecv.valid
-@28
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream2in.ready
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream2in.valid
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream3in.ready
@@ -303,6 +310,7 @@ top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.state
 top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.waitingforreply
 @22
 #{top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[10:0]} top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[10] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[9] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[8] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[7] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[6] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[5] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[4] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[3] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[2] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[1] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.count[0]
+#{top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[10:0]} top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[10] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[9] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[8] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[7] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[6] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[5] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[4] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[3] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[2] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[1] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.chunkcount[0]
 #{top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[31:0]} top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[31] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[30] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[29] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[28] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[27] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[26] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[25] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[24] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[23] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[22] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[21] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[20] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[19] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[18] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[17] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[16] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[15] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[14] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[13] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[12] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[11] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[10] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[9] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[8] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[7] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[6] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[5] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[4] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[3] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[2] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[1] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.reg_io1_queue[0]
 @28
 top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.nvmereq.ready

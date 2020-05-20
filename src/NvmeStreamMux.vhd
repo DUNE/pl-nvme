@@ -129,7 +129,8 @@ begin
 	
 	
 	-- Multiplex streams. Sets the Nvme number to 1 in the Nvme1 reply streams in appropriate location for request and reply packets
-	nvme1Stream <= '0' when(((muxState = MUX_STATE_START) and (nvme0In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET0)) else '1';
+	--nvme1Stream <= '0' when(((muxState = MUX_STATE_START) and (nvme0In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET0)) else '1';
+	nvme1Stream <= '1' when(((muxState = MUX_STATE_START) and (nvme1In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET1)) else '0';
 
 	nvme1StreamData <= nvme1In.data(127 downto 81) & '1' & nvme1In.data(79 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '1'))
 		else nvme1In.data(127 downto 32) & x"1" & nvme1In.data(27 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '0'))
@@ -151,13 +152,13 @@ begin
 			else
 				case(muxState) is
 				when MUX_STATE_START =>
-					if((nvme0In.valid = '1') and (nvme0In.ready = '1')) then
+					if((nvme0In.valid = '1') and (hostOut.ready = '1')) then
 						if(nvme0In.last = '1') then
 							muxState <= MUX_STATE_START;
 						else
 							muxState <= MUX_STATE_SENDPACKET0;
 						end if;
-					elsif((nvme1In.valid = '1') and (nvme1In.ready = '1')) then
+					elsif((nvme1In.valid = '1') and (hostOut.ready = '1')) then
 						if(nvme1In.last = '1') then
 							muxState <= MUX_STATE_START;
 						else

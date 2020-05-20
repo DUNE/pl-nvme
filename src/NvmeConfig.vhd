@@ -75,7 +75,7 @@ signal state		: StateType := STATE_IDLE;
 
 --! The Configuration requests				
 type RomType	is array(integer range <>) of std_logic_vector(127 downto 0);
-constant rom	: RomType(0 to 27) := (
+constant rom	: RomType(0 to 41) := (
 	-- Set PCIe configuration command word
 	setHeader(10, 16#00004#, 1, 0),	to_stl(16#00010006#, 128),
 	
@@ -107,13 +107,38 @@ constant rom	: RomType(0 to 27) := (
 	setHeader(12, 16#02000000#, 16, 0),
 		zeros(96) & x"02000001",					-- Dwords 3, 2, 1, 0
 		zeros(32) & x"02010000" & zeros(64), 				-- DWords 7, 6, 5, 4
-		x"00000001" & to_stl(NvmeQueueNum-1, 16) & x"0001" & zeros(64),	-- DWords 11, 10, 9, 8
+		x"00010001" & to_stl(NvmeQueueNum-1, 16) & x"0001" & zeros(64),	-- DWords 11, 10, 9, 8
 		zeros(128),							-- DWords 15, 14, 13, 12
 
 	-- Notify queue entry to Nvme
 	setHeader(1, 16#1000#, 1, 0), to_stl(2, 128),
 	
 	-- Wait for reply in queue, how to do this ???
+	
+	-- Create DataRead reply queue (8 entries)  by sending 64byte request to Admin queue
+	setHeader(12, 16#02000000#, 16, 0),
+		zeros(96) & x"02000005",					-- Dwords 3, 2, 1, 0
+		zeros(32) & x"02120000" & zeros(64), 				-- DWords 7, 6, 5, 4
+		x"00000001" & to_stl(NvmeQueueNum-1, 16) & x"0002" & zeros(64),	-- DWords 11, 10, 9, 8
+		zeros(128),							-- DWords 15, 14, 13, 12
+
+	-- Notify queue entry to Nvme
+	setHeader(1, 16#1000#, 1, 0), to_stl(1, 128),
+	
+	-- Wait for reply in queue, how to do this ???
+
+	-- Create DataRead request queue by sending 64byte request to Admin queue
+	setHeader(12, 16#02000000#, 16, 0),
+		zeros(96) & x"02000001",					-- Dwords 3, 2, 1, 0
+		zeros(32) & x"02020000" & zeros(64), 				-- DWords 7, 6, 5, 4
+		x"00020001" & to_stl(NvmeQueueNum-1, 16) & x"0002" & zeros(64),	-- DWords 11, 10, 9, 8
+		zeros(128),							-- DWords 15, 14, 13, 12
+
+	-- Notify queue entry to Nvme
+	setHeader(1, 16#1000#, 1, 0), to_stl(2, 128),
+	
+	-- Wait for reply in queue, how to do this ???
+	
 
 	-- Start controller
 	setHeader(1, 16#0014#, 1, 0), to_stl(x"00460001", 128),

@@ -81,6 +81,7 @@ signal dataSize		: RegisterType := (others => '0');	--! The data chunk size in b
 signal error		: RegisterType := (others => '0');	--! The system errors status
 
 signal enabled		: std_logic := '0';					--! Read is enabled
+signal complete		: std_logic := '0';					--! Read is complete
 signal numBlocksProc	: unsigned(31 downto 0) := (others => '0');		--! Number of block write requests sent
 signal numBlocksDone	: unsigned(31 downto 0) := (others => '0');		--! Number of block write completions received
 
@@ -91,6 +92,11 @@ begin
 	return to_stl(set_PcieRequestHeadType(3, request, address, count, tag));
 end function;
 
+function pcieAddress(blocknum: unsigned) return std_logic_vector is
+begin
+	return x"01F" & to_stl(blocknum(19 - log2(BlockSize) downto 0)) & zeros(log2(BlockSize));
+end;
+
 begin
 	-- Register access
 	regDataOut	<= std_logic_vector(control) when(regAddress = 0)
@@ -100,8 +106,10 @@ begin
 			else std_logic_vector(error) when(regAddress = 4)
 			else ones(32);
 	
-	enabled	<= control(0);
-	status	<= (others => '0');
+	enabled			<= control(0);
+	status(0)		<= enabled;
+	status(1)		<= complete;
+	status(31 downto 2)	<= (others => '0');
 	
 	-- Register process
 	process(clk)
@@ -133,6 +141,7 @@ begin
 				requestOut.last 	<= '0';
 				requestOut.keep 	<= (others => '1');
 				numBlocksProc		<= (others => '0');
+				complete		<= '0';
 				state			<= STATE_IDLE;
 			else
 				case(state) is
@@ -149,6 +158,7 @@ begin
 				when STATE_RUN =>
 					if(enabled = '1') then
 						if(numBlocksProc >= dataSize) then
+							complete <= '1';
 							state <= STATE_COMPLETE;
 						
 						else
@@ -157,11 +167,13 @@ begin
 							state			<= STATE_QUEUE_HEAD;
 						end if;
 					else
+						complete <= '1';
 						state <= STATE_COMPLETE;
 					end if;
 				
 				when STATE_COMPLETE =>
 					if(enabled = '0') then
+						complete <= '0';
 						state <= STATE_IDLE;
 					end if;
 
@@ -173,7 +185,7 @@ begin
 
 				when STATE_QUEUE_0 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						requestOut.data	<= zeros(32) & x"01F00000" & zeros(64);	-- Data source address to host
+						requestOut.data	<= zeros(32) & pcieAddress(numBlocksProc) & zeros(64);	-- Data source address to host
 						state		<= STATE_QUEUE_1;
 					end if;
 

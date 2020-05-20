@@ -221,7 +221,7 @@ begin
 			wait for 100 ns;
 
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0188#, 8);		-- Start blocks
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#018C#, 1);		-- Number blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#018C#, 2);		-- Number blocks
 			busRead(clk, axil.toSlave, axil.toMaster, 16#0188#);
 
 			busWrite(clk, axil.toSlave, axil.toMaster, 16#0180#, 16#00000001#);	-- Start
@@ -236,12 +236,12 @@ begin
 			wait for 100 ns;
 
 			-- Write to DataQueue
-			pcieRequestWriteHead(clk, hostReq, 1, 1, 16#02010000#, 16#22#, 16);
+			pcieRequestWriteHead(clk, hostReq, 1, 1, 16#02020000#, 16#22#, 16);
 
 			wait until rising_edge(clk) and (hostReq.ready = '1');
 			hostReq.data <= zeros(64) & x"00000001" & x"01000002";	-- Namespace 1, From stream1, opcode 2
 			wait until rising_edge(clk) and (hostReq.ready = '1');
-			hostReq.data <= zeros(32) & x"01F00000" & zeros(64);	-- Data source address to host
+			hostReq.data <= zeros(32) & x"01800000" & zeros(64);	-- Data source address to host
 			wait until rising_edge(clk) and (hostReq.ready = '1');
 			hostReq.data <= zeros(32) & x"00000000" & zeros(64);	-- Block number
 			wait until rising_edge(clk) and (hostReq.ready = '1');
@@ -419,13 +419,12 @@ begin
 						nvmeData 	<= std_logic_vector(unsigned(nvmeData) + 1);
 
 						if(nvmeChunkCount = 4) then
+							nvmeReply.last	<= '0';
+							nvmeReply.valid <= '0';
+
 							if(nvmeCount = 4) then
-								nvmeReply.last	<= '0';
-								nvmeReply.valid <= '0';
 								nvmeState	<= NVME_STATE_IDLE;
 							else
-								nvmeReply.last	<= '0';
-								nvmeReply.valid <= '0';
 								nvmeState	<= NVME_STATE_READHEAD;
 							end if;
 
