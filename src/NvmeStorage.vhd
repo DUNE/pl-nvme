@@ -45,7 +45,7 @@ use work.NvmeStorageIntPkg.all;
 entity NvmeStorage is
 generic(
 	Simulate	: boolean	:= False;			--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= 4 ns;			--! Clock period for timers (250 MHz)
 	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
 	NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time
 	UseConfigure	: boolean	:= False			--! The module configures the Nvme's on reset
@@ -71,15 +71,17 @@ port (
 	dataIn_ready	: out std_logic;			--! Raw data input ready
 
 	-- NVMe interface
-	nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
-	nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
 	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
 
+	nvme0_clk	: in std_logic;				--! Nvme0 external clock
+	nvme0_clk_gt	: in std_logic;				--! Nvme0 external GT clock
 	nvme0_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX plus lanes
 	nvme0_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX minus lanes
 	nvme0_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX plus lanes
 	nvme0_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX minus lanes
 
+	nvme1_clk	: in std_logic;				--! Nvme1 external clock
+	nvme1_clk_gt	: in std_logic;				--! Nvme1 external GT clock
 	nvme1_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX plus lanes
 	nvme1_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX minus lanes
 	nvme1_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme1 PCIe RX plus lanes
@@ -95,7 +97,7 @@ architecture Behavioral of NvmeStorage is
 component NvmeStorageUnit is
 generic(
 	Simulate	: boolean	:= Simulate;		--! Generate simulation core
-	ClockPeriod	: time		:= ClockPeriod;		--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= ClockPeriod;		--! Clock period for timers (250 MHz)
 	BlockSize	: integer	:= BlockSize;		--! System block size
 	PcieCore	: integer	:= 0;			--! The Pcie hardblock block to use
 	UseConfigure	: boolean	:= False		--! The module configures the Nvme's on reset
@@ -167,9 +169,6 @@ end component;
 
 constant TCQ		: time := 1 ns;
 
-signal nvme_clk		: std_logic := 'U';
-signal nvme_clk_gt	: std_logic := 'U';
-
 signal wvalid_delay	: std_logic := '0';
 signal rvalid_delay	: unsigned(4 downto 0) := (others => '0');
 
@@ -208,16 +207,6 @@ signal dropBlocks	: std_logic := '0';
 signal regBlocksLost	: unsigned(31 downto 0) := (others => '0');
 
 begin
-	-- NVME PCIE Clock, 100MHz
-	nvme_clk_buf0 : IBUFDS_GTE3
-	port map (
-		I       => nvme_clk_p,
-		IB      => nvme_clk_n,
-		O       => nvme_clk_gt,
-		ODIV2   => nvme_clk,
-		CEB     => '0'
-	);
-	
 	-- Register processing. Depending on the read or write address set, pass to appropriate NvmeStorageUnit module.
 	-- Bus ready returns		
 	axilOut.awready	<= axilIn.awvalid;
@@ -370,8 +359,8 @@ begin
 		dataIn		=> data0,
 
 		-- NVMe interface
-		nvme_clk	=> nvme_clk,
-		nvme_clk_gt	=> nvme_clk_gt,
+		nvme_clk	=> nvme0_clk,
+		nvme_clk_gt	=> nvme0_clk_gt,
 		nvme_reset_n	=> nvme_reset_n,
 		nvme_exp_txp	=> nvme0_exp_txp,
 		nvme_exp_txn	=> nvme0_exp_txn,
@@ -401,8 +390,8 @@ begin
 		dataIn		=> data1,
 
 		-- NVMe interface
-		nvme_clk	=> nvme_clk,
-		nvme_clk_gt	=> nvme_clk_gt,
+		nvme_clk	=> nvme1_clk,
+		nvme_clk_gt	=> nvme1_clk_gt,
 		nvme_exp_txp	=> nvme1_exp_txp,
 		nvme_exp_txn	=> nvme1_exp_txn,
 		nvme_exp_rxp	=> nvme1_exp_rxp,

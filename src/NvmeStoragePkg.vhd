@@ -106,7 +106,7 @@ package NvmeStoragePkg is
 	component NvmeStorage is
 	generic(
 		Simulate	: boolean	:= False;			--! Generate simulation core
-		ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
+		ClockPeriod	: time		:= 4 ns;			--! Clock period for timers (250 MHz)
 		BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
 		NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time
 		UseConfigure	: boolean	:= False			--! The module configures the Nvme's on reset
@@ -132,15 +132,17 @@ package NvmeStoragePkg is
 		dataIn_ready	: out std_logic;			--! Raw data input ready
 
 		-- NVMe interface
-		nvme_clk_p	: in std_logic;				--! Nvme external clock +ve
-		nvme_clk_n	: in std_logic;				--! Nvme external clock -ve
 		nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
 
+		nvme0_clk	: in std_logic;				--! Nvme0 external clock
+		nvme0_clk_gt	: in std_logic;				--! Nvme0 external GT clock
 		nvme0_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX plus lanes
 		nvme0_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX minus lanes
 		nvme0_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX plus lanes
 		nvme0_exp_rxn	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX minus lanes
 
+		nvme1_clk	: in std_logic;				--! Nvme1 external clock
+		nvme1_clk_gt	: in std_logic;				--! Nvme1 external GT clock
 		nvme1_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX plus lanes
 		nvme1_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX minus lanes
 		nvme1_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme1 PCIe RX plus lanes

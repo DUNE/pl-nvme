@@ -149,6 +149,9 @@ signal sys_clk			: std_logic := 'U';
 
 signal pci_clk			: std_logic := 'U';
 signal pci_clk_gt		: std_logic := 'U';
+signal nvme_clk			: std_logic := 'U';
+signal nvme_clk_gt		: std_logic := 'U';
+
 signal leds_l			: std_logic_vector(7 downto 0) := (others => '0');
 
 signal axil_clk			: std_logic;
@@ -173,11 +176,20 @@ begin
 	);
 
 	-- PCIE Clock, 100MHz
-	pci_clk_buf0 : IBUFDS_GTE3 port map(
+	pci_clk_buf0 : IBUFDS_GTE3 port map (
 		I       => pci_clk_p,
 		IB      => pci_clk_n,
 		O       => pci_clk_gt,
 		ODIV2   => pci_clk,
+		CEB     => '0'
+	);
+	
+	-- NVME PCIE Clock, 100MHz. Clock shared between both Nvme devices
+	nvme_clk_buf0 : IBUFDS_GTE3 port map (
+		I       => nvme_clk_p,
+		IB      => nvme_clk_n,
+		O       => nvme_clk_gt,
+		ODIV2   => nvme_clk,
 		CEB     => '0'
 	);
 	
@@ -248,9 +260,6 @@ begin
 	axil_reset <= not axil_reset_n;
 	
 	nvmeStorage0 : NvmeStorage
-	generic map (
-		ClockPeriod	=> 8 ns
-	)
 	port map (
 		clk		=> axil_clk,
 		reset		=> axil_reset,
@@ -272,15 +281,17 @@ begin
 		dataIn_ready	=> dataStream_ready,
 
 		-- NVMe interface
-		nvme_clk_p	=> nvme_clk_p,
-		nvme_clk_n	=> nvme_clk_n,
 		nvme_reset_n	=> nvme_reset_n,
 
+		nvme0_clk	=> nvme_clk,
+		nvme0_clk_gt	=> nvme_clk_gt,
 		nvme0_exp_txp	=> nvme0_exp_txp,
 		nvme0_exp_txn	=> nvme0_exp_txn,
 		nvme0_exp_rxp	=> nvme0_exp_rxp,
 		nvme0_exp_rxn	=> nvme0_exp_rxn,
 
+		nvme1_clk	=> nvme_clk,
+		nvme1_clk_gt	=> nvme_clk_gt,
 		nvme1_exp_txp	=> nvme1_exp_txp,
 		nvme1_exp_txn	=> nvme1_exp_txn,
 		nvme1_exp_rxp	=> nvme1_exp_rxp,

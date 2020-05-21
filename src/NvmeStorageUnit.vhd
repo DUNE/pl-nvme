@@ -45,7 +45,7 @@ use work.NvmeStorageIntPkg.all;
 entity NvmeStorageUnit is
 generic(
 	Simulate	: boolean	:= False;		--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
+	ClockPeriod	: time		:= 4 ns;		--! Clock period for timers (250 MHz)
 	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
 	PcieCore	: integer	:= 0;			--! The Pcie hardblock block to use
 	UseConfigure	: boolean	:= False		--! The module configures the Nvme's on reset
@@ -511,7 +511,8 @@ begin
 	reg_status(0)		<= '0';
 	reg_status(1)		<= configComplete;
 	reg_status(2)		<= '0';
-	reg_status(31 downto 3)	<= (others => '0');
+	reg_status(3)		<= '0';						-- **** Needs setting
+	reg_status(31 downto 4)	<= (others => '0');
 	
 	-- Perform reset of Nvme subsystem. This implements a 100ms reset suitable for the Nvme Pcie reset.
 	-- Local state machines and external Nvme devices use this reset_local signal.
