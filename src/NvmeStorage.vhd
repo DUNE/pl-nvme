@@ -45,6 +45,7 @@ use work.NvmeStorageIntPkg.all;
 entity NvmeStorage is
 generic(
 	Simulate	: boolean	:= False;			--! Generate simulation core
+	Platform	: string	:= "Ultrascale";		--! The underlying target platform
 	ClockPeriod	: time		:= 4 ns;			--! Clock period for timers (250 MHz)
 	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
 	NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time
@@ -97,6 +98,7 @@ architecture Behavioral of NvmeStorage is
 component NvmeStorageUnit is
 generic(
 	Simulate	: boolean	:= Simulate;		--! Generate simulation core
+	Platform	: string	:= Platform;		--! The underlying target platform
 	ClockPeriod	: time		:= ClockPeriod;		--! Clock period for timers (250 MHz)
 	BlockSize	: integer	:= BlockSize;		--! System block size
 	PcieCore	: integer	:= 0;			--! The Pcie hardblock block to use

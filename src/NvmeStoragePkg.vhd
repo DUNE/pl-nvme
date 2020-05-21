@@ -106,6 +106,7 @@ package NvmeStoragePkg is
 	component NvmeStorage is
 	generic(
 		Simulate	: boolean	:= False;			--! Generate simulation core
+		Platform	: string	:= "Ultrascale";		--! The underlying target platform
 		ClockPeriod	: time		:= 4 ns;			--! Clock period for timers (250 MHz)
 		BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
 		NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time

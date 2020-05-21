@@ -17,6 +17,8 @@
 #
 # Targets
 #  all:		Build everything
+#  project:	Just build the Vivado project file
+#  program	Program the FPGA over jtag
 #  clean:	Remove output files and project files
 #  distclean:	Clean all files
 #
@@ -33,6 +35,8 @@ export PATH	:= ${VIVADO_PATH}:${PATH}
 .SECONDARY:
 
 all: fpga
+
+project: ${PROJECT}.xpr
 
 fpga: $(PROJECT).bit
 

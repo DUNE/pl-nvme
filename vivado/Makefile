@@ -5,6 +5,7 @@
 #
 # Targets
 #  all:		Build everything to the FPGA bit file
+#  project:	Just build the Vivado project file
 #  program	Program the FPGA over jtag
 #  clean:	Remove output files and project files
 #  distclean:	Clean all files
@@ -15,7 +16,7 @@ BOARD		= xilinx.com:kcu105:part0:1.6
 FPGA_PART	= xcku040-ffva1156-2-e
 FPGA_TOP	= DuneNvmeTestTop
 VIVADO_PATH	?= /opt/Xilinx/Vivado/2019.2/bin
-VIVADO_TARGET	?= "-url study.kingnet:3121 -allow_non_jtag"
+VIVADO_TARGET	?= ""
 
 # Files for synthesis
 SYN_FILES	= ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd
@@ -47,6 +48,7 @@ XCI_FILES	+= ../src/ip/Pcie_nvme1.xci
 # XDC files
 XDC_FILES	= ../src/DuneNvmeTestTop.xdc
 
+-include Config.mk
 include Vivado.mk
 
 sync_ip:
