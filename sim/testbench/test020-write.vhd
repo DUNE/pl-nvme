@@ -19,15 +19,16 @@ end;
 
 architecture sim of Test is
 
---constant BlockSize	: integer := 512;			--! For simple testing should be 4096
+--constant BlockSize	: integer := 512;			--! For simple testing should really be 4096
 constant BlockSize	: integer := 4096;			--! Proper block size
 
 component NvmeStorage is
 generic(
 	Simulate	: boolean	:= True;		--! Generate simulation core
 	--ClockPeriod	: time		:= 10 ms;		--! Clock period for timers (125 MHz)
-	ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
-	BlockSize	: integer	:= Blocksize
+	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= Blocksize;		--! System block size
+	NumBlocksDrop	: integer	:= 2			--! The number of blocks to drop at a time
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -39,9 +40,9 @@ port (
 
 	-- From host to NVMe request/reply streams
 	hostSend	: in AxisType;				--! Host request stream
-	hostSendReady	: out std_logic;			--! Host request stream ready line
+	hostSend_ready	: out std_logic;			--! Host request stream ready line
 	hostRecv	: out AxisType;				--! Host reply stream
-	hostRecvReady	: in std_logic;				--! Host reply stream ready line
+	hostRecv_ready	: in std_logic;				--! Host reply stream ready line
 
 	-- AXIS data stream input
 	dataDropBlocks	: in std_logic;				--! If set to '1' drop complete input blocks and account for the loss
@@ -111,9 +112,9 @@ signal reset		: std_logic := '0';
 
 signal axil		: AxilBusType;
 signal hostSend		: AxisType;
-signal hostSendReady	: std_logic := '0';
+signal hostSend_ready	: std_logic := '0';
 signal hostRecv		: AxisType;
-signal hostRecvReady	: std_logic := '0';
+signal hostRecv_ready	: std_logic := '0';
 
 signal leds		: std_logic_vector(5 downto 0);
 
@@ -138,6 +139,7 @@ signal nvmeData		: std_logic_vector(127 downto 0);
 signal nvmeData1	: std_logic_vector(127 downto 0);
 
 signal sendData		: std_logic := '0';
+signal dataDropBlocks	: std_logic := '0';
 
 begin
 	clock : process
@@ -161,6 +163,21 @@ begin
 		assert false report "simulation ended ok" severity failure;
 	end process;
 
+	dropBlocks : process
+	begin
+		if(False) then
+			-- Drop blocks. Assumes the BlockSize = 512 for testing
+			wait for 400 ns;
+			dataDropBlocks	<= '1';
+
+			wait for 300 ns;
+			dataDropBlocks	<= '0';
+			
+		end if;
+
+		wait;
+	end process;
+	
 	run : process
 	begin
 		axil.toSlave <= ((others => '0'), (others => '0'), '0', (others => '0'), (others => '0'), '0', '0', (others => '0'), (others => '0'), '0', '0');
@@ -207,14 +224,14 @@ begin
 
 			-- Write to NvmeStorage control register to start NvmeWrite processing
 			wait for 100 ns;
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 2);		-- Number of blocks
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 16);		-- Number of blocks
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0144#, 16386);		-- Number of blocks
-			busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16#00000004#);	-- Start
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 2);		-- Number of blocks
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 16);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0044#, 16386);		-- Number of blocks
+			busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
 
 			wait for 11000 ns;
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16#00000000#);	-- Stop
-			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0104#, 16#00000004#);	-- Start
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000000#);	-- Stop
+			--busWrite(clk, axil.toSlave, axil.toMaster, 16#0004#, 16#00000004#);	-- Start
 			wait;	
 		end if;
 		
@@ -298,8 +315,8 @@ begin
 		dataOutReady	=> dataStreamReady
 	);	
 
-	axisConnect(hostSend, hostSendReady, hostSend1);
-	axisConnect(hostRecv1, hostRecv, hostrecvReady);
+	axisConnect(hostSend, hostSend_ready, hostSend1);
+	axisConnect(hostRecv1, hostRecv, hostRecv_ready);
 	
 	hostReply.ready <= '1';
 	
@@ -312,11 +329,11 @@ begin
 		axilOut		=> axil.toMaster,
 
 		hostSend	=> hostSend,
-		hostSendReady	=> hostSendReady,
+		hostSend_ready	=> hostSend_ready,
 		hostRecv	=> hostRecv,
-		hostRecvReady	=> hostRecvReady,
+		hostRecv_ready	=> hostRecv_ready,
 		
-		dataDropBlocks	=> '0',
+		dataDropBlocks	=> dataDropBlocks,
 		dataIn		=> dataStream,
 		dataIn_ready	=> dataStreamReady,
 

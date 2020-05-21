@@ -105,9 +105,10 @@ package NvmeStoragePkg is
 	--! The NvmeStorage module's interface
 	component NvmeStorage is
 	generic(
-		Simulate	: boolean	:= False;		--! Generate simulation core
-		ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
-		BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
+		Simulate	: boolean	:= False;			--! Generate simulation core
+		ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
+		BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
+		NumBlocksDrop	: integer	:= 2				--! The number of blocks to drop at a time
 	);
 	port (
 		clk		: in std_logic;				--! The interface clock line
@@ -119,9 +120,9 @@ package NvmeStoragePkg is
 
 		-- From host to NVMe request/reply streams
 		hostSend	: in AxisType;				--! Host request stream
-		hostSendReady	: out std_logic;			--! Host request stream ready line
+		hostSend_ready	: out std_logic;			--! Host request stream ready line
 		hostRecv	: out AxisType;				--! Host reply stream
-		hostRecvReady	: in std_logic;				--! Host reply stream ready line
+		hostRecv_ready	: in std_logic;				--! Host reply stream ready line
 
 		-- AXIS data stream input
 		dataDropBlocks	: in std_logic;				--! If set to '1' drop complete input blocks and account for the loss

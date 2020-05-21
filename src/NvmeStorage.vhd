@@ -44,9 +44,10 @@ use work.NvmeStorageIntPkg.all;
 
 entity NvmeStorage is
 generic(
-	Simulate	: boolean	:= False;		--! Generate simulation core
-	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
-	BlockSize	: integer	:= NvmeStorageBlockSize	--! System block size
+	Simulate	: boolean	:= False;			--! Generate simulation core
+	ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
+	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
+	NumBlocksDrop	: integer	:= 2				--! The number of blocks to drop at a time
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -58,9 +59,9 @@ port (
 
 	-- From host to NVMe request/reply streams
 	hostSend	: in AxisType;				--! Host request stream
-	hostSendReady	: out std_logic;			--! Host request stream ready line
+	hostSend_ready	: out std_logic;			--! Host request stream ready line
 	hostRecv	: out AxisType;				--! Host reply stream
-	hostRecvReady	: in std_logic;				--! Host reply stream ready line
+	hostRecv_ready	: in std_logic;				--! Host reply stream ready line
 
 	-- AXIS data stream input
 	dataDropBlocks	: in std_logic;				--! If set to '1' drop complete input blocks and account for the loss
@@ -200,6 +201,10 @@ signal dataIn1_ready	: std_logic := 'U';
 signal dataEnabledOut0	: std_logic := 'U';
 signal dataEnabledOut1	: std_logic := 'U';
 
+signal dropCount	: integer range 0 to NumBlocksDrop := 0;
+signal dropBlocks	: std_logic := '0';
+signal regBlocksLost	: unsigned(31 downto 0) := (others => '0');
+
 begin
 	-- NVME PCIE Clock, 100MHz
 	nvme_clk_buf0 : IBUFDS_GTE3
@@ -228,7 +233,7 @@ begin
 	regWrite0	<= regWrite when(regAddress < 512) else '0';
 	regWrite1	<= regWrite when((regAddress < 256) or (regAddress >= 512)) else '0';
 	readNvme1	<= '1' when(regAddress >= 512) else '0';
-	axilOut.rdata	<= regDataOut1 when(readNvme1 = '1') else regDataOut0;
+	axilOut.rdata	<= to_stl(regBlocksLost) when(regAddress = 16) else regDataOut1 when(readNvme1 = '1') else regDataOut0;
 
 	process(clk)
 	begin
@@ -257,14 +262,15 @@ begin
 	enabled_n	<= not dataEnabledOut0;
 	dataEnabledOut	<= dataEnabledOut0;
 
-	dataIn_ready_l	<= '0' when(enabled_n = '1') else dataIn0_ready when(dataSelect = '0') else dataIn1_ready;
+	-- Pass altenating blocks in the data input stream to the two NvmeStorageUnits
+	dataIn_ready_l	<= '0' when(enabled_n = '1') else '1' when(dropBlocks = '1') else dataIn0_ready when(dataSelect = '0') else dataIn1_ready;
 	dataIn_ready	<= dataIn_ready_l;
 
-	dataIn0.valid	<= dataIn.valid when(dataSelect = '0') else '0';
+	dataIn0.valid	<= dataIn.valid when((dropBlocks = '0') and (dataSelect = '0')) else '0';
 	dataIn0.last	<= dataIn.last;
 	dataIn0.data	<= dataIn.data;
 
-	dataIn1.valid	<= dataIn.valid when(dataSelect = '1') else '0';
+	dataIn1.valid	<= dataIn.valid when((dropBlocks = '0') and (dataSelect = '1')) else '0';
 	dataIn1.last	<= dataIn.last;
 	dataIn1.data	<= dataIn.data;
 
@@ -294,18 +300,38 @@ begin
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				dataSelect <= '0';
+				dataSelect	<= '0';
+				dropCount	<= 0;
+				dropBlocks	<= '0';
+				regBlocksLost	<= (others => '0');
 			else
 				if((dataIn.valid = '1') and (dataIn.last = '1') and (dataIn_ready_l = '1')) then
 					dataSelect <= not dataSelect;
+					
+					-- Handle dropping of complete blocks
+					if(dropCount = 0) then
+						-- Drop data starting with Nvme0
+						if(dataSelect = '1') then
+							if(dataDropBlocks = '1') then
+								dropCount	<= NumBlocksDrop - 1;
+								regBlocksLost	<= regBlocksLost + 1;
+								dropBlocks	<= '1';
+							else
+								dropBlocks	<= '0';
+							end if;
+						end if;
+					else
+						regBlocksLost	<= regBlocksLost + 1;
+						dropCount	<= dropCount - 1;
+					end if;
 				end if;
 			end if;
 		end if;
 	end process;
 
 	-- Connect to local Axis stream style
-	axisConnect(hostSend0, hostSend, hostSendReady);
-	axisConnect(hostRecv, hostRecvReady, hostRecv0);
+	axisConnect(hostSend0, hostSend, hostSend_ready);
+	axisConnect(hostRecv, hostRecv_ready, hostRecv0);
 
 	nvmeStreamMux0 : NvmeStreamMux
 	port map (
