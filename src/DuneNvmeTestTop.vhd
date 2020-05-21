@@ -261,9 +261,9 @@ begin
 
 		-- From host to NVMe request/reply streams
 		hostSend	=> hostSend,
-		hostSendReady	=> hostSend_ready,
+		hostSend_ready	=> hostSend_ready,
 		hostRecv	=> hostRecv,
-		hostRecvReady	=> hostRecv_ready,
+		hostRecv_ready	=> hostRecv_ready,
 
 		-- AXIS data stream input
 		dataDropBlocks	=> '0',

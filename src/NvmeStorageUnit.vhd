@@ -47,7 +47,8 @@ generic(
 	Simulate	: boolean	:= False;		--! Generate simulation core
 	ClockPeriod	: time		:= 8 ns;		--! Clock period for timers (125 MHz)
 	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
-	PcieBlock	: integer	:= 0			--! The Pcie hardblock block to use
+	PcieCore	: integer	:= 0;			--! The Pcie hardblock block to use
+	UseConfigure	: boolean	:= False		--! The module configures the Nvme's on reset
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -594,7 +595,7 @@ begin
 	
 	synth: if (Simulate = False) generate
 
-	genpci0: if(PcieBlock = 0) generate
+	genpci0: if(PcieCore = 0) generate
 	-- The PCIe to NVMe interface
 	pcie_nvme_0 : Pcie_nvme0
 	port map (
@@ -646,7 +647,7 @@ begin
 	);
 	end generate;
 	
-	genpci1: if(PcieBlock = 1) generate
+	genpci1: if(PcieCore = 1) generate
 	-- The PCIe to NVMe interface
 	pcie_nvme_1 : Pcie_nvme1
 	port map (
@@ -775,12 +776,14 @@ begin
 				configStart	<= '0';
 				configStartDone	<= '0';
 			else
-				if((configStartDone = '0') and (configComplete = '0') and (reg_control(1) = '1')) then
-				--if(configStartDone = '0') then
-					configStart	<= '1' after TCQ;	-- Start the Nvme configuration
+				if(UseConfigure and (configStartDone = '0')) then
+					configStart	<= '1';		-- Start the Nvme configuration
+					configStartDone	<= '1';
+				elsif((configStartDone = '0') and (configComplete = '0') and (reg_control(1) = '1')) then
+					configStart	<= '1';		-- Start the Nvme configuration
 					configStartDone	<= '1';
 				else
-					configStart	<= '0' after TCQ;
+					configStart	<= '0';
 				end if;
 			end if;
 		end if;

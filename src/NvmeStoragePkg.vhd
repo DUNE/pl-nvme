@@ -108,7 +108,8 @@ package NvmeStoragePkg is
 		Simulate	: boolean	:= False;			--! Generate simulation core
 		ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
 		BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
-		NumBlocksDrop	: integer	:= 2				--! The number of blocks to drop at a time
+		NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time
+		UseConfigure	: boolean	:= False			--! The module configures the Nvme's on reset
 	);
 	port (
 		clk		: in std_logic;				--! The interface clock line

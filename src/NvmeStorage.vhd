@@ -47,7 +47,8 @@ generic(
 	Simulate	: boolean	:= False;			--! Generate simulation core
 	ClockPeriod	: time		:= 8 ns;			--! Clock period for timers (125 MHz)
 	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
-	NumBlocksDrop	: integer	:= 2				--! The number of blocks to drop at a time
+	NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time
+	UseConfigure	: boolean	:= False			--! The module configures the Nvme's on reset
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -96,7 +97,8 @@ generic(
 	Simulate	: boolean	:= Simulate;		--! Generate simulation core
 	ClockPeriod	: time		:= ClockPeriod;		--! Clock period for timers (125 MHz)
 	BlockSize	: integer	:= BlockSize;		--! System block size
-	PcieBlock	: integer	:= 0			--! The Pcie hardblock block to use
+	PcieCore	: integer	:= 0;			--! The Pcie hardblock block to use
+	UseConfigure	: boolean	:= False		--! The module configures the Nvme's on reset
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -350,7 +352,7 @@ begin
 
 	nvmeStorageUnit0 : NvmeStorageUnit
 	generic map (
-		PcieBlock	=> 0			--! The Pcie hardblock block to use
+		PcieCore	=> 0			--! The Pcie hardblock block to use
 	)
 	port map (
 		clk		=> clk,
@@ -381,7 +383,7 @@ begin
 
 	nvmeStorageUnit1 : NvmeStorageUnit
 	generic map (
-		PcieBlock	=> 1			--! The Pcie hardblock block to use
+		PcieCore	=> 1			--! The Pcie hardblock block to use
 	)
 	port map (
 		clk		=> clk,
