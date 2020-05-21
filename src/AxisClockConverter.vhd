@@ -54,6 +54,9 @@ end;
 
 architecture Behavioral of AxisClockConverter is
 
+--! @class	Axis_clock_converter
+--! @brief	The Xilinx AXI4 Stream clock doamin crossing IP
+--! @details	See the Xilinx documentation for details of this IP block
 component axis_clock_converter
 	port (
 	s_axis_aresetn : in std_logic;

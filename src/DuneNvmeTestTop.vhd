@@ -84,6 +84,9 @@ port (
 );                                     
 end component;                 
 
+--! @class	Pcie_host
+--! @brief	The Xilinx PCIe XDMA endpoint for host communications with the FPGA
+--! @details	See the Xilinx documentation for details of this IP block
 component Pcie_host
 port (
 	sys_clk : in std_logic;

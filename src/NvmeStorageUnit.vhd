@@ -125,7 +125,10 @@ port (
 );
 end component;
 
---! The PCIe Gen3 hardblock to communicate with the NVMe device
+-- The Xilinx PCIe Gen3 hardblock to communicate with the NVMe 0 device
+--! @class	Pcie_nvme0
+--! @brief	The Xilinx PCIe Gen3 hard block interface to NVMe device
+--! @details	See the Xilinx documentation for details of this IP block
 component Pcie_nvme0
 port (
 	pci_exp_txn : out std_logic_vector ( 3 downto 0 );
@@ -172,6 +175,7 @@ port (
 );
 end component;
 
+-- The Xilinx PCIe Gen3 hardblock to communicate with the NVMe 1 device
 component Pcie_nvme1
 port (
 	pci_exp_txn : out std_logic_vector ( 3 downto 0 );
@@ -599,7 +603,7 @@ begin
 	synth: if (Simulate = False) generate
 
 	genpci0: if(PcieCore = 0) generate
-	--! The PCIe to NVMe interface
+	--! The PCIe to NVMe 0 interface
 	pcie_nvme_0 : Pcie_nvme0
 	port map (
 		sys_clk			=> nvme_clk,
@@ -651,7 +655,7 @@ begin
 	end generate;
 	
 	genpci1: if(PcieCore = 1) generate
-	--! The PCIe to NVMe interface
+	--! The PCIe to NVMe 1 interface
 	pcie_nvme_1 : Pcie_nvme1
 	port map (
 		sys_clk			=> nvme_clk,
