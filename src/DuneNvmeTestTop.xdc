@@ -15,12 +15,16 @@ set_false_path -from [get_ports sys_reset]
 set_false_path -from [get_ports pci_reset_n]
 
 # PCIe Host
-#set_false_path -through [get_pins pcie_host0/inst/pcie3_ip_i/inst/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst/CFGMAX*]
-set_false_path -through [get_pins pcie_host0/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst/CFGMAX*]
-set_false_path -through [get_nets pcie_host0/inst/cfg_max*]
-set_false_path -to [get_pins -hier *sync_reg[0]/D]
+#set_false_path -through [get_pins pcie_host0/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst/CFGMAX*]
+#set_false_path -through [get_nets pcie_host0/inst/cfg_max*]
+#set_false_path -to [get_pins -hier *sync_reg[0]/D]
 
-set_output_delay -clock [get_clocks nvme_clk] -max 0.0 [get_ports -filter NAME=~leds*]
+set_output_delay -clock [get_clocks nvme_clk] -min 0.0 [get_ports -filter NAME=~nvme_reset_n]
+set_output_delay -clock [get_clocks nvme_clk] -max 1000.0 [get_ports -filter NAME=~nvme_reset_n]
+set_false_path -to [get_ports -filter NAME=~nvme_reset_n]
+
+set_output_delay -clock [get_clocks nvme_clk] -min 0.0 [get_ports -filter NAME=~leds*]
+set_output_delay -clock [get_clocks nvme_clk] -max 1000.0 [get_ports -filter NAME=~leds*]
 set_false_path -to [get_ports -filter NAME=~leds*]
 
 # General settings

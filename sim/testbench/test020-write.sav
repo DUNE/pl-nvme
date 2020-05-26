@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.105 (w)1999-2020 BSI
-[*] Thu May 21 06:28:29 2020
+[*] Sun May 24 07:49:44 2020
 [*]
-[dumpfile] "/src/dune/FpgaPlay/test031-nvmewrite/sim/simu/test.ghw"
-[dumpfile_mtime] "Thu May 21 06:19:47 2020"
-[dumpfile_size] 1491135
-[savefile] "/src/dune/FpgaPlay/test031-nvmewrite/sim/testbench/test020-write.sav"
-[timestart] 547200000
+[dumpfile] "/src/dune/FpgaPlay/test032-nvmewrite-tim3-1/sim/simu/test.ghw"
+[dumpfile_mtime] "Sun May 24 07:48:02 2020"
+[dumpfile_size] 10255
+[savefile] "/src/dune/FpgaPlay/test032-nvmewrite-tim3-1/sim/testbench/test020-write.sav"
+[timestart] 519400000
 [size] 1920 1171
 [pos] -1 -1
-*-26.418455 660600000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-26.418455 760600000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.test.
 [treeopen] top.test.axil.
@@ -18,9 +18,9 @@
 [treeopen] top.test.nvmestorage0.data0.
 [treeopen] top.test.nvmestorage0.datain.
 [treeopen] top.test.nvmestorage0.nvme0send.
+[treeopen] top.test.nvmestorage0.nvmestorageunit0.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmeread0.requestout.
-[treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmewrite0.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmewrite0.buffers.[0].
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmewrite0.buffers.[1].
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.nvmewrite0.datain.
@@ -28,6 +28,8 @@
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.streamswitch0.streamin.[0].
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.streamswitch0.streamout.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.gen03.streamswitch0.streamout.[0].
+[treeopen] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.
+[treeopen] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.hostreply.
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.sim.nvmesim0.hostreq.
@@ -40,7 +42,7 @@
 [treeopen] top.test.nvmestorage0.nvmestorageunit0.streamsend.[2].
 [treeopen] top.test.testdata0.
 [sst_width] 323
-[signals_width] 726
+[signals_width] 737
 [sst_expanded] 1
 [sst_vpaned_height] 768
 @28
@@ -59,14 +61,12 @@ top.test.nvmestorage0.nvmestorageunit0.reset_local
 @800200
 -Host
 @28
-top.test.hostsendready
 top.test.hostsend.valid
 top.test.hostsend.last
 @22
 #{top.test.hostsend.keep[15:0]} top.test.hostsend.keep[15] top.test.hostsend.keep[14] top.test.hostsend.keep[13] top.test.hostsend.keep[12] top.test.hostsend.keep[11] top.test.hostsend.keep[10] top.test.hostsend.keep[9] top.test.hostsend.keep[8] top.test.hostsend.keep[7] top.test.hostsend.keep[6] top.test.hostsend.keep[5] top.test.hostsend.keep[4] top.test.hostsend.keep[3] top.test.hostsend.keep[2] top.test.hostsend.keep[1] top.test.hostsend.keep[0]
 #{top.test.hostsend.data[127:0]} top.test.hostsend.data[127] top.test.hostsend.data[126] top.test.hostsend.data[125] top.test.hostsend.data[124] top.test.hostsend.data[123] top.test.hostsend.data[122] top.test.hostsend.data[121] top.test.hostsend.data[120] top.test.hostsend.data[119] top.test.hostsend.data[118] top.test.hostsend.data[117] top.test.hostsend.data[116] top.test.hostsend.data[115] top.test.hostsend.data[114] top.test.hostsend.data[113] top.test.hostsend.data[112] top.test.hostsend.data[111] top.test.hostsend.data[110] top.test.hostsend.data[109] top.test.hostsend.data[108] top.test.hostsend.data[107] top.test.hostsend.data[106] top.test.hostsend.data[105] top.test.hostsend.data[104] top.test.hostsend.data[103] top.test.hostsend.data[102] top.test.hostsend.data[101] top.test.hostsend.data[100] top.test.hostsend.data[99] top.test.hostsend.data[98] top.test.hostsend.data[97] top.test.hostsend.data[96] top.test.hostsend.data[95] top.test.hostsend.data[94] top.test.hostsend.data[93] top.test.hostsend.data[92] top.test.hostsend.data[91] top.test.hostsend.data[90] top.test.hostsend.data[89] top.test.hostsend.data[88] top.test.hostsend.data[87] top.test.hostsend.data[86] top.test.hostsend.data[85] top.test.hostsend.data[84] top.test.hostsend.data[83] top.test.hostsend.data[82] top.test.hostsend.data[81] top.test.hostsend.data[80] top.test.hostsend.data[79] top.test.hostsend.data[78] top.test.hostsend.data[77] top.test.hostsend.data[76] top.test.hostsend.data[75] top.test.hostsend.data[74] top.test.hostsend.data[73] top.test.hostsend.data[72] top.test.hostsend.data[71] top.test.hostsend.data[70] top.test.hostsend.data[69] top.test.hostsend.data[68] top.test.hostsend.data[67] top.test.hostsend.data[66] top.test.hostsend.data[65] top.test.hostsend.data[64] top.test.hostsend.data[63] top.test.hostsend.data[62] top.test.hostsend.data[61] top.test.hostsend.data[60] top.test.hostsend.data[59] top.test.hostsend.data[58] top.test.hostsend.data[57] top.test.hostsend.data[56] top.test.hostsend.data[55] top.test.hostsend.data[54] top.test.hostsend.data[53] top.test.hostsend.data[52] top.test.hostsend.data[51] top.test.hostsend.data[50] top.test.hostsend.data[49] top.test.hostsend.data[48] top.test.hostsend.data[47] top.test.hostsend.data[46] top.test.hostsend.data[45] top.test.hostsend.data[44] top.test.hostsend.data[43] top.test.hostsend.data[42] top.test.hostsend.data[41] top.test.hostsend.data[40] top.test.hostsend.data[39] top.test.hostsend.data[38] top.test.hostsend.data[37] top.test.hostsend.data[36] top.test.hostsend.data[35] top.test.hostsend.data[34] top.test.hostsend.data[33] top.test.hostsend.data[32] top.test.hostsend.data[31] top.test.hostsend.data[30] top.test.hostsend.data[29] top.test.hostsend.data[28] top.test.hostsend.data[27] top.test.hostsend.data[26] top.test.hostsend.data[25] top.test.hostsend.data[24] top.test.hostsend.data[23] top.test.hostsend.data[22] top.test.hostsend.data[21] top.test.hostsend.data[20] top.test.hostsend.data[19] top.test.hostsend.data[18] top.test.hostsend.data[17] top.test.hostsend.data[16] top.test.hostsend.data[15] top.test.hostsend.data[14] top.test.hostsend.data[13] top.test.hostsend.data[12] top.test.hostsend.data[11] top.test.hostsend.data[10] top.test.hostsend.data[9] top.test.hostsend.data[8] top.test.hostsend.data[7] top.test.hostsend.data[6] top.test.hostsend.data[5] top.test.hostsend.data[4] top.test.hostsend.data[3] top.test.hostsend.data[2] top.test.hostsend.data[1] top.test.hostsend.data[0]
 @28
-top.test.hostrecvready
 top.test.hostrecv.valid
 top.test.hostrecv.last
 @22
@@ -172,9 +172,7 @@ top.test.nvmestorage0.nvmestorageunit0.streamsend[2].last
 @28
 top.test.nvmestorage0.dataselect
 top.test.nvmestorage0.datain0.valid
-@29
 top.test.nvmestorage0.datain1.valid
-@28
 top.test.nvmestorage0.datain.valid
 top.test.nvmestorage0.datain.last
 @22
@@ -206,10 +204,17 @@ top.test.nvmestorage0.nvmestorageunit0.hostrecv.ready
 top.test.nvmestorage0.nvmestorageunit0.hostrecv.valid
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream2in.ready
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream2in.valid
+top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream2in.last
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream3in.ready
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream3in.valid
+top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream3in.last
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.ready
 top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.valid
+top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.last
+@22
+#{top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[127:0]} top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[127] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[126] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[125] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[124] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[123] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[122] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[121] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[120] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[119] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[118] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[117] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[116] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[115] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[114] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[113] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[112] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[111] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[110] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[109] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[108] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[107] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[106] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[105] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[104] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[103] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[102] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[101] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[100] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[99] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[98] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[97] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[96] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[95] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[94] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[93] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[92] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[91] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[90] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[89] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[88] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[87] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[86] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[85] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[84] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[83] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[82] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[81] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[80] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[79] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[78] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[77] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[76] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[75] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[74] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[73] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[72] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[71] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[70] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[69] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[68] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[67] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[66] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[65] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[64] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[63] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[62] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[61] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[60] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[59] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[58] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[57] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[56] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[55] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[54] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[53] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[52] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[51] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[50] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[49] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[48] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[47] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[46] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[45] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[44] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[43] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[42] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[41] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[40] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[39] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[38] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[37] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[36] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[35] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[34] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[33] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[32] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[31] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[30] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[29] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[28] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[27] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[26] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[25] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[24] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[23] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[22] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[21] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[20] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[19] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[18] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[17] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[16] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[15] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[14] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[13] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[12] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[11] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[10] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[9] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[8] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[7] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[6] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[5] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[4] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[3] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[2] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[1] top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.stream1out.data[0]
+@420
+top.test.nvmestorage0.nvmestorageunit0.pciestreammux0.muxstate
 @1000200
 -NvmeStorageUnit
 @800200

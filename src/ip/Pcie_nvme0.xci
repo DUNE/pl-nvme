@@ -311,7 +311,7 @@
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PIPE_SIM">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PLL_TYPE">2</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_INTERFACE">FALSE</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_LINK_CAP_MAX_LINK_SPEED">2</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_LINK_CAP_MAX_LINK_SPEED">4</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_LINK_CAP_MAX_LINK_WIDTH">4</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_UPSTREAM_FACING">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PM_ENABLE_L23_ENTRY">FALSE</spirit:configurableElementValue>
@@ -492,7 +492,7 @@
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF1_SUBSYSTEM_ID">0007</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF1_Use_Class_Code_Lookup_Assistant">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PHY_LP_TXPRESET">4</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PL_LINK_CAP_MAX_LINK_SPEED">5.0_GT/s</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PL_LINK_CAP_MAX_LINK_SPEED">8.0_GT/s</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PL_LINK_CAP_MAX_LINK_WIDTH">X4</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.REF_CLK_FREQ">100_MHz</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.RX_DETECT">Default</spirit:configurableElementValue>
@@ -541,7 +541,7 @@
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.acs_ext_cap_enable">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.alignment_mode">DWORD_Aligned</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.aspm_support">No_ASPM</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_freq">125</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_freq">250</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_if_enable_client_tag">true</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_if_enable_msg_route">2FFFF</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_if_enable_msg_route_override">false</spirit:configurableElementValue>

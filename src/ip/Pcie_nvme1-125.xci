@@ -6,7 +6,7 @@
   <spirit:version>1.0</spirit:version>
   <spirit:componentInstances>
     <spirit:componentInstance>
-      <spirit:instanceName>Pcie_nvme0</spirit:instanceName>
+      <spirit:instanceName>Pcie_nvme1</spirit:instanceName>
       <spirit:componentRef spirit:vendor="xilinx.com" spirit:library="ip" spirit:name="pcie3_ultrascale" spirit:version="4.4"/>
       <spirit:configurableElementValues>
         <spirit:configurableElementValue spirit:referenceId="BUSIFPARAM_VALUE.CLK.SYS_CLK.ASSOCIATED_BUSIF"/>
@@ -95,12 +95,12 @@
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.BMD_PIO_MODE">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_CTL_IF">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_EXT_IF">TRUE</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_FC_IF">TRUE</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_MGMT_IF">TRUE</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_STATUS_IF">TRUE</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_FC_IF">FALSE</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_MGMT_IF">FALSE</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_STATUS_IF">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CFG_TX_MSG_IF">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.COMPLETION_SPACE">16KB</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CORE_CLK_FREQ">2</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.CORE_CLK_FREQ">1</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.C_DATA_WIDTH">128</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.DBG_DESCRAMBLE_EN">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.DEDICATE_PERST">FALSE</spirit:configurableElementValue>
@@ -133,7 +133,7 @@
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PER_FUNC_STATUS_IF">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_AER_CAP_ECRC_CHECK_CAPABLE">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_AER_CAP_ECRC_GEN_CAPABLE">FALSE</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_AER_CAP_NEXTPTR">0x300</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_AER_CAP_NEXTPTR">0x000</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_ARI_CAP_NEXTPTR">0x000</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_ARI_CAP_NEXT_FUNC">0x00</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_BAR0_APERTURE_SIZE">0x09</spirit:configurableElementValue>
@@ -150,7 +150,7 @@
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_BAR5_CONTROL">0x0</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_CAPABILITY_POINTER">0xC0</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_CLASS_CODE">0x060A00</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DEVICE_ID">0x8134</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DEVICE_ID">0x8124</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DEV_CAP2_128B_CAS_ATOMIC_COMPLETER_SUPPORT">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DEV_CAP2_32B_ATOMIC_COMPLETER_SUPPORT">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DEV_CAP2_64B_ATOMIC_COMPLETER_SUPPORT">FALSE</spirit:configurableElementValue>
@@ -169,7 +169,7 @@
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DPA_CAP_SUB_STATE_POWER_ALLOCATION5">0x00</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DPA_CAP_SUB_STATE_POWER_ALLOCATION6">0x00</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DPA_CAP_SUB_STATE_POWER_ALLOCATION7">0x00</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DSN_CAP_NEXTPTR">0x300</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_DSN_CAP_NEXTPTR">0x000</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_EXPANSION_ROM_APERTURE_SIZE">0x00</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_EXPANSION_ROM_ENABLE">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PF0_INTERRUPT_PIN">0x0</spirit:configurableElementValue>
@@ -311,14 +311,14 @@
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PIPE_SIM">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PLL_TYPE">2</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_INTERFACE">FALSE</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_LINK_CAP_MAX_LINK_SPEED">4</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_LINK_CAP_MAX_LINK_SPEED">2</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_LINK_CAP_MAX_LINK_WIDTH">4</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PL_UPSTREAM_FACING">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.PM_ENABLE_L23_ENTRY">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.RCV_MSG_IF">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.REF_CLK_FREQ">0</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.RX_DETECT">0</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.SELECT_QUAD">GTH_Quad_228</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.SELECT_QUAD">GTH_Quad_227</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.SHARED_LOGIC">1</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.SPARE_WORD1">0x00000000</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.SRIOV_CAP_ENABLE">FALSE</spirit:configurableElementValue>
@@ -333,8 +333,8 @@
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.TL_LEGACY_MODE_ENABLE">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.TL_PF_ENABLE_REG">0x0</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.TRANSCEIVER_CTRL_STATUS_PORTS">FALSE</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.TX_FC_IF">TRUE</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.USER_CLK_FREQ">3</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.TX_FC_IF">FALSE</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.USER_CLK_FREQ">2</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.VF0_ARI_CAP_NEXTPTR">0x000</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.VF0_CAPABILITY_POINTER">0x00</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.VF0_MSIX_CAP_PBA_BIR">0</spirit:configurableElementValue>
@@ -428,22 +428,22 @@
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.VF5_TPHR_CAP_VER">0x1</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.en_msi_per_vec_masking">FALSE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.gen_x0y0_xdc">0</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.gen_x0y1_xdc">0</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.gen_x0y2_xdc">1</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.gen_x0y1_xdc">1</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.gen_x0y2_xdc">0</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.gen_x0y3_xdc">0</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.gen_x0y4_xdc">0</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.gen_x0y5_xdc">0</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.pcie_blk_locn">2</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.pcie_blk_locn">1</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.silicon_revision">Production</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="MODELPARAM_VALUE.xlnx_ref_board">0</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_ENABLEMENT.xlnx_ref_board">true</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.AXISTEN_IF_RC_STRADDLE">false</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.Component_Name">Pcie_nvme0</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.Component_Name">Pcie_nvme1</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.INS_LOSS_NYQ">15</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF0_AER_CAP_ECRC_CHECK_CAPABLE">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF0_AER_CAP_ECRC_GEN_CAPABLE">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF0_CLASS_CODE">060A00</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF0_DEVICE_ID">8134</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF0_DEVICE_ID">8124</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF0_DEV_CAP2_128B_CAS_ATOMIC_COMPLETER_SUPPORT">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF0_DEV_CAP2_32B_ATOMIC_COMPLETER_SUPPORT">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF0_DEV_CAP2_64B_ATOMIC_COMPLETER_SUPPORT">false</spirit:configurableElementValue>
@@ -492,7 +492,7 @@
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF1_SUBSYSTEM_ID">0007</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PF1_Use_Class_Code_Lookup_Assistant">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PHY_LP_TXPRESET">4</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PL_LINK_CAP_MAX_LINK_SPEED">8.0_GT/s</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PL_LINK_CAP_MAX_LINK_SPEED">5.0_GT/s</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.PL_LINK_CAP_MAX_LINK_WIDTH">X4</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.REF_CLK_FREQ">100_MHz</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.RX_DETECT">Default</spirit:configurableElementValue>
@@ -541,7 +541,7 @@
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.acs_ext_cap_enable">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.alignment_mode">DWORD_Aligned</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.aspm_support">No_ASPM</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_freq">250</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_freq">125</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_if_enable_client_tag">true</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_if_enable_msg_route">2FFFF</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.axisten_if_enable_msg_route_override">false</spirit:configurableElementValue>
@@ -551,15 +551,15 @@
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cc_cq_alignment">None</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_ctl_if">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_ext_if">true</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_fc_if">true</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_mgmt_if">true</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_status_if">true</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_fc_if">false</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_mgmt_if">false</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_status_if">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.cfg_tx_msg_if">false</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.coreclk_freq">500</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.coreclk_freq">250</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.dedicate_perst">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.device_port_type">Root_Port_of_PCI_Express_Root_Complex</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.dis_gt_wizard">false</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.disable_gt_loc">false</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.disable_gt_loc">true</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.en_dbg_descramble">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.en_ext_ch_gt_drp">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.en_ext_clk">true</spirit:configurableElementValue>
@@ -581,8 +581,8 @@
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.extended_tag_field">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.free_run_freq">100_MHz</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.gen_x0y0">false</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.gen_x0y1">false</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.gen_x0y2">true</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.gen_x0y1">true</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.gen_x0y2">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.gen_x0y3">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.gen_x0y4">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.gen_x0y5">false</spirit:configurableElementValue>
@@ -594,7 +594,7 @@
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.mcap_fpga_bitstream_version">00000000</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.mode_selection">Advanced</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.mult_pf_des">true</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.pcie_blk_locn">X0Y2</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.pcie_blk_locn">X0Y1</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.per_func_status_if">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.perf_level">Extreme</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.performance">false</spirit:configurableElementValue>
@@ -781,12 +781,12 @@
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.plltype">QPLL1</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.rc_rq_alignment">None</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.rcv_msg_if">false</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.select_quad">GTH_Quad_228</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.select_quad">GTH_Quad_227</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.special_gui">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.sys_reset_polarity">ACTIVE_LOW</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.tandem_mode">None</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.tl_pf0_enable_reg">true</spirit:configurableElementValue>
-        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.tx_fc_if">true</spirit:configurableElementValue>
+        <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.tx_fc_if">false</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.vendor_id">10EE</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PARAM_VALUE.xlnx_ref_board">None</spirit:configurableElementValue>
         <spirit:configurableElementValue spirit:referenceId="PROJECT_PARAM.ARCHITECTURE">kintexu</spirit:configurableElementValue>
@@ -857,11 +857,14 @@
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.axisten_freq" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.axisten_if_width" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.cfg_ctl_if" xilinx:valueSource="user"/>
+            <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.cfg_fc_if" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.cfg_mgmt_if" xilinx:valueSource="user"/>
+            <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.cfg_status_if" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.cfg_tx_msg_if" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.coreclk_freq" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.dedicate_perst" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.device_port_type" xilinx:valueSource="user"/>
+            <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.disable_gt_loc" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.gen_x0y0" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.gen_x0y1" xilinx:valueSource="user"/>
             <xilinx:configElementInfo xilinx:referenceId="PARAM_VALUE.gen_x0y2" xilinx:valueSource="user"/>

@@ -42,8 +42,9 @@ entity Ram is
 generic (
 	DataWidth	: integer := 128;			--! The data width of the RAM in bits
 	Size		: integer := 4096;			--! The size in RAM locations
-	--AddressWidth	: integer := log2(Size)			--! will work with VHDL 08+
-	AddressWidth	: integer := 13
+	--AddressWidth	: integer := log2(Size);		--! will work with VHDL 08+
+	AddressWidth	: integer := 13;
+	RegisterOutputs	: boolean := False			--! Register the outputs
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -66,6 +67,7 @@ constant TCQ		: time := 1 ns;
 -- Simple RAM buffer, will be implemented in BlockRam by inferance
 type MemoryType		is array(0 to Size-1) of std_logic_vector(DataWidth-1 downto 0);
 signal memory		: MemoryType := (others => (others => '0'));
+signal readDataReg	: std_logic_vector(DataWidth-1 downto 0);
 
 attribute ram_style	: string;
 attribute ram_style	of memory : signal is "block";
@@ -80,7 +82,12 @@ begin
 			end if;
 
 			if(readEnable = '1') then
-				readData <= memory(to_integer(readAddress));
+				if(RegisterOutputs) then
+					readData <= readDataReg;
+					readDataReg <= memory(to_integer(readAddress));
+				else
+					readData <= memory(to_integer(readAddress));
+				end if;
 			end if;
 		end if;
 	end process;

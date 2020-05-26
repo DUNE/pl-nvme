@@ -363,8 +363,6 @@ begin
 		end if;
 	end process;
 
-	nvmeReplyHead <= to_NvmeReplyHeadType(replyIn.data);
-	
 	-- Process data write. This takes the input buffers and sends a write request to the Nvme for each one that is full and
 	-- not already processed
 	process(clk)
@@ -403,6 +401,11 @@ begin
 						if(numBlocksProc >= dataChunkSize) then
 							state <= STATE_COMPLETE;
 						
+						elsif(DoTrim and (numBlocksTrimmed < dataChunkSize) and ((trimQueueProc - trimQueueDone) < 4)) then
+							requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
+							requestOut.valid	<= '1';
+							state			<= STATE_TQUEUE_HEAD;
+
 						elsif(DoWrite and (processQueueOut /= processQueueIn)) then
 							bufferOutNum		<= processQueue(processQueueOut);
 							processQueueOut		<= incrementPos(processQueueOut);
@@ -411,10 +414,6 @@ begin
 							requestOut.valid	<= '1';
 							state			<= STATE_WQUEUE_HEAD;
 
-						elsif(DoTrim and (numBlocksTrimmed < dataChunkSize) and ((trimQueueProc - trimQueueDone) < 4)) then
-							requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
-							requestOut.valid	<= '1';
-							state			<= STATE_TQUEUE_HEAD;
 						end if;
 					else
 						state <= STATE_COMPLETE;
@@ -583,7 +582,8 @@ begin
 							replyState <= REPSTATE_COMPLETE;
 					
 						elsif(replyIn.valid = '1' and replyIn.ready = '1') then
-							replyState <= REPSTATE_QUEUE_REPLY2;
+							nvmeReplyHead	<= to_NvmeReplyHeadType(replyIn.data);
+							replyState	<= REPSTATE_QUEUE_REPLY2;
 						end if;
 					end if;
 
@@ -604,12 +604,12 @@ begin
 							p			:= to_integer(nvmeReplyHead.cid(log2(NvmeWriteNum)-1 downto 0));
 							buffers(p).inUse2	<= buffers(p).inUse1;
 
-							if((timeUs - buffers(p).startTime) > peaklatency) then
-								peaklatency <= timeUs - buffers(p).startTime;
+							if((timeUs - buffers(p).startTime) > peakLatency) then
+								peakLatency <= timeUs - buffers(p).startTime;
 							end if;
 						end if;
 
-						replyState		<= REPSTATE_QUEUE_REPLY1;
+						replyState <= REPSTATE_QUEUE_REPLY1;
 					end if;
 				
 				end case;

@@ -133,7 +133,7 @@ package body TestPkg is
 		packetHead.count := to_unsigned(count, packetHead.count'length);
 		packetHead.status := to_unsigned(status, packetHead.status'length);
 		packetHead.requesterId := to_unsigned(requesterId, packetHead.requesterId'length);
-		c := (count + 3) / 4;
+		c := (count + 2) / 4;
 		d := data;
 
 		-- Write address

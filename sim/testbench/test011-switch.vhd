@@ -20,7 +20,6 @@ end;
 architecture sim of Test is
 
 constant TCQ		: time := 1 ns;
-constant CHUNK_SIZE	: integer := 32;			-- The data write chunk size in DWords due to PCIe packet size limitations
 constant NumStreams	: integer := 4;
 
 component StreamSwitch is
@@ -43,15 +42,6 @@ signal streamSend	: AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStr
 signal streamRecv	: AxisStreamArrayType(0 to NumStreams-1) := (others => AxisStreamInput);
 
 begin
-	streamSwitch0 : StreamSwitch
-	port map (
-		clk		=> clk,
-		reset		=> reset,
-
-		streamIn	=> streamSend,
-		streamOut	=> streamRecv
-	);
-
 	clock : process
 	begin
 		wait for 5 ns; clk  <= not clk;
@@ -64,7 +54,23 @@ begin
 		reset	<= '0';
 		wait;
 	end process;
-	
+
+	stop : process
+	begin
+		wait for 700 ns;
+		assert false report "simulation ended ok" severity failure;
+	end process;
+
+
+	streamSwitch0 : StreamSwitch
+	port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		streamIn	=> streamSend,
+		streamOut	=> streamRecv
+	);
+
 	run1 : process
 	begin
 		streamSend(0).valid	<= '0';
@@ -82,7 +88,16 @@ begin
 
 		-- Test ready signal block
 		streamRecv(1).ready <= '0';
-		pcieRequestWrite(clk, streamSend(0), 0, 1, 16#01000000#, 16#44#, 16, 16#04000000#);
+		wait for 120 ns;
+		wait until rising_edge(clk);
+		streamRecv(1).ready <= '1';
+		wait until rising_edge(clk);
+		streamRecv(1).ready <= '0';
+		wait until rising_edge(clk);
+		wait until rising_edge(clk);
+		streamRecv(1).ready <= '1';
+		
+		--pcieRequestWrite(clk, streamSend(0), 0, 1, 16#01000000#, 16#44#, 16, 16#04000000#);
 
 		wait;
 	end process;
@@ -96,16 +111,11 @@ begin
 	
 		wait until reset = '0';
 		wait for 300 ns;
+		pcieRequestWrite(clk, streamSend(2), 0, 1, 16#01000000#, 16#44#, 16, 16#04000000#);
 		
 		-- Write queue entry
 		pcieRequestWrite(clk, streamSend(2), 0, 1, 16#00000000#, 16#44#, 16, 16#05000000#);
 
 		wait;
-	end process;
-
-	stop : process
-	begin
-		wait for 700 ns;
-		assert false report "simulation ended ok" severity failure;
 	end process;
 end;
