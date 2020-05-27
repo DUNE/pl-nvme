@@ -178,7 +178,7 @@ end component;
 constant TCQ		: time := 1 ns;
 
 signal wvalid_delay	: std_logic := '0';
-signal rvalid_delay	: unsigned(4 downto 0) := (others => '0');
+signal rvalid_delay	: unsigned(5 downto 0) := (others => '0');
 
 signal hostSend0	: AxisStreamType;
 signal hostRecv0	: AxisStreamType;
@@ -219,7 +219,7 @@ begin
 	-- Bus ready returns		
 	axilOut.awready	<= axilIn.awvalid;
 	axilOut.arready	<= axilIn.arvalid;
-	axilOut.rvalid	<= rvalid_delay(4);
+	axilOut.rvalid	<= rvalid_delay(5);
 	axilOut.wready	<= axilIn.wvalid and wvalid_delay;
 
 	-- Always return OK to read and write requests

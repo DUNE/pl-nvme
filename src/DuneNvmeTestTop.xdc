@@ -8,17 +8,23 @@
 #create_clock -period 5.000 -name sys_clk_p -waveform {0.000 2.500} [get_ports sys_clk_p]
 create_clock -period 10.000 -name pci_clk [get_ports pci_clk_p]
 create_clock -period 10.000 -name nvme_clk [get_ports nvme_clk_p]
-set_clock_groups -name async_host_nvme -asynchronous -group [get_clocks -include_generated_clocks pci_clk] -group [get_clocks -include_generated_clocks nvme_clk]
+
+# CDC crossings
+set_false_path -to [get_cells -hier sendCdcReg1*]
+set_false_path -to [get_cells -hier recvCdcReg1*]
 
 # Asynchronous resets
 set_false_path -from [get_ports sys_reset]
 set_false_path -from [get_ports pci_reset_n]
+set_false_path -through [get_nets -hier -filter {NAME=~ */nvmeStorageUnit*/reset_local}]
+#set_false_path -through [get_nets -hier -filter {NAME=~ */nvmeStorageUnit*/nvme_reset_local_n}]
 
 # PCIe Host
-#set_false_path -through [get_pins pcie_host0/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst/CFGMAX*]
-#set_false_path -through [get_nets pcie_host0/inst/cfg_max*]
-#set_false_path -to [get_pins -hier *sync_reg[0]/D]
+set_false_path -through [get_pins pcie_host0/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst/CFGMAX*]
+set_false_path -through [get_nets pcie_host0/inst/cfg_max*]
+set_false_path -to [get_pins -hier *sync_reg[0]/D]
 
+# Output pins
 set_output_delay -clock [get_clocks nvme_clk] -min 0.0 [get_ports -filter NAME=~nvme_reset_n]
 set_output_delay -clock [get_clocks nvme_clk] -max 1000.0 [get_ports -filter NAME=~nvme_reset_n]
 set_false_path -to [get_ports -filter NAME=~nvme_reset_n]

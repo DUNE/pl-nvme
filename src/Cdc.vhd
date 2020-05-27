@@ -54,30 +54,30 @@ architecture Behavioral of Cdc is
 constant TCQ		: time := 1 ns;
 subtype RegisterType	is std_logic_vector(Width-1 downto 0);
 
-signal cdcReg1		: RegisterType := (others => '0');
-signal cdcReg2		: RegisterType := (others => '0');
+signal sendCdcReg1	: RegisterType := (others => '0');
+signal sendCdcReg2	: RegisterType := (others => '0');
 
-attribute keep	: string;
+attribute keep		: string;
 attribute async_reg	: string;
 
-attribute keep	of cdcReg1 : signal is "true";
-attribute keep	of cdcReg2 : signal is "true";
+attribute keep		of sendCdcReg1 : signal is "true";
+attribute keep		of sendCdcReg2 : signal is "true";
 
-attribute async_reg	of cdcReg1 : signal is "true";
-attribute async_reg	of cdcReg2 : signal is "true";
+attribute async_reg	of sendCdcReg1 : signal is "true";
+attribute async_reg	of sendCdcReg2 : signal is "true";
 
 begin
-	signals2	<= cdcReg2;
+	signals2	<= sendCdcReg2;
 
 	process(clk2)
 	begin
 		if(rising_edge(clk2)) then
 			if(reset2 = '1') then
-				cdcReg1	<= (others => '0');
-				cdcReg2	<= (others => '0');
+				sendCdcReg1	<= (others => '0');
+				sendCdcReg2	<= (others => '0');
 			else
-				cdcReg2	<= cdcReg1;
-				cdcReg1	<= signals1;
+				sendCdcReg2	<= sendCdcReg1;
+				sendCdcReg1	<= signals1;
 			end if;
 		end if;
 	end process;
@@ -104,30 +104,30 @@ architecture Behavioral of CdcSingle is
 
 constant TCQ		: time := 1 ns;
 
-signal cdcReg1		: std_logic := '0';
-signal cdcReg2		: std_logic := '0';
+signal sendCdcReg1	: std_logic := '0';
+signal sendCdcReg2	: std_logic := '0';
 
 attribute keep		: string;
 attribute async_reg	: string;
 
-attribute keep		of cdcReg1 : signal is "true";
-attribute keep		of cdcReg2 : signal is "true";
+attribute keep		of sendCdcReg1 : signal is "true";
+attribute keep		of sendCdcReg2 : signal is "true";
 
-attribute async_reg	of cdcReg1 : signal is "true";
-attribute async_reg	of cdcReg2 : signal is "true";
+attribute async_reg	of sendCdcReg1 : signal is "true";
+attribute async_reg	of sendCdcReg2 : signal is "true";
 
 begin
-	signal2	<= cdcReg2;
+	signal2	<= sendCdcReg2;
 
 	process(clk2)
 	begin
 		if(rising_edge(clk2)) then
 			if(reset2 = '1') then
-				cdcReg1	<= '0';
-				cdcReg2	<= '0';
+				sendCdcReg1	<= '0';
+				sendCdcReg2	<= '0';
 			else
-				cdcReg2	<= cdcReg1;
-				cdcReg1	<= signal1;
+				sendCdcReg2	<= sendCdcReg1;
+				sendCdcReg1	<= signal1;
 			end if;
 		end if;
 	end process;

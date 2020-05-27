@@ -70,53 +70,59 @@ constant SigRecvWidth	: integer := 32;
 subtype SigSendType	is std_logic_vector(SigSendWidth-1 downto 0);
 subtype SigRecvType	is std_logic_vector(SigRecvWidth-1 downto 0);
 
-signal sigSendFifo1	: SigSendType := (others => '0');
-signal sigSendFifo2	: SigSendType := (others => '0');
-signal sigRecvFifo1	: SigRecvType := (others => '0');
-signal sigRecvFifo2	: SigRecvType := (others => '0');
+signal sendCdcReg1	: SigSendType := (others => '0');
+signal sendCdcReg2	: SigSendType := (others => '0');
+
+signal recvCdcReg0	: SigRecvType := (others => '0');
+signal recvCdcReg1	: SigRecvType := (others => '0');
+signal recvCdcReg2	: SigRecvType := (others => '0');
 
 attribute keep		: string;
 attribute async_reg	: string;
 
-attribute keep		of sigSendFifo1 : signal is "true";
-attribute keep		of sigSendFifo2 : signal is "true";
-attribute keep		of sigRecvFifo1 : signal is "true";
-attribute keep		of sigRecvFifo2 : signal is "true";
+attribute keep		of sendCdcReg1 : signal is "true";
+attribute keep		of sendCdcReg2 : signal is "true";
+attribute keep		of recvCdcReg0 : signal is "true";
+attribute keep		of recvCdcReg1 : signal is "true";
+attribute keep		of recvCdcReg2 : signal is "true";
 
-attribute async_reg	of sigSendFifo1 : signal is "true";
-attribute async_reg	of sigSendFifo2 : signal is "true";
-attribute async_reg	of sigRecvFifo1 : signal is "true";
-attribute async_reg	of sigRecvFifo2 : signal is "true";
+attribute async_reg	of sendCdcReg1 : signal is "true";
+attribute async_reg	of sendCdcReg2 : signal is "true";
+attribute async_reg	of recvCdcReg1 : signal is "true";
+attribute async_reg	of recvCdcReg2 : signal is "true";
 
 begin
-	regWrite2	<= sigSendFifo2(38);
-	regAddress2	<= unsigned(sigSendFifo2(37 downto 32));
-	regDataIn2	<= sigSendFifo2(31 downto 0);
+	regWrite2	<= sendCdcReg2(38);
+	regAddress2	<= unsigned(sendCdcReg2(37 downto 32));
+	regDataIn2	<= sendCdcReg2(31 downto 0);
 
 	process(clk2)
 	begin
 		if(rising_edge(clk2)) then
 			if(reset2 = '1') then
-				sigSendFifo1	<= (others => '0');
-				sigSendFifo2	<= (others => '0');
+				sendCdcReg1	<= (others => '0');
+				sendCdcReg2	<= (others => '0');
+				recvCdcReg0	<= (others => '0');
 			else
-				sigSendFifo2	<= sigSendFifo1;
-				sigSendFifo1	<= regWrite1 & to_stl(regAddress1) & regDataIn1;
+				sendCdcReg2	<= sendCdcReg1;
+				sendCdcReg1	<= regWrite1 & to_stl(regAddress1) & regDataIn1;
+				
+				recvCdcReg0	<= regDataOut2;
 			end if;
 		end if;
 	end process;
 
-	regDataOut1 <= sigRecvFifo2;
+	regDataOut1 <= recvCdcReg2;
 
 	process(clk1)
 	begin
 		if(rising_edge(clk1)) then
 			if(reset1 = '1') then
-				sigRecvFifo1	<= (others => '0');
-				sigRecvFifo2	<= (others => '0');
+				recvCdcReg1	<= (others => '0');
+				recvCdcReg2	<= (others => '0');
 			else
-				sigRecvFifo2	<= sigRecvFifo1;
-				sigRecvFifo1	<= regDataOut2;
+				recvCdcReg2	<= recvCdcReg1;
+				recvCdcReg1	<= recvCdcReg0;
 			end if;
 		end if;
 	end process;

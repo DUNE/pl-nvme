@@ -474,8 +474,6 @@ begin
 		regDataIn1	=> regDataIn,
 		regDataOut1	=> regDataOut0,
 
-		--clk2		=> clk,				--! **** Needs to operate from Nvme clock
-		--reset2	=> reset,
 		clk2		=> nvme_user_clk,
 		reset2		=> nvme_user_reset,
 
@@ -558,7 +556,7 @@ begin
 	reset_local		<= reset or reset_local_active;
 	nvme_reset_local_n	<= not reset_local;
 	nvme_reset_n		<= nvme_reset_local_n;
-	
+
 	-- Process reset
 	process(clk)
 	begin
