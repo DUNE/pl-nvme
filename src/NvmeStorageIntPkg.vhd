@@ -39,11 +39,6 @@ package NvmeStorageIntPkg is
 	constant NvmeWriteNum		: integer := 8;		--! The number of concurrent data write's.
 	constant PcieMaxPayloadSize	: integer := 32;	--! The maximum Pcie packet size in 32bit DWords
 
-	--! Nvme drive settings
-	constant NvmeBlockSize		: integer := 512;	--! The NVMe's formatted block size
-	constant NvmeTotalBlocks	: integer := 134217728;	--! The total number of 4k blocks available
-	constant NvmeDoorbellStride	: integer := 4;		--! The doorbell register stride
-
 	--! Generaly useful functions
 	function to_stl(v: integer; b: integer) return std_logic_vector;
 	function to_stl(v: unsigned; b: integer) return std_logic_vector;

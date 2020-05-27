@@ -49,7 +49,10 @@ generic(
 	ClockPeriod	: time		:= 4 ns;			--! Clock period for timers (250 MHz)
 	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
 	NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time
-	UseConfigure	: boolean	:= False			--! The module configures the Nvme's on reset
+	UseConfigure	: boolean	:= False;			--! The module configures the Nvme's on reset
+	NvmeBlockSize	: integer	:= 512;				--! The NVMe's formatted block size
+	NvmeTotalBlocks	: integer	:= 134217728;			--! The total number of 4k blocks available
+	NvmeRegStride	: integer	:= 4				--! The doorbell register stride
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -102,7 +105,10 @@ generic(
 	ClockPeriod	: time		:= ClockPeriod;		--! Clock period for timers (250 MHz)
 	BlockSize	: integer	:= BlockSize;		--! System block size
 	PcieCore	: integer	:= 0;			--! The Pcie hardblock block to use
-	UseConfigure	: boolean	:= False		--! The module configures the Nvme's on reset
+	UseConfigure	: boolean	:= UseConfigure;	--! The module configures the Nvme's on reset
+	NvmeBlockSize	: integer	:= NvmeBlockSize;	--! The NVMe's formatted block size
+	NvmeTotalBlocks	: integer	:= NvmeTotalBlocks;	--! The total number of 4k blocks available
+	NvmeRegStride	: integer	:= NvmeRegStride	--! The doorbell register stride
 );
 port (
 	clk		: in std_logic;				--! The interface clock line

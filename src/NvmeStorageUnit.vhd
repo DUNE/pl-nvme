@@ -49,7 +49,10 @@ generic(
 	ClockPeriod	: time		:= 4 ns;		--! Clock period for timers (250 MHz)
 	BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
 	PcieCore	: integer	:= 0;			--! The Pcie hardblock block to use
-	UseConfigure	: boolean	:= False		--! The module configures the Nvme's on reset
+	UseConfigure	: boolean	:= False;		--! The module configures the Nvme's on reset
+	NvmeBlockSize	: integer	:= 512;			--! The NVMe's formatted block size
+	NvmeTotalBlocks	: integer	:= 134217728;		--! The total number of 4k blocks available
+	NvmeRegStride	: integer	:= 4			--! The doorbell register stride
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -122,6 +125,17 @@ port (
 	clkTx		: in std_logic;
 	resetTx		: in std_logic;
 	streamTx	: inout AxisStreamType := AxisStreamOutput
+);
+end component;
+
+component CdcSingle is
+port (
+	clk1		: in std_logic;				--! The interface clock line
+	signal1		: in std_logic;				--! The signal to pass
+
+	clk2		: in std_logic;				--! The interface clock line
+	reset2		: in std_logic;				--! The active high reset line
+	signal2		: out std_logic				--! The signals passed
 );
 end component;
 
@@ -238,6 +252,7 @@ end component;
 component NvmeQueues is
 generic(
 	NumQueueEntries	: integer	:= NvmeQueueNum;	--! The number of entries per queue
+	NvmeRegStride	: integer	:= NvmeRegStride;	--! The doorbell register stride
 	Simulate	: boolean	:= False
 );
 port (
@@ -305,7 +320,9 @@ component NvmeWrite is
 generic(
 	Simulate	: boolean := Simulate;			--! Generate simulation core
 	ClockPeriod	: time := ClockPeriod;			--! The clocks period
-	BlockSize	: integer := BlockSize			--! System block size
+	BlockSize	: integer := BlockSize;			--! System block size
+	NvmeBlockSize	: integer := NvmeBlockSize;		--! The NVMe's formatted block size
+	NvmeTotalBlocks	: integer := NvmeTotalBlocks		--! The total number of 4k blocks available
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -332,7 +349,9 @@ end component;
 component NvmeRead is
 generic(
 	Simulate	: boolean := False;			--! Generate simulation core
-	BlockSize	: integer := NvmeStorageBlockSize	--! System block size
+	BlockSize	: integer := NvmeStorageBlockSize;	--! System block size
+	NvmeBlockSize	: integer := NvmeBlockSize;		--! The NVMe's formatted block size
+	NvmeTotalBlocks	: integer := NvmeTotalBlocks		--! The total number of 4k blocks available
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -439,6 +458,9 @@ signal dummy1			: AxisStreamType := AxisStreamInput;
 signal dummy2			: AxisStreamType := AxisStreamOutput;
 signal dummy3			: AxisStreamType := AxisStreamOutput;
 
+attribute keep	: string;
+attribute keep	of reset_local : signal is "true";
+attribute keep	of nvme_reset_local_n : signal is "true";
 
 begin
 	-- Register access over clock domain crossing
@@ -497,6 +519,17 @@ begin
 		clkTx		=> nvme_user_clk,
 		resetTx		=> nvme_user_reset,
 		streamTx	=> dataIn1
+	);
+	
+	-- Data enable signal across clock domains
+	cdc0: CdcSingle
+	port map (
+		clk1		=> nvme_user_clk,
+		signal1		=> writeEnable,
+
+		clk2		=> clk,
+		reset2		=> reset,
+		signal2		=> dataEnabledOut
 	);
 
 	-- Register access
@@ -798,7 +831,6 @@ begin
 	
 	-- The Data write processing
 	writeEnable	<= reg_control(2);
-	dataEnabledOut	<= writeEnable;
 	
 	nvmeWrite0: NvmeWrite
 	port map (

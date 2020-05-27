@@ -20,7 +20,7 @@ VIVADO_TARGET	?= ""
 
 # Files for synthesis
 SYN_FILES	= ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd
-SYN_FILES	+= ../src/Ram.vhd
+SYN_FILES	+= ../src/Ram.vhd ../src/Cdc.vhd
 SYN_FILES	+= ../src/RegAccessClockConvertor.vhd
 SYN_FILES	+= ../src/AxisClockConverter.vhd
 SYN_FILES	+= ../src/AxisDataConvertFifo.vhd

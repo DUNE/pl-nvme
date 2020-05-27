@@ -40,7 +40,9 @@ use work.NvmeStorageIntPkg.all;
 entity NvmeRead is
 generic(
 	Simulate	: boolean := False;			--! Generate simulation core
-	BlockSize	: integer := NvmeStorageBlockSize	--! System block size
+	BlockSize	: integer := NvmeStorageBlockSize;	--! System block size
+	NvmeBlockSize	: integer := 512;			--! The NVMe's formatted block size
+	NvmeTotalBlocks	: integer := 134217728			--! The total number of 4k blocks available
 );
 port (
 	clk		: in std_logic;				--! The interface clock line

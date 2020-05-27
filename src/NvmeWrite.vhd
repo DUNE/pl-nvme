@@ -69,7 +69,9 @@ entity NvmeWrite is
 generic(
 	Simulate	: boolean := False;			--! Generate simulation core
 	ClockPeriod	: time := 8 ns;				--! The clocks period
-	BlockSize	: integer := NvmeStorageBlockSize	--! System block size
+	BlockSize	: integer := NvmeStorageBlockSize;	--! System block size
+	NvmeBlockSize	: integer := 512;			--! The NVMe's formatted block size
+	NvmeTotalBlocks	: integer := 134217728			--! The total number of 4k blocks available
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -140,10 +142,9 @@ type BufferArrayType	is array (0 to NvmeWriteNum-1) of BufferType;
 
 type InStateType	is (INSTATE_IDLE, INSTATE_INIT, INSTATE_CHOOSE, INSTATE_INPUT_BLOCK, INSTATE_DELAY, INSTATE_COMPLETE);
 type StateType		is (STATE_IDLE, STATE_INIT, STATE_RUN, STATE_COMPLETE,
-				STATE_WQUEUE_HEAD, STATE_WQUEUE_0, STATE_WQUEUE_1, STATE_WQUEUE_2, STATE_WQUEUE_3,
-				STATE_TQUEUE_HEAD, STATE_TQUEUE_0, STATE_TQUEUE_1, STATE_TQUEUE_2, STATE_TQUEUE_3,
-				STATE_WAIT_REPLY);
-type ReplyStateType	is (REPSTATE_IDLE, REPSTATE_INIT, REPSTATE_COMPLETE, REPSTATE_QUEUE_REPLY1, REPSTATE_QUEUE_REPLY2);
+				STATE_WQUEUE_HEAD, STATE_WQUEUE_0, STATE_WQUEUE_1, STATE_WQUEUE_2, STATE_WQUEUE_3, STATE_WQUEUE_WAIT_REPLY,
+				STATE_TQUEUE_HEAD, STATE_TQUEUE_0, STATE_TQUEUE_1, STATE_TQUEUE_2, STATE_TQUEUE_3, STATE_TQUEUE_WAIT_REPLY);
+type ReplyStateType	is (REPSTATE_IDLE, REPSTATE_INIT, REPSTATE_COMPLETE, REPSTATE_QUEUE_REPLY1, REPSTATE_QUEUE_REPLY2, REPSTATE_QUEUE_REPLY3);
 
 signal inState		: InStateType := INSTATE_IDLE;
 signal state		: StateType := STATE_IDLE;
@@ -247,7 +248,11 @@ begin
 			elsif((regWrite = '1') and (regAddress = 0)) then
 				dataChunkStart	<= unsigned(regDataIn);
 			elsif((regWrite = '1') and (regAddress = 1)) then
-				dataChunkSize	<= unsigned(regDataIn);
+				if(unsigned(regDataIn) > NvmeTotalBlocks) then
+					dataChunkSize <= to_unsigned(NvmeTotalBlocks, dataChunkSize'length);
+				else
+					dataChunkSize <= unsigned(regDataIn);
+				end if;
 			end if;
 		end if;
 	end process;
@@ -458,11 +463,17 @@ begin
 						requestOut.valid	<= '0';
 						
 						if(SimWaitReply) then
-							state <= STATE_WAIT_REPLY;
+							state <= STATE_WQUEUE_WAIT_REPLY;
 						else
 							state <= STATE_RUN;
 						end if;
 					end if;
+
+				when STATE_WQUEUE_WAIT_REPLY =>
+					if(numBlocksProc = numBlocksDone) then
+						state <= STATE_RUN;
+					end if;
+
 
 				-- Trim/deallocate request
 				when STATE_TQUEUE_HEAD =>
@@ -500,23 +511,21 @@ begin
 						if(SimWaitReply) then
 							if(trimQueueDone = trimQueueProc) then
 								state <= STATE_RUN;
+							else
+								state <= STATE_TQUEUE_WAIT_REPLY;
 							end if;
 						else
 							state <= STATE_RUN;
 						end if;
 					end if;
 
-
-
-				when STATE_WAIT_REPLY =>
-					if(numBlocksProc > numBlocksDone) then
-						state <= STATE_WAIT_REPLY;
-					else
+				when STATE_TQUEUE_WAIT_REPLY =>
+					if(trimQueueDone = trimQueueProc) then
 						state <= STATE_RUN;
 					end if;
 
 				end case;
-				
+
 				-- Microsecond counter for statistics
 				if(timeCounter = ((1 us / ClockPeriod) - 1)) then
 					if(state /= STATE_COMPLETE) then
@@ -582,7 +591,6 @@ begin
 							replyState <= REPSTATE_COMPLETE;
 					
 						elsif(replyIn.valid = '1' and replyIn.ready = '1') then
-							nvmeReplyHead	<= to_NvmeReplyHeadType(replyIn.data);
 							replyState	<= REPSTATE_QUEUE_REPLY2;
 						end if;
 					end if;
@@ -593,24 +601,30 @@ begin
 						replyState	<= REPSTATE_COMPLETE;
 
 					elsif(replyIn.valid = '1' and replyIn.ready = '1') then
-						if(error = 0) then
-							error(15 downto 0) <= '0' & nvmeReplyHead.status;
-						end if;
-						
-						if(nvmeReplyHead.cid(7 downto 4) = x"F") then
-							trimQueueDone <= trimQueueDone + 1;
-						else
-							numBlocksDone		<= numBlocksDone + 1;
-							p			:= to_integer(nvmeReplyHead.cid(log2(NvmeWriteNum)-1 downto 0));
-							buffers(p).inUse2	<= buffers(p).inUse1;
-
-							if((timeUs - buffers(p).startTime) > peakLatency) then
-								peakLatency <= timeUs - buffers(p).startTime;
-							end if;
-						end if;
-
-						replyState <= REPSTATE_QUEUE_REPLY1;
+						nvmeReplyHead	<= to_NvmeReplyHeadType(replyIn.data);
+						replyIn.ready	<= '0';
+						replyState	<= REPSTATE_QUEUE_REPLY3;
 					end if;
+				
+				when REPSTATE_QUEUE_REPLY3 =>
+					if(error = 0) then
+						error(15 downto 0) <= '0' & nvmeReplyHead.status;
+					end if;
+
+					if(nvmeReplyHead.cid(7 downto 4) = x"F") then
+						trimQueueDone <= trimQueueDone + 1;
+					else
+						numBlocksDone		<= numBlocksDone + 1;
+						p			:= to_integer(nvmeReplyHead.cid(log2(NvmeWriteNum)-1 downto 0));
+						buffers(p).inUse2	<= buffers(p).inUse1;
+
+						if((timeUs - buffers(p).startTime) > peakLatency) then
+							peakLatency <= timeUs - buffers(p).startTime;
+						end if;
+					end if;
+
+					replyIn.ready	<= '1';
+					replyState	<= REPSTATE_QUEUE_REPLY1;
 				
 				end case;
 			end if;
@@ -658,7 +672,7 @@ begin
 
 						if(memCount > PcieMaxPayloadSize) then
 							memReplyHead.count	<= to_unsigned(PcieMaxPayloadSize, memReplyHead.count'length);
-							memChunkCount		<= to_unsigned(PcieMaxPayloadSize, memReplyHead.count'length);
+							memChunkCount		<= to_unsigned(PcieMaxPayloadSize, memChunkCount'length);
 						else
 							memReplyHead.count	<= memCount;
 							memChunkCount		<= memCount;

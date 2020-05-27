@@ -31,7 +31,7 @@ use ieee.numeric_std.all;
 
 package NvmeStoragePkg is
 	--! System constants
-	constant NvmeStorageBlockSize	: integer := 4096;	--! System block size
+	constant NvmeStorageBlockSize	: integer := 4096;	--! Default system block size
 
 	--! AXI Lite bus like interface
 	constant AxilAddressWidth	: integer := 32;
@@ -110,7 +110,10 @@ package NvmeStoragePkg is
 		ClockPeriod	: time		:= 4 ns;			--! Clock period for timers (250 MHz)
 		BlockSize	: integer	:= NvmeStorageBlockSize;	--! System block size
 		NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time
-		UseConfigure	: boolean	:= False			--! The module configures the Nvme's on reset
+		UseConfigure	: boolean	:= False;			--! The module configures the Nvme's on reset
+		NvmeBlockSize	: integer	:= 512;				--! The NVMe's formatted block size
+		NvmeTotalBlocks	: integer	:= 134217728;			--! The total number of 4k blocks available
+		NvmeRegStride	: integer	:= 4				--! The doorbell register stride
 	);
 	port (
 		clk		: in std_logic;				--! The interface clock line

@@ -50,6 +50,7 @@ use work.NvmeStorageIntPkg.all;
 entity NvmeQueues is
 generic(
 	NumQueueEntries	: integer	:= 8;			--! The number of entries per queue
+	NvmeRegStride	: integer	:= 4;			--! The doorbell register stride
 	Simulate	: boolean	:= True
 );
 port (
@@ -72,7 +73,8 @@ component Ram is
 generic (
 	DataWidth	: integer := 128;			--! The data width of the RAM in bits
 	Size		: integer := RAM_SIZE;			--! The size in RAM locations
-	AddressWidth	: integer := log2(RAM_SIZE)
+	AddressWidth	: integer := log2(RAM_SIZE);
+	RegisterOutputs	: boolean := False			--! Register the outputs
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -132,7 +134,7 @@ end;
 
 function doorbellAddress(queueNum: integer; reply: integer) return unsigned is
 begin
-	return to_unsigned(((2 * queueNum) + reply) * NvmeDoorbellStride, 8);
+	return to_unsigned(((2 * queueNum) + reply) * NvmeRegStride, 8);
 end;
 
 begin

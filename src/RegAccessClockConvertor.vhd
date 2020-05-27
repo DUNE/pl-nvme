@@ -75,13 +75,13 @@ signal sigSendFifo2	: SigSendType := (others => '0');
 signal sigRecvFifo1	: SigRecvType := (others => '0');
 signal sigRecvFifo2	: SigRecvType := (others => '0');
 
-attribute rtl_keep	: string;
+attribute keep		: string;
 attribute async_reg	: string;
 
-attribute rtl_keep	of sigSendFifo1 : signal is "true";
-attribute rtl_keep	of sigSendFifo2 : signal is "true";
-attribute rtl_keep	of sigRecvFifo1 : signal is "true";
-attribute rtl_keep	of sigRecvFifo2 : signal is "true";
+attribute keep		of sigSendFifo1 : signal is "true";
+attribute keep		of sigSendFifo2 : signal is "true";
+attribute keep		of sigRecvFifo1 : signal is "true";
+attribute keep		of sigRecvFifo2 : signal is "true";
 
 attribute async_reg	of sigSendFifo1 : signal is "true";
 attribute async_reg	of sigSendFifo2 : signal is "true";

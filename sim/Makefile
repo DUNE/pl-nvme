@@ -29,7 +29,7 @@ TEST	= test020-write
 
 # VHDL source files
 FILES_BASE	+= testbench/TestPkg.vhd ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd ../src/AxilClockConverter.vhd ../src/AxisClockConverter.vhd 
-FILES_BASE	+= ../src/PcieStreamMux.vhd ../src/Ram.vhd
+FILES_BASE	+= ../src/PcieStreamMux.vhd ../src/Ram.vhd ../src/Cdc.vhd
 FILES_BASE	+= ../src/NvmeStreamMux.vhd ../src/AxisDataConvertFifo.vhd ../src/RegAccessClockConvertor.vhd
 
 #FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo4k/Fifo4k_sim_netlist.vhdl
