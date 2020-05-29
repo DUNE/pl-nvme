@@ -2,6 +2,32 @@
  *	BFpga.c		BFpga FPGA device driver
  *	T.Barnaby,	BEAM Ltd,	2020-03-05
  *******************************************************************************
+ *
+ * This is a simple test driver for accessing FPGA hardware using the Xilinx XDMA IP core.
+ * It is designed to aid testing of the host to FPGA interface and FPGA designs.
+ * Being simple it is easy to debug the communications.
+ *
+ * It supports a simple memory mapped register interface that can be mapped to
+ * the user space applications memory area. The Xilinx XDMA IP core provides an
+ * AXI4-Lite interface for this on the FPGA.
+ * It also supports up to 8 DMA channels. These unidirectional DMA streams
+ * can be configured to function in either direction.
+ * The Xilinx XDMA IP provides up to 8 AXI4 streams on the FPGA.
+ * The driver creates a physically contiguous memory region for each DMA channel of a
+ * fixed size. This simplifies the DMA as multiple scatter/gather regions are not needed.
+ * For simplicty data is coped from/to the applications user space memort from these regions
+ * by the driver. It would be possible to map these regions into the applications memory if
+ * wanted for greater performance.
+ * The Xilinx XDMA PCIe IP core manual, PG195, should be looked at for information on
+ * the hardware interface that this driver uses.
+ *
+ * As stated it is simple, lots of improvements could be had, but it is relatively
+ * easy to use and to debug bcuase of its simplicity.
+ *
+ * There is some problem with interrupt status reporting. Not sure if this is the test FPGA hardware
+ * design or someing in this driver. It appears that the end of dma status interrupt is lost occassionaly.
+ * Here we force a retest of status in the wait loops if a timeout occures.
+ *
  * Copyright (c) 2020 BEAM Ltd. All rights reserved.
  *
  * This software is available to you under a choice of one of two
@@ -52,6 +78,7 @@
 
 #define LDEBUG1		0		// Basic debuging
 #define LDEBUG2		0		// Detailed debuging
+#define LDEBUG3		0		// Interrupt debuging
 
 #if LDEBUG1
 #define	dl1printk(fmt, a...)       printk(fmt, ##a);
@@ -65,7 +92,13 @@
 #define	dl2printk(fmt, a...)
 #endif
 
-#define	VERSION			"1.1.0"
+#if LDEBUG3
+#define	dl3printk(fmt, a...)       printk(fmt, ##a);
+#else
+#define	dl3printk(fmt, a...)
+#endif
+
+#define	VERSION			"1.2.0"
 #define NAME			"bfpga"
 #define NAME_PREFIX		"bfpga: "
 #define MAX_NUM_CARDS		1
@@ -74,6 +107,7 @@
 #define DMA_ID				0x00
 #define DMA_CONTROL			0x04
 #define DMA_STATUS			0x40
+#define DMA_STATUS_CLR			0x44
 #define DMA_COMPLETE			0x48
 #define DMA_ALIGNMENTS			0x4C
 #define DMA_WRITEBACK_ADDRESS_LOW	0x88
@@ -116,14 +150,16 @@ typedef struct {
 	bool			c2h;			// If this is a card to host DMA channel
 	uint32_t		devChannel;		// The devices channel number
 	uint32_t		registers;		// Register offset in DMA registers for this channel
+	uint8_t*		dmaDescs;
+	dma_addr_t		dmaDescsPhysAddress;
 	uint32_t		dmaBufferLen;
 	uint8_t*		dmaBuffer;
 	dma_addr_t		dmaPhysAddress;
-	uint32_t		dataBufferLen;
-	uint8_t*		dataBuffer;
 	DmaDesc*		dmaDesc;
 	uint32_t		available;
 	wait_queue_head_t	event;
+	bool			waitForEvent;
+	uint32_t		nTrans;
 } DmaChan;
 
 typedef struct DeviceData_struct {
@@ -141,9 +177,10 @@ typedef struct DeviceData_struct {
 
 static void bfpga_start(DeviceData* dev);
 static void bfpga_stop(DeviceData* dev);
+static void bfpga_process_events(DeviceData* dev, bool processStuck);
 
 // Settings
-const int	DmaBufferLen		= (2*1024*1024);		// DMA Buffer length
+const int	DmaBufferLen		= (10 * PAGE_SIZE);		// DMA Buffer length
 
 
 static struct class*		class;
@@ -186,22 +223,21 @@ static void hd32(void* data, unsigned int n){
 }
 #endif
 
-static uint32_t reg_write(DeviceData* dev, uint32_t address, uint32_t data){
-	((volatile uint32_t*)dev->regs.address)[address] = data;
-	return ((volatile uint32_t*)dev->regs.address)[address];
+// Register access
+static void reg_write(DeviceData* dev, uint32_t address, uint32_t data){
+	iowrite32(data, &((uint32_t*)dev->regs.address)[address]);
 }
 
 static uint32_t reg_read(DeviceData* dev, uint32_t address){
-	return ((volatile uint32_t*)dev->regs.address)[address];
+	return ioread32(&((uint32_t*)dev->regs.address)[address]);
 }
 
-static uint32_t dma_reg_write(DeviceData* dev, uint32_t address, uint32_t data){
-	((volatile uint32_t*)dev->dmaRegs.address)[address/4] = data;
-	return ((volatile uint32_t*)dev->dmaRegs.address)[address/4];
+static void dma_reg_write(DeviceData* dev, uint32_t address, uint32_t data){
+	iowrite32(data, &((uint32_t*)dev->dmaRegs.address)[address/4]);
 }
 
 static uint32_t dma_reg_read(DeviceData* dev, uint32_t address){
-	return ((volatile uint32_t*)dev->dmaRegs.address)[address/4];
+	return ioread32(&((uint32_t*)dev->dmaRegs.address)[address/4]);
 }
 
 
@@ -221,35 +257,44 @@ static int dma_init(DeviceData* dev, uint32_t channel, bool c2h, uint32_t devCha
 	dma->channel = channel;
 	dma->c2h = c2h;
 	dma->devChannel = devChannel;
-	dma->dmaBufferLen = (4096 + DmaBufferLen);
-	dma->dataBufferLen = DmaBufferLen;
+	dma->dmaBufferLen = DmaBufferLen;
 	dma->registers = (dma->c2h << 12) | (dma->devChannel << 8);
 	dma->available = 0;
+	dma->waitForEvent = 0;
+	dma->nTrans = 0;
 	
 	regSgAddress = ((4 + dma->c2h) << 12) | (dma->devChannel << 8);
 
 	//dl1printk("dma_init: %p %p %d %p\n", dev->device, &dev->pdev->dev, dma->dmaBufferLen, &dma->dmaPhysAddress);
 
+	// Allocate DMA descriptor and metadata uncached memory area
+	if(!(dma->dmaDescs = dma_alloc_coherent(&dev->pdev->dev, PAGE_SIZE, &dma->dmaDescsPhysAddress, GFP_KERNEL))){
+		printk(KERN_ERR NAME_PREFIX "DMA allocation failed\n");
+		return -ENODEV;
+	}
+	//dl1printk("dma_init: Descriptors: phys: %llx virtual: %p\n", dma->dmaDescsPhysAddress, dma->dmaDescs);
+	set_memory_uc((unsigned long)dma->dmaDescs, 1);
+
+	// Allocate data buffer
 	if(!(dma->dmaBuffer = dma_alloc_coherent(&dev->pdev->dev, dma->dmaBufferLen, &dma->dmaPhysAddress, GFP_KERNEL))){
 		printk(KERN_ERR NAME_PREFIX "DMA allocation failed\n");
 		return -ENODEV;
 	}
 	//dl1printk("dma_init: phys: %llx virtual: %p\n", dma->dmaPhysAddress, dma->dmaBuffer);
-	set_memory_uc((unsigned long)dma->dmaBuffer, (dma->dmaBufferLen/PAGE_SIZE));
+	//set_memory_uc((unsigned long)dma->dmaBuffer, (dma->dmaBufferLen/PAGE_SIZE));
 
-	dma->dataBuffer = &dma->dmaBuffer[4096];
 	init_waitqueue_head(&dma->event);
 
-	// Setup DMA descriptors in first 4096 bytes of memory
-	dmaDesc = (DmaDesc*)dma->dmaBuffer;
+	// Setup DMA descriptors
+	dmaDesc = (DmaDesc*)dma->dmaDescs;
 	dma->dmaDesc = dmaDesc;
 	
 	if(dma->c2h){
 		dmaDesc[0].control = DmaDescMagic | DmaDescEop | DmaDescInt | DmaDescStop;
 		dmaDesc[0].len = 0;
-		dmaDesc[0].srcAddress = dma->dmaPhysAddress + 4096 - 8;		// Location of return metadata
-		dmaDesc[0].destAddress = dma->dmaPhysAddress + 4096;
-		dmaDesc[0].nextDesc = dma->dmaPhysAddress + sizeof(DmaDesc);
+		dmaDesc[0].srcAddress = dma->dmaDescsPhysAddress + PAGE_SIZE - 8;	// Location of return metadata
+		dmaDesc[0].destAddress = dma->dmaPhysAddress;
+		dmaDesc[0].nextDesc = dma->dmaDescsPhysAddress + sizeof(DmaDesc);
 
 		dmaDesc[1].control = DmaDescMagic | DmaDescEop | DmaDescInt | DmaDescStop;
 		dmaDesc[1].len = 0;
@@ -260,9 +305,9 @@ static int dma_init(DeviceData* dev, uint32_t channel, bool c2h, uint32_t devCha
 	else {
 		dmaDesc[0].control = DmaDescMagic | DmaDescEop | DmaDescInt | DmaDescStop;
 		dmaDesc[0].len = 0;
-		dmaDesc[0].srcAddress = dma->dmaPhysAddress + 4096;
+		dmaDesc[0].srcAddress = dma->dmaPhysAddress;
 		dmaDesc[0].destAddress = 0;
-		dmaDesc[0].nextDesc = dma->dmaPhysAddress + sizeof(DmaDesc);
+		dmaDesc[0].nextDesc = dma->dmaDescsPhysAddress + sizeof(DmaDesc);
 
 		dmaDesc[1].control = DmaDescMagic | DmaDescEop | DmaDescInt | DmaDescStop;
 		dmaDesc[1].len = 0;
@@ -270,12 +315,12 @@ static int dma_init(DeviceData* dev, uint32_t channel, bool c2h, uint32_t devCha
 		dmaDesc[1].destAddress = 0;
 		dmaDesc[1].nextDesc = 0;
 		
-		dma->available = dma->dataBufferLen;
+		dma->available = dma->dmaBufferLen;
 	}
 
 	// Setup registers to point to descriptors
-	dma_reg_write(dev, regSgAddress + DMASC_ADDRESS_LOW, (dma->dmaPhysAddress & 0xFFFFFFFF));
-	dma_reg_write(dev, regSgAddress + DMASC_ADDRESS_HIGH, ((dma->dmaPhysAddress >> 32) & 0xFFFFFFFF));
+	dma_reg_write(dev, regSgAddress + DMASC_ADDRESS_LOW, (dma->dmaDescsPhysAddress & 0xFFFFFFFF));
+	dma_reg_write(dev, regSgAddress + DMASC_ADDRESS_HIGH, ((dma->dmaDescsPhysAddress >> 32) & 0xFFFFFFFF));
 	dma_reg_write(dev, regSgAddress + DMASC_NEXT, 0);
 	dma_reg_write(dev, regSgAddress + DMASC_CREDITS, 0);
 	
@@ -285,7 +330,7 @@ static int dma_init(DeviceData* dev, uint32_t channel, bool c2h, uint32_t devCha
 	dma_reg_write(dev, dma->registers + DMA_CONTROL, 0);
 	dma_reg_write(dev, dma->registers + DMA_INT_MASK, 0x06);	
 
-	//dl1printk("dma_init: %x %p %x %d\n", dma->registers, dma->dmaBuffer, (int)dma->dmaPhysAddress, dma->dataBufferlen);
+	//dl1printk("dma_init: %x %p %x %d\n", dma->registers, dma->dmaBuffer, (int)dma->dmaPhysAddress, dma->dmaBufferLen);
 
 	return 0;
 }
@@ -298,21 +343,25 @@ static void dma_release(DeviceData* dev, DmaChan* dma){
 		dma_free_coherent(&dev->pdev->dev, dma->dmaBufferLen, dma->dmaBuffer, dma->dmaPhysAddress);
 		dma->dmaBuffer = 0;
 	}
+	if(dma->dmaDescs){
+		dma_free_coherent(&dev->pdev->dev, PAGE_SIZE, dma->dmaDescs, dma->dmaDescsPhysAddress);
+		dma->dmaDescs = 0;
+	}
 }
 
 static void dma_start(DeviceData* dev, DmaChan* dma, uint32_t len){
 	dl1printk("dma_start: channel: %d regs: 0x%x\n", dma->channel, dma->registers);
-	//dl1printk("dma_start: %d %d: 0x%8.8x 0x%8.8x\n", dma->channel, dma->c2h, dma_reg_read(dev, regSgAddress + DMASC_ADDRESS_HIGH), dma_reg_read(dev, regSgAddress + DMASC_ADDRESS_LOW));
-	dl1printk("Status: %8.8x\n", dma_reg_read(dev, dma->registers + DMA_STATUS));
 
 	// Setup DMA channel and start running
 	dma->dmaDesc[0].len = len;
+
+	//printk("dma_start: %d complete: %d\n", dma->channel, dma_reg_read(dev, dma->registers + DMA_COMPLETE));
 	dma_reg_write(dev, dma->registers + DMA_CONTROL, 0x07);
 
 #ifdef ZAP	
 	udelay(10000);
 	printk("Completed: %8.8x\n", dma_reg_read(dev, dma->registers + DMA_COMPLETE));
-	printk("Status0: %8.8x\n", dma_reg_read(dev, dma->registers + DMA_STATUS));
+	printk("Status0: %8.8x\n", dma_reg_read(dev, dma->registers + DMA_STATUS));			// Warning will clear the status
 	printk("Irqpending: %8.8x\n", dma_reg_read(dev, IRQ_PENDING));
 #endif
 }
@@ -333,7 +382,7 @@ static int dma_read(DeviceData* dev, DmaChan* dma, void* buf, uint32_t nbytes){
 	if(count > nbytes)
 		count = nbytes;
 
-	if(copy_to_user(buf, &dma->dataBuffer[readPointer], nbytes))
+	if(copy_to_user(buf, &dma->dmaBuffer[readPointer], nbytes))
 		return -EFAULT;
 
 	dma->available = 0;
@@ -343,13 +392,31 @@ static int dma_read(DeviceData* dev, DmaChan* dma, void* buf, uint32_t nbytes){
 
 static int dma_write(DeviceData* dev, DmaChan* dma, const void* buf, uint32_t nbytes){
 	dl1printk("dma_write: channel: %d len: %d\n", dma->channel, nbytes);
-	if(copy_from_user(&dma->dataBuffer[0], buf, nbytes))
+	if(copy_from_user(dma->dmaBuffer, buf, nbytes))
 		return -EFAULT;
 
+	dma->waitForEvent = 1;
 	dma->available = 0;
 	dma_start(dev, dma,  nbytes);
 	
 	return nbytes;
+}
+
+static void dma_status(DeviceData* dev){
+	uint32_t	control;
+	uint32_t	status;
+	uint32_t	complete;
+	uint32_t	c;
+
+	printk("Dma status: intMask: 0x%8.8x\n", dma_reg_read(dev, IRQ_MASK));
+
+	for(c = 0; c < dev->numChannels; c++){
+		control = dma_reg_read(dev, dev->dmaChannels[c].registers + DMA_CONTROL);
+		status = dma_reg_read(dev, dev->dmaChannels[c].registers + DMA_STATUS);
+		complete = dma_reg_read(dev, dev->dmaChannels[c].registers + DMA_COMPLETE);
+
+		printk("DmaChannel: %d control: %8.8x status: %8.8x completed: %d available: %d\n", c, control, status, complete, dev->dmaChannels[c].available);
+	}
 }
 
 static ssize_t bfpga_read(struct file* file, char __user* buf, size_t nbytes, loff_t* ppos){
@@ -361,28 +428,35 @@ static ssize_t bfpga_read(struct file* file, char __user* buf, size_t nbytes, lo
 	
 	dmaChan = &dev->dmaChannels[minor - 1];
 
-	// dl1printk("bfpga_read: Start\n");
+	dl1printk("bfpga_read: Minor: %d available: %u\n", minor, dma_available(dev, dmaChan));
 
 	// Wait for some data
 	while(dma_available(dev, dmaChan) == 0){
-		// printk("Wait: IntStatus: %x Available: %d\n",  reg_read(dev, BFpgaIntStatus), reg_read(dev, dmaChan->registers + BFpgaDmaAvailable));
+		dl2printk("bfpga_read: wait: IntStatus: %x Available: %d\n",  reg_read(dev, BFpgaIntStatus), dma_available(dev, dmaChan));
 		if(signal_pending(current))
 			return -EINTR;
 
 		// printk("bfpga_read: dma wait2: BFpga: IntControl: %x IntStatus: %x %d\n", reg_read(dev, BFpgaIntControl), reg_read(dev, BFpgaIntStatus), reg_read(dev, dmaChan->registers + BFpgaDmaAvailable));
-		if((r = wait_event_interruptible_timeout(dmaChan->event, (dma_available(dev, dmaChan) > 0), HZ/100)) < 0){
-			// printk("Return from wait_event_interruptible_timeout: %d\n", r);
+		if((r = wait_event_interruptible_timeout(dmaChan->event, (dma_available(dev, dmaChan) > 0), HZ/10)) < 0){
 			return r;
 		}
+
+		if(r == 0){
+			// On a timeout, reprocess events in case they are stuck
+			//dma_status(dev);
+			bfpga_process_events(dev, 1);
+		}
+
 	}
 
-	// dl1printk("bfpga_read: dma read req: %d\n", nwords);
+	// dl2printk("bfpga_read: dma read req: %d\n", nbytes);
 	ret = dma_read(dev, dmaChan, buf, nbytes);
 
 	// Re-start DMA
-	dma_start(dev, dmaChan,  dmaChan->dataBufferLen);
+	dmaChan->waitForEvent = 1;
+	dma_start(dev, dmaChan,  dmaChan->dmaBufferLen);
 
-	// dl1printk("bfpga_read: dma read end: %d\n", ret);
+	dl1printk("bfpga_read: dma read end: %d\n", ret);
 
 	return ret;
 }
@@ -400,6 +474,7 @@ static ssize_t bfpga_write(struct file* file, const char __user* buf, size_t nby
 
 	// Wait for enough space
 	while(dma_available(dev, dmaChan) < nbytes){
+		dl2printk("bfpga_write: wait: IntStatus: %x Available: %d\n",  reg_read(dev, BFpgaIntStatus), dma_available(dev, dmaChan));
 		if(signal_pending(current))
 			return -EINTR;
 
@@ -408,8 +483,11 @@ static ssize_t bfpga_write(struct file* file, const char __user* buf, size_t nby
 			return r;
 		}
 	}
+
 	ret = dma_write(dev, dmaChan, buf, nbytes);
 
+	dl1printk("bfpga_write: sent\n");
+	
 	return ret;
 }
 
@@ -558,36 +636,68 @@ static int bfpga_mmap(struct file* file, struct vm_area_struct* vma){
 	return 0;
 }
 
-static irqreturn_t bfpga_intr_handler(int irq, void *arg){
-	DeviceData*	dev = (DeviceData*)arg;
-	uint32_t	status;
+static void bfpga_process_events(DeviceData* dev, bool processStuck){
+	uint32_t	control;
+	uint32_t	status = 0;
+	uint32_t	complete = 0;
 	uint32_t	c;
 
-	status = dma_reg_read(dev, IRQ_PENDING);
-	dl2printk("bfpga_intr_handler: %p mask: 0x%8.8x status: 0x%8.8x\n", dev, dma_reg_read(dev, IRQ_MASK), status);
+	dma_reg_write(dev, IRQ_MASK, 0);
+	dl3printk("bfpga_intr_handler: mask: 0x%8.8x\n", dma_reg_read(dev, IRQ_MASK));
 
 	for(c = 0; c < dev->numChannels; c++){
-		status = dma_reg_read(dev, dev->dmaChannels[c].registers + DMA_STATUS);
-		if(status & 0x6){
+		control = dma_reg_read(dev, dev->dmaChannels[c].registers + DMA_CONTROL);
+		status = dma_reg_read(dev, dev->dmaChannels[c].registers + DMA_STATUS_CLR);
+		complete = dma_reg_read(dev, dev->dmaChannels[c].registers + DMA_COMPLETE);
+		
+		// Handle descripter complete status. Note that interrupts can be lost for some reason, so check DMA complete status as well when processStuck == 1
+		if((status & 0x4) || (processStuck && (control & 4) && complete)){
 			if(dev->dmaChannels[c].c2h){
-				dev->dmaChannels[c].available = *((uint32_t*)&dev->dmaChannels[c].dmaBuffer[4096 - 4]);
-				dl2printk("bfpga_intr_handler: RX available: %u\n", dev->dmaChannels[c].available);
+				if(dev->dmaChannels[c].waitForEvent){
+					dma_reg_write(dev, dev->dmaChannels[c].registers + DMA_CONTROL, 0);
+					dev->dmaChannels[c].waitForEvent = 0;
+					dev->dmaChannels[c].available = *((uint32_t*)&dev->dmaChannels[c].dmaDescs[4096 - 4]);
+					dev->dmaChannels[c].nTrans++;
+					wake_up_interruptible(&dev->dmaChannels[c].event);
+				}
+				else {
+					printk("Error RX event when not expecting it: %d nTrans: %d control: %8.8x status: 0x%8.8x complete: %d\n", c, dev->dmaChannels[c].nTrans, control, status, complete);
+					dma_status(dev);
+				}
+
+				dl3printk("bfpga_intr_handler: RX[%d]: nTrans: %d %p control: %8.8x status: 0x%8.8x complete: %d available: %d\n", c, dev->dmaChannels[c].nTrans, dev, control, status, complete, dev->dmaChannels[c].available);
 			}
 			else {
-				dl2printk("bfpga_intr_handler: TX available: %u\n", dev->dmaChannels[c].available);
-				dev->dmaChannels[c].available = dev->dmaChannels[c].dataBufferLen;
-			}
+				if(dev->dmaChannels[c].waitForEvent){
+					dma_reg_write(dev, dev->dmaChannels[c].registers + DMA_CONTROL, 0);
+					dev->dmaChannels[c].waitForEvent = 0;
+					dev->dmaChannels[c].available = dev->dmaChannels[c].dmaBufferLen;
+					dev->dmaChannels[c].nTrans++;
+					wake_up_interruptible(&dev->dmaChannels[c].event);
+				}
+				else {
+					printk("Error TX event when not expecting it: %d nTrans: %d control: %8.8x status: 0x%8.8x complete: %d\n", c, dev->dmaChannels[c].nTrans, control, status, complete);
+					dma_status(dev);
+				}
 
-			dma_reg_write(dev, dev->dmaChannels[c].registers + DMA_CONTROL, 0);
-			wake_up_interruptible(&dev->dmaChannels[c].event);
+				dl3printk("bfpga_intr_handler: TX[%d]: nTrans: %d %p control: %8.8x status: 0x%8.8x complete: %d available: %d\n", c, dev->dmaChannels[c].nTrans, dev, control, status, complete, dev->dmaChannels[c].available);
+			}
 		}
 		else if(status){
-			printk("bfpga_intr_handler: channel: %u had status: 0x%8.8x\n", c, status);
+			dl3printk("bfpga_intr_handler: channel: %u had status: 0x%8.8x\n", c, status);
 		}
 	}
-
-	return 0;
+	dma_reg_write(dev, IRQ_MASK, 0xFF);
 }
+
+static irqreturn_t bfpga_intr_handler(int irq, void *arg){
+	DeviceData*	dev = (DeviceData*)arg;
+
+	bfpga_process_events(dev, 0);
+
+	return IRQ_HANDLED;
+}
+
 
 static struct file_operations fops = {
 	.owner = THIS_MODULE,
@@ -632,7 +742,8 @@ static void bfpga_start(DeviceData* dev){
 	// Start all C2H DMA engines
 	for(c = 0; c < dev->numChannels; c++){
 		if(dev->dmaChannels[c].c2h){
-			dma_start(dev, &dev->dmaChannels[c],  dev->dmaChannels[c].dataBufferLen);
+			dev->dmaChannels[c].waitForEvent = 1;
+			dma_start(dev, &dev->dmaChannels[c],  dev->dmaChannels[c].dmaBufferLen);
 		}
 	}
 
