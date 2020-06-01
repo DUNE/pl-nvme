@@ -5,7 +5,7 @@
 --! @class	TestDataStream
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-04-07
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This module provides a simple test data source for testing the NvmeStorage system.

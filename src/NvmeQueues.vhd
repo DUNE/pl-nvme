@@ -5,23 +5,27 @@
 --! @class	NvmeQueues
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-04-08
---! @version	0.2.0
+--! @version	1.0.0
 --!
 --! @brief
 --! This module implements the Nvme request/reply queues in RAM
 --!
 --! @details
---! This module provides the ability to write a request to one of the 4 Nvme request queues
+--! This module provides the ability to write a request to one of 4 Nvme request queues
 --! and receive the queued replies. This engine handles the queue location and informs
 --! the Nvme of the new queue entry by writing to the appropriate doorbell register.
 --! It supports queue memory reads from the Nvme device.
---! When the Nvme writes to a reply queue, the queue reply messages is directly sent to
---! the originator of the request as given in the CID field.
---! The process sending a requests simply uses a PcieWrite request to the appropriate queue memory location.
---! The NvmeQueue engine handles wrting this to the next available queue entry slot.
---! The queue replies are sent to the originator as a PcieWrite request with the address set to the reply
---! queues address (0x0201XXXXX).
---! 
+--! When the Nvme writes to a reply queue, the queue reply message is directly sent on to
+--! the originator of the request as given in the CID field rather than stored in RAM.
+--! The process sending a requests simply uses a PcieWrite request to the appropriate queue's starting
+--! memory location.
+--! The NvmeQueue engine handles writing the queue entry data to the next available queue entry slot in RAM.
+--! The queue replies are converted into a PcieWrite request packet and sent on to the engine that
+--! created the original queue request. The address in the packet is set to the reply queues address (0x0201XXXXX)
+--! so that the originating engine can determine that this is a reply to its queued request.
+--! The module needs to know the dooerbell register stride of the actual NVMe devices in use. This is passed
+--! in as the NvmeRegStride parameter.
+--! The NumQueueEntries parameter defines the size of all queues.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -58,7 +62,7 @@ port (
 	reset		: in std_logic;				--! The active high reset line
 	
 	streamIn	: inout AxisStreamType := AxisStreamInput;	--! Request queue entries
-	streamOut	: inout AxisStreamType := AxisStreamOutput	--! replies and requests
+	streamOut	: inout AxisStreamType := AxisStreamOutput	--! Replies and requests
 );
 end;
 
@@ -74,7 +78,7 @@ generic (
 	DataWidth	: integer := 128;			--! The data width of the RAM in bits
 	Size		: integer := RAM_SIZE;			--! The size in RAM locations
 	AddressWidth	: integer := log2(RAM_SIZE);
-	RegisterOutputs	: boolean := False			--! Register the outputs
+	RegisterOutputs	: boolean := False			--! Don't register the outputs to reduce latency
 );
 port (
 	clk		: in std_logic;				--! The interface clock line

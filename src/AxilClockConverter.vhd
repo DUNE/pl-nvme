@@ -5,12 +5,14 @@
 --! @class	AxilClockConverter
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-02-28
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
 --! AXI Lite "bus" clock domain crossing module
 --!
 --! @details
+--! This module provides a clock domain crossing implementation for an AXI4 lite "bus" interface.
+--! It uses the Xilinx IP in order to perform this.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>

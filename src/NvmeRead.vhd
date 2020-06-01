@@ -5,13 +5,23 @@
 --! @class	NvmeRead
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-14
---! @version	0.4.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This module performs the Nvme read data functionality.
 --!
 --! @details
---! TBD
+--! This is a simple module that provides a set of host accessible registers that can be
+--! used to read data from the Nvme device.
+--! It requires the NvmeBlockSize and NvmeTotalBlocks parameters to be set for the Nvme device
+--! in use.
+--! To use the host sets the starting 4k block number to read, the number of blocks to read and
+--! then sets the enable bit is set in the control register.
+--! the NvmeRead module will then start sending NVme block read requests to the Nvme device.
+--! These requests have the Pcie read data address set to 0x01FXXXXX with XXXXX set to the byte
+--! address of the block. The Nvme will send Pcie write requests to this address and hence
+--! the host will receive a set of Pcie write request packets with the address 0x01FXXXXX.
+--! These packets will contain the block data and be sized to the Pcie max payload size.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>

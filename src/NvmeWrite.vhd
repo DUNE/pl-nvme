@@ -5,41 +5,49 @@
 --! @class	NvmeWrite
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-11
---! @version	0.3.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This module performs the Nvme write data functionality.
 --!
 --! @details
---! This module is the heart of the DuneNvme system. Its purpose is to write
+--! This module is the heart of the DuneNvmeStorage system. It's purpose is to write
 --! the incomming data blocks to the Nvme device.
 --! For performance it will concurrently write NvmeWriteNum (8) blocks.
---! It implements a set of NvmeWriteNum x 4k buffers in a single BlockRAM.
---! An input process chooses a free buffer and then writes the data from the input
---! AXIS stream into this buffer. Once complete the input process adds the buffer number
---! to a processing queue.
---! A processing process takes buffer numbers from the processing queue. When available an
---! Nvme write request is sent to the Nvme write queue.
---! On the Nvme reading the queue entry it will perform "bus master" memory reads from the
---! appropriate data buffer.
---! Once the Nvme has completed the write (well taken in the write data) it will send
---! a reply to the reply queue. The NvmeWrite's reply process will process these, storing
---! any error status, and then free the buffer that was used.
+--! It implements a set of NvmeWriteNum x 4k buffers in RAM.
 --!
 --! The module is controlled by the enable line, which enables the processing of input data, and
---!  the dataChunkSize register which specifies how many blocks to capture.
---!  It will continue to capture whist the enable line is high and the number of blocks captured
---!  is less than the number of blocks in the dataChunkSize register.
+--! the dataChunkStart and dataChunkSize registers. The dataChunkSize register specifies how many
+--! blocks to capture. It will continue to capture whilst the enable line is high and the number
+--! of blocks captured is less than the number of blocks in the dataChunkSize register.
+--!
+--! On the start of a new data chunk capture, when the enable line goes high, the module will begin
+--! sending Trim/Deallocate requests to the Nvme drive as well as the data block data as it arrives.
+--! The unit sends the first Trim/Deallocate request before any data blocks and queues a maximum
+--! of 4 trim requests active at a time untill the entire data chunk region has been deallocated.
+--! Each trim request deallocates up to 32768 Nvme sized data blocks at a time.
+--!
+--! For the incomming data blocks, an input process chooses a free buffer and then writes the data
+--! from the data input AXIS stream into this buffer. Once complete, when the last signal is set, the
+--! input process adds the buffer's number to a processing queue.
+--! A process then takes buffer number requests from the processing queue. When available an
+--! Nvme write request is sent to the Nvme write queue.
+--! On the Nvme reading the queue entry (from the NvmeQueue engine) it will perform "bus master"
+--! memory reads from the appropriate data buffer.
+--! Once the Nvme has completed the write (well taken in the write data) it will send
+--! a reply to the reply queue. The NvmeWrite's reply process will process these, storing
+--! any error status, and then will free the buffer that was used.
 --!
 --! As the system allows up to NvmeWriteNum concurrent writes, it is able to hide ittermitant
 --! large write latencies.
 --! Notes:
---!   The parameter NvmeWriteNum should be less than NvmeQueueNum.
---!   It assumes the DuneDvme block size is set in NvmeStorageBlockSize and the DataIn stream's
+--!   The parameter NvmeWriteNum should be less than NvmeQueueNum and leave room for 4 trim requests.
+--!   It assumes the DuneDvme block size is set in BlockSize and the DataIn stream's
 --!     last signal is synchonised with the end of each input block.
---!   At the moment it assumes the Nvme's internal block size is 512 Bytes.
---!   At the moment it stores the first status reply error but continues ignoring the error.
+--!   At the moment it assumes the Nvme's internal block size is NvmeBlockSize Bytes (typically 512).
+--!   At the moment it stores the first status reply error but continues running ignoring the error.
 --!   There are no timeouts or any other error handling.
+--!   It will limit the dataChunkSize to the value of the parameter NvmeTotalBlocks.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -100,11 +108,11 @@ architecture Behavioral of NvmeWrite is
 constant TCQ		: time := 1 ns;
 constant SimDelay	: boolean := False;			--! Input data delay after each packet for simulation tests
 constant SimWaitReply	: boolean := False;			--! Wait for each write command to return a reply
-constant DoWrite	: boolean := True;			--! Perform write blocks
 constant DoTrim		: boolean := True;			--! Perform trim/deallocate functionality
+constant DoWrite	: boolean := True;			--! Perform write blocks
 
 constant NvmeBlocks	: integer := BlockSize / NvmeBlockSize;		--! The number of Nvme blocks per NvmeStorage system block
-constant RamSize	: integer := (NvmeWriteNum * BlockSize) / 16;	-- One block per write buffer
+constant RamSize	: integer := (NvmeWriteNum * BlockSize) / 16;	--! One block per write buffer
 constant AddressWidth	: integer := log2(RamSize);
 constant BlockSizeWidth	: integer := log2(BlockSize);
 constant TrimNum	: integer := (32768 / NvmeBlocks);	--! The number of 4k blocks trimmed in one trim instructions
@@ -113,7 +121,8 @@ component Ram is
 generic(
 	DataWidth	: integer := 128;
 	Size		: integer := RamSize;			--! The Buffer size in 128 bit words
-	AddressWidth	: integer := AddressWidth
+	AddressWidth	: integer := AddressWidth;
+	RegisterOutputs	: boolean := False			--! Don't register the outputs to reduce latency
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -182,8 +191,8 @@ signal memRequestHead	: PcieRequestHeadType;
 signal memRequestHead1	: PcieRequestHeadType;
 signal memReplyHead	: PcieReplyHeadType;
 signal nvmeReplyHead	: NvmeReplyHeadType;
-signal memCount		: unsigned(10 downto 0);			-- DWord data send count
-signal memChunkCount	: unsigned(10 downto 0);			-- DWord data send within a chunk count
+signal memCount		: unsigned(10 downto 0);		-- DWord data send count
+signal memChunkCount	: unsigned(10 downto 0);		-- DWord data send within a chunk count
 signal memData		: std_logic_vector(127 downto 0);
 
 -- Register information
@@ -209,16 +218,19 @@ begin
 	end if;
 end;
 
+--! The RAM start address for a particular numbered buffer
 function bufferAddress(bufferNum: integer) return unsigned is
 begin
 	return to_unsigned(bufferNum, log2(NvmeWriteNum)) & to_unsigned(0, AddressWidth-log2(NvmeWriteNum));
 end;
 
+--! The Pcie address for a particular numbered buffer to give to the Nvme device
 function pcieAddress(bufferNum: integer) return std_logic_vector is
 begin
 	return x"05" & zeros(32-8-log2(NvmeWriteNum)-(BlockSizeWidth)) & to_stl(bufferNum, log2(NvmeWriteNum)) & zeros(BlockSizeWidth);
 end;
 
+--! The number of blocks to trim based on how many 4k blocks left to trim
 function numTrimBlocks(total: unsigned; current: unsigned) return unsigned is
 begin
 	if((current + TrimNum) > total) then
@@ -368,8 +380,8 @@ begin
 		end if;
 	end process;
 
-	-- Process data write. This takes the input buffers and sends a write request to the Nvme for each one that is full and
-	-- not already processed
+	-- Process data write. This implements the Trim requests and takes the input buffers and sends a write request to
+	-- the Nvme for each one that is full and not already processed
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
@@ -634,7 +646,6 @@ begin
 	-- Process Nvme read data requests
 	-- This processes the Nvme Pcie memory read requests for the data buffers memory.
 	readEnable <= '1';
-	-- readEnable <= memReplyOut.ready and not memReplyOut.last when((memState = MEMSTATE_READHEAD) or (memState = MEMSTATE_READDATA)) else '0';
 	memRequestHead	<= to_PcieRequestHeadType(memReqIn.data);
 	memReplyOut.data <= memData(31 downto 0) & to_stl(memReplyHead) when(memState = MEMSTATE_READHEAD)
 		else readData(31 downto 0) & memData(127 downto 32);

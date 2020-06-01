@@ -4,8 +4,8 @@
  */
 /**
 \author Dr Terry Barnaby
-\version 0.4.1
-\date 2020-05-21
+\version 1.0.0
+\date 2020-05-30
 
 \mainpage
 
@@ -30,8 +30,10 @@ and <a href="../../DuneNvmeStorageDesign.pdf">DuneNvmeStorageDesign</a> document
 
 \section The Test Program
 The test Linux host program is in the test directory and is called nvme_test. This program communicates with an NVMe devices
-through the FPGA connected to the host machines PCIe bus. This program allows experimentation with the NVMe low level PCIe interface.
+through the FPGA connected to the host machines PCIe bus. This program provides the ability to test the NvmeStorage module as
+well as allowing experimentation with the NVMe low level PCIe interface.
 Included is a simple Linux driver, bfpga, that interfaces to the Xilinx PCIe DMA core.
+See the <a href="../../DuneNvmeStorageManual.pdf">DuneNvmeStorageManual</a> for details on the test software and its usage.
 
 \section Building the test software
 <ol>

@@ -5,7 +5,7 @@
 --! @class	Cdc
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-18
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This is a simple module to pass a set of signals across a clock domain
@@ -17,6 +17,12 @@
 --! of handshake system is needed on top of this.
 --! A simple method of acheiving this would be to have one of the signals be a valid signal that is
 --! activated/deactivated one clock cycle after the rest of the signals have changed state.
+--! It uses two clock synchronisation registers.
+--! Note it doesn't have an integral input clock domain register and thus it expects the input signals
+--! to be stable for at least two input clock cycles prior to a valid signal going high.
+--!
+--! Note this module requires appropriate timing constraints for the CDC applied. This would normally
+--! a set_max_delay or set_false_path constraint on the timing to the sendCdcReg1 and recvCdcReg1 registers.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -85,6 +91,31 @@ end;
 
 
 
+--! @class	CdcSingle
+--! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
+--! @date	2020-05-18
+--! @version	1.0.0
+--!
+--! @brief
+--! This is a simple module to pass a single bit wide signal across a clock domain
+--!
+--! @details
+--! This is a very simple, low utilisation clock domain crossing unit for a single bit wide signal.
+--! It uses two clock synchronisation registers.
+--!
+--! @copyright GNU GPL License
+--! Copyright (c) Beam Ltd, All rights reserved. <br>
+--! This code is free software: you can redistribute it and/or modify
+--! it under the terms of the GNU General Public License as published by
+--! the Free Software Foundation, either version 3 of the License, or
+--! (at your option) any later version.
+--! This program is distributed in the hope that it will be useful,
+--! but WITHOUT ANY WARRANTY; without even the implied warranty of
+--! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--! GNU General Public License for more details. <br>
+--! You should have received a copy of the GNU General Public License
+--! along with this code. If not, see <https://www.gnu.org/licenses/>.
+--!
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;

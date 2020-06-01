@@ -5,14 +5,18 @@
 --! @class	DuneNvmeTestTop
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-12
---! @version	0.5.1
+--! @version	1.0.0
 --!
 --! @brief
---! This FPGA bit file allows a host computer to access a NVMe storage device
---!  connected to the FPGA via the hosts PCIe interface. It allows a host computer
---!  program to communicate with the NVMe device for research and developemnt test work.
+--! This module implements a complete test design for the NvmeStorage system.
 --!
 --! @details
+--! The FPGA bit file produced allows a host computer to access a NVMe storage device
+--! connected to the FPGA via the hosts PCIe interface. It has a simple test data source
+--! and allows a host computer program to communicate with the NVMe device for research
+--! and development test work.
+--! See the DuneNvmeStorageManual for more details.
+--! 
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -171,7 +175,7 @@ signal dataStream_ready		: std_logic;
 signal dataEnabled		: std_logic;			--! Enabled signal for test data
 
 begin
-	-- System clock just used for a boot reset
+	-- System clock just used for a boot reset if needed
 	sys_clk_buf : Clk_core port map (
 		clk_in1_p	=> sys_clk_p,
 		clk_in1_n	=> sys_clk_n,

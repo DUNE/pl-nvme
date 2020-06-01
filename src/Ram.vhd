@@ -11,8 +11,13 @@
 --! This module provides a simple dual ported RAM module that will be implemented in blockram if large enough.
 --!
 --! @details
---! This is a simple RAM element written so that blockram can be easily infered by synthesis tools.
---! 
+--! This is a simple single clock dual ported RAM element written so that blockram can be easily infered by synthesis tools.
+--! The data width and size of the RAM are configurable parameters.
+--! Writes to memory happen in 1 clock cycle when the writeEnable signal is high.
+--! Reads from memory take two clock cycles. One to latch the read address and one for the readData to become available.
+--! There is a RegisterOutputs option on the readData output that will use the block RAM's
+--! internal data register for better system timing. This will add an additional 1 cycle latency on
+--! memory reads.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>

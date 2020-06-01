@@ -6,12 +6,13 @@
 --! @class	NvmeStorageIntPkg
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-03-18
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This package provides definitions for the NvmeStorage system internals.
 --!
 --! @details
+--! Included are useful functions, core system types and overal system parameters.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -35,7 +36,7 @@ use work.NvmeStoragePkg.all;
 
 package NvmeStorageIntPkg is
 	--! System constants
-	constant NvmeQueueNum		: integer := 16;	--! The number of queue entries. Has to be greater than NvmeWriteNum
+	constant NvmeQueueNum		: integer := 16;	--! The number of queue entries. Has to be greater than NvmeWriteNum and number of trim requests
 	constant NvmeWriteNum		: integer := 8;		--! The number of concurrent data write's.
 	constant PcieMaxPayloadSize	: integer := 32;	--! The maximum Pcie packet size in 32bit DWords
 
@@ -54,9 +55,9 @@ package NvmeStorageIntPkg is
 	function keepBits(numWords: integer) return std_logic_vector;
 
 	--! AXI Stream interface
-	--! This implemtation of Axis makes it easy to pass and manipulate streams in VHDL. It's not not nice as it uses inout
+	--! This implemtation of Axis makes it easy to pass and manipulate streams in VHDL. It's not nice as it uses inout
 	--! to acheive this as VHDL is very limited when using records especialy as module in's and out's.
-	--! However this scheme simplifies the code syntax a lot at the expense of less in/out validation in initial compilation stages.
+	--! However this scheme simplifies the code syntax a lot at the expense of less in/out validation in the initial compilation stages.
 	constant AxisStreamDataWidth	: integer := 128;
 	constant AxisStreamKeepWidth	: integer := 4;
 
@@ -79,7 +80,7 @@ package NvmeStorageIntPkg is
 	procedure axisConnect(signal streamOut: inout AxisStreamType; signal streamIn: in AxisType; signal ready: out std_logic);
 	
 
-	--! PCIe request packet head
+	--! PCIe request packet head. This uses the Xilinx Pcie Gen3 IP Pcie packet header style.
 	type PcieRequestHeadType is record
 		reply		: std_logic;			--! This is a reply header
 		address		: unsigned(31 downto 0);
@@ -93,7 +94,7 @@ package NvmeStorageIntPkg is
 	function to_PcieRequestHeadType(v: std_logic_vector) return PcieRequestHeadType;
 	function set_PcieRequestHeadType(requesterId: integer; request: integer; address: integer; count: integer; tag: integer) return PcieRequestHeadType;
 
-	--! PCIe reply packet head
+	--! PCIe reply packet head. This uses the Xilinx Pcie Gen3 IP Pcie packet header style.
 	type PcieReplyHeadType is record
 		reply		: std_logic;			--! This is a reply header
 		byteCount	: unsigned(12 downto 0);

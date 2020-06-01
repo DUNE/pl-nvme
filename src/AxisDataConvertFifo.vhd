@@ -5,7 +5,7 @@
 --! @class	AxisDataConvertFifo
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-15
---! @version	0.5.1
+--! @version	1.0.0
 --!
 --! @brief
 --! AXI Stream data Fifo with conversion from 256 to 128 bits.
@@ -14,6 +14,9 @@
 --! This module accepts an AxisDataStreamType AXI4 type data stream with 256 bit width data.
 --! It performs a Fifo function outputing the data on a 128 bit wide AxisStreamType AXI4 type stream.
 --! The last signal is passed through the Fifo.
+--! The FIFO depth is configurable with the FifoSizeBytes parameter which is in Bytes. For the NvmeStorage
+--! system this is normally set to the block size of 4096 Bytes.
+--! The modules uses block RAM to store the data.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -97,7 +100,7 @@ signal readDataHigh	: std_logic_vector(127 downto 0) := (others => '0');
 signal readHigh		: boolean := False;
 
 begin
-	-- Fifo memory
+	--! Fifo memory
 	fifoMem : Ram
 	port map (
 		clk		=> clk,
@@ -112,7 +115,7 @@ begin
 		readData	=> readData
 	);
 
-	-- Fifo input
+	--! Fifo input
 	streamRx_readyl		<= '1' when(not posLooped or (readPos /= writePos)) else '0';
 	streamRx_ready		<= streamRx_readyl;
 	writeEnable		<= streamRx.valid and streamRx_readyl when((not posLooped) or (writePos /= readPos)) else '0';
@@ -120,7 +123,7 @@ begin
 	
 	readEnable		<= readDataReady when((readDataValid = '1') and ((posLooped) or (writePos /= readPos))) else '0';
 
-	-- Data bit width conversion and output
+	--! Data bit width conversion and output
 	readDataReady		<= streamTx.ready when(not readHigh) else '0';
 	streamTx.valid		<= readDataValid;
 	streamTx.last		<= readData(256) when(readHigh) else '0';

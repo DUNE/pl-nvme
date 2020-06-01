@@ -5,7 +5,7 @@
 --! @class	NvmeStorage
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-12
---! @version	0.5.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This is the main top level NvmeStorage module that provides access to the NVMe devices
@@ -13,9 +13,16 @@
 --!
 --! @details
 --! The main Nvme working module is NvmeStorageUnit. This NvmeStorage module splits the incomming
---! data stream into two at the NvmeStoargeBlock level (8k) passing alternate blocks into the two
+--! data stream into two at the NvmeStoargeBlock level (4k) passing alternate blocks into the two
 --! NvmeStorageUnit engines.
---! At the moment, during development, it just passes the data through to a single NvmeStorageUnit module.
+--! It passes register access signals to both NvmeStorageUnit's and multiplexes/de-multiplexes the
+--! AXI4 Streams from/to these.
+--!
+--! The module accepts a 250 MHz clock input to which all input and output signals are syncronised with.
+--! The Platform parameter is available to handle alternative Pcie hard block interface types.
+--! The UseConfigure parameter sets the system to automatically configure the Nvme device on reset.
+--! Parameters for the actual Nvme device in use need to be set in the NvmeBlockSize, NvmeTotalBlocks and
+--! NvmeRegStride parameters.
 --! See the DuneNvmeStorageManual for more details.
 --!
 --! @copyright GNU GPL License
@@ -161,8 +168,8 @@ end component;
 
 component NvmeStreamMux is
 port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
+	clk		: in std_logic;					--! The interface clock line
+	reset		: in std_logic;					--! The active high reset line
 	
 	hostIn		: inout AxisStreamType := AxisStreamInput;	--! Host multiplexed Input stream
 	hostOut		: inout AxisStreamType := AxisStreamOutput;	--! Host multiplexed Ouput stream
@@ -273,6 +280,7 @@ begin
 	dataIn1.last	<= dataIn.last;
 	dataIn1.data	<= dataIn.data;
 
+	--! Store incomming block for Nvme0
 	dataConvert0 : AxisDataConvertFifo
 	port map (
 		clk		=> clk,
@@ -284,6 +292,7 @@ begin
 		streamTx	=> data0
 	);
 
+	--! Store incomming block for Nvme1
 	dataConvert1 : AxisDataConvertFifo
 	port map (
 		clk		=> clk,
@@ -295,6 +304,7 @@ begin
 		streamTx	=> data1
 	);
 	
+	--! Implement input block dropping on request.
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
@@ -332,6 +342,7 @@ begin
 	axisConnect(hostSend0, hostSend, hostSend_ready);
 	axisConnect(hostRecv, hostRecv_ready, hostRecv0);
 
+	--! Multiplex/de-multiplex Pcie packet streams to the two NvmeStorageUnits
 	nvmeStreamMux0 : NvmeStreamMux
 	port map (
 		clk		=> clk,
@@ -347,6 +358,7 @@ begin
 		nvme1Out	=> nvme1Recv
 	);
 
+	--! Nvme0 storage unit
 	nvmeStorageUnit0 : NvmeStorageUnit
 	generic map (
 		PcieCore	=> 0			--! The Pcie hardblock block to use
@@ -378,6 +390,7 @@ begin
 		leds		=> leds(2 downto 0)
 	);
 
+	--! Nvme1 storage unit
 	nvmeStorageUnit1 : NvmeStorageUnit
 	generic map (
 		PcieCore	=> 1			--! The Pcie hardblock block to use

@@ -5,12 +5,17 @@
 --! @class	AxisClockConverter
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-03-28
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
---! AXI Stream clock domain crossing module
+--! AxisStream clock domain crossing module.
 --!
 --! @details
+--! This module implements a clock crossing for an AXI4 stream encoded using
+--! the AxisStream record type. It uses the Xilinx AXI4 stream CDC IP to
+--! implement this.
+--! The Simulate parameter reduces the functionality to a simple pass through
+--! for simple system simulations.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -42,13 +47,14 @@ generic(
 	Simulate	: boolean	:= False
 );
 port (
-	clkRx		: in std_logic;
-	resetRx		: in std_logic;
-	streamRx	: inout AxisStreamType := AxisStreamInput;                        
+	clkRx		: in std_logic;					--! The input stream clock line
+	resetRx		: in std_logic;					--! The input stream reset
 
-	clkTx		: in std_logic;
-	resetTx		: in std_logic;
-	streamTx	: inout AxisStreamType := AxisStreamOutput
+	streamRx	: inout AxisStreamType := AxisStreamInput;	--! The input stream
+
+	clkTx		: in std_logic;					--! The output stream clock line
+	resetTx		: in std_logic;					--! The output stream reset
+	streamTx	: inout AxisStreamType := AxisStreamOutput	--! The output stream
 );
 end;
 

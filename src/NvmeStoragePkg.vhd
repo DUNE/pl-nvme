@@ -5,12 +5,13 @@
 --! @class	NvmeStoragePkg
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-12
---! @version	0.5.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This package provides external interface definitions for the NvmeStorage module.
 --!
 --! @details
+--! Includes the record types and parameters for the NvmeStorage modules interface to external logic.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>

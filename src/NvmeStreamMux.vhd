@@ -5,13 +5,17 @@
 --! @class	NvmeStreamMux
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-04-08
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
---! This module Multiplex/De-multiplex a stream a 128bit Axis stream into two streams using the 128bit header
+--! This module Multiplexes/De-multiplexes a 128bit Axis stream into two streams based on which Nvme device the packets are for/from.
 --!
 --! @details
---! This uses bit 96 in the Pcie header to determine which Nume device the packet should be sent too.
+--! When de-multiplexing the packets the module uses bit 80 in request packets and bit 28 in
+--! reply packets to determine which Nume device the packet should be sent too.
+--! Reply packets are determined by bit 95 being set in the packets header.
+--! When multplexing the packets to the host it sets the appropriate Pcie header bits to indicate to the
+--! host where the packet is from.
 --! It is used to pass requests from the host to the appropriate NvmeStorageUnit engine and get replies.
 --!
 --! @copyright GNU GPL License
@@ -40,8 +44,8 @@ use work.NvmeStorageIntPkg.all;
 
 entity NvmeStreamMux is
 port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
+	clk		: in std_logic;					--! The interface clock line
+	reset		: in std_logic;					--! The active high reset line
 	
 	hostIn		: inout AxisStreamType := AxisStreamInput;	--! Host multiplexed Input stream
 	hostOut		: inout AxisStreamType := AxisStreamOutput;	--! Host multiplexed Ouput stream
@@ -129,7 +133,6 @@ begin
 	
 	
 	-- Multiplex streams. Sets the Nvme number to 1 in the Nvme1 reply streams in appropriate location for request and reply packets
-	--nvme1Stream <= '0' when(((muxState = MUX_STATE_START) and (nvme0In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET0)) else '1';
 	nvme1Stream <= '1' when(((muxState = MUX_STATE_START) and (nvme1In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET1)) else '0';
 
 	nvme1StreamData <= nvme1In.data(127 downto 81) & '1' & nvme1In.data(79 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '1'))

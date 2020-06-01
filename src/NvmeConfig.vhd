@@ -5,18 +5,23 @@
 --! @class	NvmeConfig
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-12
---! @version	0.5.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This module configures a Nvme device for operation.
 --!
 --! @details
 --! This has a set of PCIe requests hard coded in a ROM that are sent out on the
---!  streamOut stream when the configStart signal is set high for one clock period.
+--! streamOut stream when the configStart signal is set high for one clock period.
 --! The module ignores all replies and assumes all requests complete with no errors.
 --! The configComplete signal is set high on completion.
---! The ROM's contents have a list of 128 bit words. There will be a set of a PCIe TLP header word followed by its data words.
---! The TLP headers count field specifires how many 32 bit words of data follow the header.
+--! The ROM's contents have a list of 128 bit words. There will be a set of a requests
+--! consisting of a PCIe TLP header followed by its data words.
+--! The TLP headers count field specifies how many 32 bit words of data follow the header.
+--! A 128 bit entry of all 0's terminates the list of Pcie requests.
+--! The module will wait 100ms before starting configuration to allow its use directly after a device reset.
+--! This time allows the Nvme device to complete its internal initialisation.
+--! The ClockPeriod parameter should be set to the clocks period to achieve the correct delay timing.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -44,7 +49,7 @@ use work.NvmeStorageIntPkg.all;
 
 entity NvmeConfig is
 generic(
-	ClockPeriod	: time := 8 ns				--! Clock period for timers (125 MHz)
+	ClockPeriod	: time := 8 ns				--! Clock period for timers (250 MHz)
 );
 port (
 	clk		: in std_logic;				--! The interface clock line
@@ -55,7 +60,7 @@ port (
 
 	-- From host to NVMe request/reply streams
 	streamOut	: inout AxisStreamType := AxisStreamOutput;	--! Nvme request stream
-	streamIn	: inout AxisStreamType := AxisStreamInput		--! Nvme reply stream
+	streamIn	: inout AxisStreamType := AxisStreamInput	--! Nvme reply stream
 );
 end;
 
@@ -101,7 +106,7 @@ constant rom	: RomType(0 to 41) := (
 	-- Notify queue entry to Nvme
 	setHeader(1, 16#1000#, 1, 0), to_stl(1, 128),
 	
-	-- Wait for reply in queue, how to do this ???
+	-- Could Wait for reply in queue
 
 	-- Create DataWrite request queue by sending 64byte request to Admin queue
 	setHeader(12, 16#02000000#, 16, 0),
@@ -113,7 +118,7 @@ constant rom	: RomType(0 to 41) := (
 	-- Notify queue entry to Nvme
 	setHeader(1, 16#1000#, 1, 0), to_stl(2, 128),
 	
-	-- Wait for reply in queue, how to do this ???
+	-- Could Wait for reply in queue
 	
 	-- Create DataRead reply queue (8 entries)  by sending 64byte request to Admin queue
 	setHeader(12, 16#02000000#, 16, 0),
@@ -125,7 +130,7 @@ constant rom	: RomType(0 to 41) := (
 	-- Notify queue entry to Nvme
 	setHeader(1, 16#1000#, 1, 0), to_stl(1, 128),
 	
-	-- Wait for reply in queue, how to do this ???
+	-- Could Wait for reply in queue
 
 	-- Create DataRead request queue by sending 64byte request to Admin queue
 	setHeader(12, 16#02000000#, 16, 0),
@@ -137,8 +142,7 @@ constant rom	: RomType(0 to 41) := (
 	-- Notify queue entry to Nvme
 	setHeader(1, 16#1000#, 1, 0), to_stl(2, 128),
 	
-	-- Wait for reply in queue, how to do this ???
-	
+	-- Could Wait for reply in queue
 
 	-- Start controller
 	setHeader(1, 16#0014#, 1, 0), to_stl(x"00460001", 128),
@@ -177,7 +181,7 @@ begin
 					if(configStart = '1') then
 						count		<= 0;
 						configComplete	<= '0';
-						delay		<= 100 ms / ClockPeriod;	-- Started from reset, delay for 100ms
+						delay		<= 100 ms / ClockPeriod;	--! Started from reset, delay for 100ms
 						state		<= STATE_DELAY;
 					end if;
 

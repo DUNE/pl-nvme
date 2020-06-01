@@ -102,13 +102,14 @@ begin
 		
 		if(true) then
 			-- Send a PCIe write request
+			wait until rising_edge(clk);
 			pcieRequestWrite(clk, fromHost, 1, 1, 4, 16#44#, 16, 16#0000100#);
 
 			-- Send a PCIe reply
-			pcieReply(clk, fromHost, 1, 16#AAAA#, 4, 16#44#, 16, 16#0000100#);
+			pcieReply(clk, fromHost, 1, 3, 4, 16#44#, 16, 16#0000100#);
 
 			-- Send a PCIe reply
-			pcieReply(clk, fromHost, 1, 16#AAAA#, 4, 16#44#, 1, 16#0000100#);
+			pcieReply(clk, fromHost, 1, 3, 4, 16#44#, 1, 16#0000100#);
 		end if;
 
 		wait;
@@ -139,7 +140,7 @@ begin
 				end loop;
 			end if;
 
-			if(True) then
+			if(true) then
 				wait for 50 ns;
 				for i in 0 to 4 loop
 					wait until rising_edge(clk);
@@ -160,7 +161,7 @@ begin
 
 		wait until reset = '0';
 		
-		if(false) then
+		if(true) then
 			-- Send a PCIe reply
 			--pcieReply(clk, hostReq, 1, 16#AAAA#, 4, 16#44#, 4, 16#0000100#);
 			--wait;
@@ -170,15 +171,15 @@ begin
 
 			-- Send a PCIe reply
 			wait until rising_edge(clk);
-			pcieReply(clk, hostReq, 1, 16#AAAA#, 4, 16#44#, 16, 16#0000100#);
+			pcieReply(clk, hostReq, 1, 3, 4, 16#44#, 16, 16#0000100#);
 
 			-- Send a PCIe reply
 			wait until rising_edge(clk);
-			pcieReply(clk, hostReq, 1, 16#AAAA#, 4, 16#44#, 4, 16#0000100#);
+			pcieReply(clk, hostReq, 1, 3, 4, 16#44#, 4, 16#0000100#);
 
 			-- Send a PCIe reply
 			wait until rising_edge(clk);
-			pcieReply(clk, hostReq, 1, 16#AAAA#, 4, 16#44#, 1, 16#0000100#);
+			pcieReply(clk, hostReq, 1, 3, 4, 16#44#, 1, 16#0000100#);
 
 			-- Send a PCIe write request
 			wait until rising_edge(clk);
@@ -192,20 +193,20 @@ begin
 	begin
 		toHost.ready <= '0';
 		
-		if(false) then
-			if(false) then
+		if(true) then
+			if(true) then
 				toHost.ready	<= '1';
 				wait;
 			end if;
 
-			if(true) then
+			if(false) then
 				wait for 50 ns;
 				wait until rising_edge(clk);
 				toHost.ready <= '1';
 				wait;
 			end if;
 
-			if(True) then
+			if(false) then
 				wait for 50 ns;
 				for i in 0 to 16 loop
 					wait until rising_edge(clk);
@@ -213,7 +214,7 @@ begin
 				end loop;
 			end if;
 
-			if(True) then
+			if(true) then
 				wait for 50 ns;
 				for i in 0 to 16 loop
 					wait until rising_edge(clk);

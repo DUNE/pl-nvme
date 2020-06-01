@@ -5,11 +5,11 @@
 --! @class	NvmeSim
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-03-13
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This is a very basic module to simulate an NVMe device connected via PCIe to
---!  the Xilinx PCIe Gen3 IP block.
+--! the Xilinx PCIe Gen3 IP block.
 --!
 --! @details
 --! This is a very basic module to simulate an NVMe device connected via PCIe to the Xilinx PCIe Gen3 IP block.
@@ -19,14 +19,13 @@
 --!
 --! The core responds to specific configuration space writes and specific NVMe register writes (Queue door bell registers).
 --! The module makes PCIe read/write requests to access the request/reply queues and data input/output memory
---!  in a similar manner to a real NVMe device.
+--! in a similar manner to a real NVMe device.
 --!
---! Simple interface ignoring actual data values and 32bit dataword positions with 128 bit transfered words.
+--! It has a simple interface ignoring actual data values and 32bit dataword positions within 128 bit transfered words.
 --!
---! NVMe requests not pipelined and carried out one at a time, in sequence.
+--! NVMe requests are not pipelined and carried out one at a time, in sequence.
 --! Currently does not perform configuration or NVMe register read operations.
---! Currently does not handle NVMe read data requests.
---! Note NvmeSim still pretty basic.
+--! NvmeSim is still pretty basic.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -134,7 +133,7 @@ begin
 end;
 
 begin
-	-- Host requests including register access
+	--! Host requests including register access
 	hostRequestHead		<= to_PcieRequestHeadType(hostReq.data);
 	regData			<= reg_pci_command when hostRequestHead1.address = x"4" else x"FFFFFFFF";
 
@@ -157,7 +156,7 @@ begin
 					else to_stl(nvmeRequestHead);
 	nvmeReply1Head		<= to_PcieReplyHeadType(nvmeReply1.data);
 
-	-- Process host requests
+	--! Process host request packets
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
@@ -248,7 +247,7 @@ begin
 	end process;
 
 
-	-- Process requests
+	--! Process queued requests
 	process(clk)
 	begin
 		if(rising_edge(clk)) then

@@ -5,14 +5,26 @@
 --! @class	PcieStreamMux
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-04-08
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This module Multiplexes/De-multiplexes a PCIe 128 bit stream into two streams using the 128bit header
 --!
 --! @details
---! This uses bit 95 in the Pcie header to determine if packets are Pcie requests or replies and then
---! routes the packets appropriately. It is used to handle the quad stream nature of the Xilinx Pcie Gen3 hardblock.
+--! This module will multiplex two bi-directional AxisStream's into a single bi-directional stream and de-multiplex
+--! a single bi-directional stream into two such streams.
+--! It is used to handle the quad stream nature of the Xilinx Pcie Gen3 hardblock merging the two streams into one for
+--! easy processing. The Xilinx Pcie Gen3 IP uses a pair of streams for host requests to the Pcie device (stream2) and
+--! a pair of streams for Pcie device requests to the host (stream3).
+--! Because of the 4 streams and their usage each will solely transport request or reply packets. This module
+--! sets and uses the state of bit 95 in the Pcie request and reply headers when multiplexing/de-muliplexing packets
+--! to/from the single stream (stream1).
+--! When muliplexing the packets bit 95 is set in the header on any reply packets and when de-multiplexing it looks
+--! at bit 95 in the header to determine which stream to send the packet on.
+--! The RegisterOutputs parameter allows the output data streams to be latched for better system timing
+--! at the expence of a 1 clock cycle latency.
+--! the module prioritises packet replies from the Pcie device when multiplexing.
+--! The multiplex and de-multiplex processes are separate and function independantly.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -40,11 +52,11 @@ use work.NvmeStorageIntPkg.all;
 
 entity PcieStreamMux is
 generic (
-	RegisterOutputs	: boolean := True			--! Register the outputs
+	RegisterOutputs	: boolean := True				--! Register the outputs
 );
 port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
+	clk		: in std_logic;					--! The interface clock line
+	reset		: in std_logic;					--! The active high reset line
 	
 	stream1In	: inout AxisStreamType := AxisStreamInput;	--! Single multiplexed Input stream
 	stream1Out	: inout AxisStreamType := AxisStreamOutput;	--! Single multiplexed Ouput stream
@@ -61,35 +73,47 @@ architecture Behavioral of PcieStreamMux is
 
 constant TCQ		: time := 1 ns;
 
-type DemuxStateType	is (DEMUX_STATE_START, DEMUX_STATE_SENDPACKET2, DEMUX_STATE_SENDPACKET3);
-signal demuxState	: DemuxStateType := DEMUX_STATE_START;
-signal demuxReply	: std_logic;
-signal demuxReg		: AxisStreamType;
+component PcieStreamMuxFifo is
+port (
+	clk		: in std_logic;				--! The interface clock line
+	reset		: in std_logic;				--! The active high reset line
+	
+	streamIn	: inout AxisStreamType := AxisStreamInput;	--! Single multiplexed Input stream
+	streamOut	: inout AxisStreamType := AxisStreamOutput	--! Single multiplexed Ouput stream
+);
+end component;
 
-type MuxStateType	is (MUX_STATE_START, MUX_STATE_SENDPACKET2, MUX_STATE_SENDPACKET3);
-signal muxState		: MuxStateType := MUX_STATE_START;
-signal muxReply		: std_logic;
+type DemuxStateType	is (DEMUX_STATE_HEAD, DEMUX_STATE_SENDPACKET2, DEMUX_STATE_SENDPACKET3);
+signal demuxState	: DemuxStateType := DEMUX_STATE_HEAD;
+signal demuxReply	: std_logic;
+signal stream2OutFeed	: AxisStreamType;
+signal stream3OutFeed	: AxisStreamType;
+
+type MuxStateType	is (MUX_STATE_HEAD, MUX_STATE_SENDPACKET2, MUX_STATE_SENDPACKET3);
+signal muxState		: MuxStateType := MUX_STATE_HEAD;
 signal muxStream2	: std_logic;
 signal muxStream2Data	: std_logic_vector(127 downto 0);
-signal muxReg		: AxisStreamType;
+signal stream1OutFeed	: AxisStreamType;
+
 
 begin
 	noreg: if(not RegisterOutputs) generate
-	-- De-multiplex host -> nvme streams. Expects 128 bit header word providing destination stream number
+
+	-- De-multiplex host -> nvme streams. Expects 128 bit header word providing destination stream number and bit 95 to indicate replies.
 	demuxReply <= stream1In.data(95);
 
-	stream1In.ready <= stream3Out.ready when((demuxState = DEMUX_STATE_START) and (stream1In.valid = '1') and (demuxReply = '1'))
-		else stream2Out.ready when((demuxState = DEMUX_STATE_START) and (stream1In.valid = '1') and (demuxReply = '0'))
+	stream1In.ready <= stream3Out.ready when((demuxState = DEMUX_STATE_HEAD) and (stream1In.valid = '1') and (demuxReply = '1'))
+		else stream2Out.ready when((demuxState = DEMUX_STATE_HEAD) and (stream1In.valid = '1') and (demuxReply = '0'))
 		else stream2Out.ready when(demuxState = DEMUX_STATE_SENDPACKET2)
 		else stream3Out.ready when(demuxState = DEMUX_STATE_SENDPACKET3)
 		else stream2Out.ready and stream3Out.ready;
 		
-	stream2Out.valid <= stream1In.valid when((demuxState = DEMUX_STATE_SENDPACKET2) or ((demuxState = DEMUX_STATE_START) and (demuxReply = '0'))) else '0';
+	stream2Out.valid <= stream1In.valid when((demuxState = DEMUX_STATE_SENDPACKET2) or ((demuxState = DEMUX_STATE_HEAD) and (demuxReply = '0'))) else '0';
 	stream2Out.last <= stream1In.last;
 	stream2Out.keep <= stream1In.keep;
 	stream2Out.data <= stream1In.data;
 	
-	stream3Out.valid <= stream1In.valid when((demuxState = DEMUX_STATE_SENDPACKET3) or ((demuxState = DEMUX_STATE_START) and (demuxReply = '1'))) else '0';
+	stream3Out.valid <= stream1In.valid when((demuxState = DEMUX_STATE_SENDPACKET3) or ((demuxState = DEMUX_STATE_HEAD) and (demuxReply = '1'))) else '0';
 	stream3Out.last <= stream1In.last;
 	stream3Out.keep <= stream1In.keep;
 	stream3Out.data <= stream1In.data;
@@ -99,13 +123,13 @@ begin
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				demuxState <= DEMUX_STATE_START;
+				demuxState <= DEMUX_STATE_HEAD;
 			else
 				case(demuxState) is
-				when DEMUX_STATE_START =>
+				when DEMUX_STATE_HEAD =>
 					if((stream1In.valid = '1') and (stream1In.ready = '1')) then
 						if(stream1In.last = '1') then
-							demuxState <= DEMUX_STATE_START;
+							demuxState <= DEMUX_STATE_HEAD;
 						elsif(demuxReply = '1') then
 							demuxState <= DEMUX_STATE_SENDPACKET3;
 						else
@@ -115,12 +139,12 @@ begin
 
 				when DEMUX_STATE_SENDPACKET2 =>
 					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream1In.last = '1')) then
-						demuxState <= DEMUX_STATE_START;
+						demuxState <= DEMUX_STATE_HEAD;
 					end if;
 
 				when DEMUX_STATE_SENDPACKET3 =>
 					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream1In.last = '1')) then
-						demuxState <= DEMUX_STATE_START;
+						demuxState <= DEMUX_STATE_HEAD;
 					end if;
 				end case;
 			end if;
@@ -128,9 +152,9 @@ begin
 	end process;
 	
 	
-	-- Multiplex streams.
-	muxStream2 <= '1' when(((muxState = MUX_STATE_START) and (stream2In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET2)) else '0';
-	muxStream2Data <= stream2In.data(127 downto 96) & '1' & stream2In.data(94 downto 0) when(muxState = MUX_STATE_START) else stream2In.data;
+	-- Multiplex streams, setting bit 95 to indicate replies.
+	muxStream2 <= '1' when(((muxState = MUX_STATE_HEAD) and (stream2In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET2)) else '0';
+	muxStream2Data <= stream2In.data(127 downto 96) & '1' & stream2In.data(94 downto 0) when(muxState = MUX_STATE_HEAD) else stream2In.data;
 	
 	stream1Out.valid <= stream2In.valid when(muxStream2 = '1') else stream3In.valid;
 	stream1Out.last <= stream2In.last when(muxStream2 = '1') else stream3In.last;
@@ -144,19 +168,19 @@ begin
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				muxState <= MUX_STATE_START;
+				muxState <= MUX_STATE_HEAD;
 			else
 				case(muxState) is
-				when MUX_STATE_START =>
+				when MUX_STATE_HEAD =>
 					if((stream2In.valid = '1') and (stream2In.ready = '1')) then
 						if(stream2In.last = '1') then
-							muxState <= MUX_STATE_START;
+							muxState <= MUX_STATE_HEAD;
 						else
 							muxState <= MUX_STATE_SENDPACKET2;
 						end if;
 					elsif((stream3In.valid = '1') and (stream3In.ready = '1')) then
 						if(stream3In.last = '1') then
-							muxState <= MUX_STATE_START;
+							muxState <= MUX_STATE_HEAD;
 						else
 							muxState <= MUX_STATE_SENDPACKET3;
 						end if;
@@ -164,12 +188,12 @@ begin
 
 				when MUX_STATE_SENDPACKET2 =>
 					if((stream2In.valid = '1') and (stream2In.ready = '1') and (stream2In.last = '1')) then
-						muxState <= MUX_STATE_START;
+						muxState <= MUX_STATE_HEAD;
 					end if;
 
 				when MUX_STATE_SENDPACKET3 =>
 					if((stream3In.valid = '1') and (stream3In.ready = '1') and (stream3In.last = '1')) then
-						muxState <= MUX_STATE_START;
+						muxState <= MUX_STATE_HEAD;
 					end if;
 
 				end case;
@@ -180,99 +204,62 @@ begin
 
 
 	reg: if(RegisterOutputs) generate
-	-- De-multiplex host -> nvme streams. Expects 128 bit header word providing destination stream number
-	demuxReply	<= stream1In.data(95);
-	stream1In.ready	<= not demuxReg.valid;
+
+	-- De-multiplex host -> nvme streams. Expects 128 bit header word providing destination stream number and bit 95 to indicate replies.
+	demuxReply		<= stream1In.data(95);
+
+	stream1In.ready		<= stream2OutFeed.ready and stream3OutFeed.ready;
+
+	stream2OutFeed.valid	<= stream1In.valid when(((demuxState = DEMUX_STATE_HEAD) and (demuxReply = '0')) or (demuxState = DEMUX_STATE_SENDPACKET2)) else '0';
+	stream2OutFeed.keep	<= stream1In.keep;
+	stream2OutFeed.last	<= stream1In.last;
+	stream2OutFeed.data	<= stream1In.data;
+	
+	axisFifo2 : PcieStreamMuxFifo port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		streamIn	=> stream2OutFeed,
+		streamOut	=> stream2Out
+	);
+
+	stream3OutFeed.valid	<= stream1In.valid when(((demuxState = DEMUX_STATE_HEAD) and (demuxReply = '1')) or (demuxState = DEMUX_STATE_SENDPACKET3)) else '0';
+	stream3OutFeed.keep	<= stream1In.keep;
+	stream3OutFeed.last	<= stream1In.last;
+	stream3OutFeed.data	<= stream1In.data;
+	
+	axisFifo3 : PcieStreamMuxFifo port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		streamIn	=> stream3OutFeed,
+		streamOut	=> stream3Out
+	);
 
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				demuxState <= DEMUX_STATE_START;
-				stream2Out.valid <= '0';
-				stream2Out.last <= '0';
-				stream3Out.valid <= '0';
-				stream3Out.last <= '0';
-				demuxReg.valid <= '1';
+				demuxState <= DEMUX_STATE_HEAD;
 			else
 				case(demuxState) is
-				when DEMUX_STATE_START =>
-					demuxReg.valid <= '0';
-
-					if((stream1In.valid = '1') and (stream1In.ready = '1')) then
+				when DEMUX_STATE_HEAD =>
+					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream1In.last = '0')) then
 						if(demuxReply = '1') then
-							stream3Out.valid <= '1';
-							stream3Out.last <= stream1In.last;
-							stream3Out.keep <= stream1In.keep;
-							stream3Out.data <= stream1In.data;
 							demuxState <= DEMUX_STATE_SENDPACKET3;
 						else
-							stream2Out.valid <= '1';
-							stream2Out.last <= stream1In.last;
-							stream2Out.keep <= stream1In.keep;
-							stream2Out.data <= stream1In.data;
 							demuxState <= DEMUX_STATE_SENDPACKET2;
 						end if;
 					end if;
 
 				when DEMUX_STATE_SENDPACKET2 =>
-					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream2Out.valid = '1') and (stream2Out.ready = '0')) then
-						demuxReg.valid	<= '1';
-						demuxReg.last	<= stream1In.last;
-						demuxReg.keep	<= stream1In.keep;
-						demuxReg.data	<= stream1In.data;
-					elsif(stream2Out.ready = '1') then
-						demuxReg.valid <= '0';
-					end if;
-
-					if((stream2Out.valid = '0') or (stream2Out.ready = '1')) then
-						stream2Out.valid <= stream1In.valid or demuxReg.valid;
-						if(demuxReg.valid = '1') then
-							stream2Out.last <= demuxReg.last;
-							stream2Out.keep <= demuxReg.keep;
-							stream2Out.data <= demuxReg.data;
-						else
-							stream2Out.last <= stream1In.last;
-							stream2Out.keep <= stream1In.keep;
-							stream2Out.data <= stream1In.data;
-						end if;
-					end if;
-					
-					if((stream2Out.valid = '1') and (stream2Out.ready = '1') and (stream2Out.last = '1')) then
-						demuxReg.valid	<= '0';
-						stream2Out.last	<= '0';
-						stream2Out.valid<= '0';
-						demuxState	<= DEMUX_STATE_START;
+					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream1In.last = '1')) then
+						demuxState	<= DEMUX_STATE_HEAD;
 					end if;
 
 				when DEMUX_STATE_SENDPACKET3 =>
-					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream3Out.valid = '1') and (stream3Out.ready = '0')) then
-						demuxReg.valid	<= '1';
-						demuxReg.last	<= stream1In.last;
-						demuxReg.keep	<= stream1In.keep;
-						demuxReg.data	<= stream1In.data;
-					elsif(stream3Out.ready = '1') then
-						demuxReg.valid <= '0';
-					end if;
-
-					if((stream3Out.valid = '0') or (stream3Out.ready = '1')) then
-						stream3Out.valid <= stream1In.valid or demuxReg.valid;
-						if(demuxReg.valid = '1') then
-							stream3Out.last <= demuxReg.last;
-							stream3Out.keep <= demuxReg.keep;
-							stream3Out.data <= demuxReg.data;
-						else
-							stream3Out.last <= stream1In.last;
-							stream3Out.keep <= stream1In.keep;
-							stream3Out.data <= stream1In.data;
-						end if;
-					end if;
-					
-					if((stream3Out.valid = '1') and (stream3Out.ready = '1') and (stream3Out.last = '1')) then
-						demuxReg.valid	<= '0';
-						stream3Out.last	<= '0';
-						stream3Out.valid<= '0';
-						demuxState	<= DEMUX_STATE_START;
+					if((stream1In.valid = '1') and (stream1In.ready = '1') and (stream1In.last = '1')) then
+						demuxState	<= DEMUX_STATE_HEAD;
 					end if;
 
 				end case;
@@ -281,129 +268,50 @@ begin
 	end process;
 	
 	
-	-- Multiplex streams.
-	muxStream2 <= '1' when(((muxState = MUX_STATE_START) and (stream2In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET2)) else '0';
-	muxStream2Data <= stream2In.data(127 downto 96) & '1' & stream2In.data(94 downto 0) when(muxState = MUX_STATE_START) else stream2In.data;
+	-- Multiplex streams, setting bit 95 to indicate replies.
+	muxStream2 <= '1' when(((muxState = MUX_STATE_HEAD) and (stream2In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET2)) else '0';
+	muxStream2Data <= stream2In.data(127 downto 96) & '1' & stream2In.data(94 downto 0) when(muxState = MUX_STATE_HEAD) else stream2In.data;
+
+	stream2In.ready		<= stream1OutFeed.ready when(muxStream2 = '1') else '0';
+	stream3In.ready		<= stream1OutFeed.ready when(muxStream2 = '0') else '0';
+
+	stream1OutFeed.valid	<= stream2In.valid when(muxStream2 = '1') else stream3In.valid;
+	stream1OutFeed.last	<= stream2In.last when(muxStream2 = '1') else stream3In.last;
+	stream1OutFeed.keep	<= stream2In.keep when(muxStream2 = '1') else stream3In.keep;
+	stream1OutFeed.data	<= muxStream2Data when(muxStream2 = '1') else stream3In.data;
+
+	axisFifo1 : PcieStreamMuxFifo port map (
+		clk		=> clk,
+		reset		=> reset,
+
+		streamIn	=> stream1OutFeed,
+		streamOut	=> stream1Out
+	);
 
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				muxState <= MUX_STATE_START;
-				stream2In.ready	<= '0';
-				stream3In.ready	<= '0';
-				stream1Out.valid <= '0';
-				muxReg.valid	<= '1';
+				muxState <= MUX_STATE_HEAD;
 				
 			else
 				case(muxState) is
-				when MUX_STATE_START =>
-					stream2In.ready	<= '0';
-					stream3In.ready	<= '0';
-					stream1Out.valid <= '0';
-					stream1Out.last <= '0';
-					muxReg.valid	<= '0';
-
-					if((stream2In.valid = '1') and (stream1In.ready = '1')) then
-						muxReg.valid	<= '1';
-						muxReg.last	<= stream2In.last;
-						muxReg.keep	<= stream2In.keep;
-						muxReg.data	<= muxStream2Data;
-						stream2In.ready	<= '1';
+				when MUX_STATE_HEAD =>
+					if((stream2In.valid = '1') and (stream2In.ready = '1') and (stream2In.last = '0')) then
 						muxState <= MUX_STATE_SENDPACKET2;
 
-					elsif((stream3In.valid = '1') and (stream1In.ready = '1')) then
-						muxReg.valid	<= '1';
-						muxReg.last	<= stream3In.last;
-						muxReg.keep	<= stream3In.keep;
-						muxReg.data	<= stream3In.data;
-						stream3In.ready	<= '1';
+					elsif((stream3In.valid = '1') and (stream3In.ready = '1') and (stream3In.last = '0')) then
 						muxState <= MUX_STATE_SENDPACKET3;
 					end if;
 
 				when MUX_STATE_SENDPACKET2 =>
-					if((stream2In.valid = '1') and (stream2In.ready = '1') and (stream1Out.valid = '1') and (stream1Out.ready = '0')) then
-						muxReg.valid	<= '1';
-						stream2In.ready	<= '0';
-						muxReg.last	<= stream2In.last;
-						muxReg.keep	<= stream2In.keep;
-						muxReg.data	<= stream2In.data;
-					elsif(stream1Out.ready = '1') then
-						if((muxReg.valid = '1') and (muxReg.last = '1')) then
-							stream2In.ready	<= '0';
-						elsif((muxReg.valid = '0') and (stream2In.last = '1')) then
-							stream2In.ready	<= '0';
-						else
-							stream2In.ready	<= '1';
-						end if;
-						muxReg.valid <= '0';
-					end if;
-
-					if((stream1Out.valid = '0') or (stream1Out.ready = '1')) then
-						stream1Out.valid <= stream2In.valid or muxReg.valid;
-						if(muxReg.valid = '1') then
-							stream1Out.last <= muxReg.last;
-							stream1Out.keep <= muxReg.keep;
-							stream1Out.data <= muxReg.data;
-						else
-							stream1Out.last <= stream2In.last;
-							stream1Out.keep <= stream2In.keep;
-							stream1Out.data <= stream2In.data;
-						end if;
-					end if;
-
 					if((stream2In.valid = '1') and (stream2In.ready = '1') and (stream2In.last = '1')) then
-						stream2In.ready	<= '0';
+						muxState <= MUX_STATE_HEAD;
 					end if;
-					
-					if((stream1Out.valid = '1') and (stream1Out.ready = '1') and (stream1Out.last = '1')) then
-						stream1Out.last <= '0';
-						stream1Out.valid <= '0';
-						stream2In.ready	<= '0';
-						muxState <= MUX_STATE_START;
-					end if;
-
 
 				when MUX_STATE_SENDPACKET3 =>
-					if((stream3In.valid = '1') and (stream3In.ready = '1') and (stream1Out.valid = '1') and (stream1Out.ready = '0')) then
-						muxReg.valid	<= '1';
-						stream3In.ready	<= '0';
-						muxReg.last	<= stream3In.last;
-						muxReg.keep	<= stream3In.keep;
-						muxReg.data	<= stream3In.data;
-					elsif(stream1Out.ready = '1') then
-						if((muxReg.valid = '1') and (muxReg.last = '1')) then
-							stream3In.ready	<= '0';
-						elsif((muxReg.valid = '0') and (stream3In.last = '1')) then
-							stream3In.ready	<= '0';
-						else
-							stream3In.ready	<= '1';
-						end if;
-						muxReg.valid <= '0';
-					end if;
-
-					if((stream1Out.valid = '0') or (stream1Out.ready = '1')) then
-						stream1Out.valid <= stream3In.valid or muxReg.valid;
-						if(muxReg.valid = '1') then
-							stream1Out.last <= muxReg.last;
-							stream1Out.keep <= muxReg.keep;
-							stream1Out.data <= muxReg.data;
-						else
-							stream1Out.last <= stream3In.last;
-							stream1Out.keep <= stream3In.keep;
-							stream1Out.data <= stream3In.data;
-						end if;
-					end if;
-
 					if((stream3In.valid = '1') and (stream3In.ready = '1') and (stream3In.last = '1')) then
-						stream3In.ready	<= '0';
-					end if;
-
-					if((stream1Out.valid = '1') and (stream1Out.ready = '1') and (stream1Out.last = '1')) then
-						stream1Out.last <= '0';
-						stream1Out.valid <= '0';
-						stream3In.ready	<= '0';
-						muxState <= MUX_STATE_START;
+						muxState <= MUX_STATE_HEAD;
 					end if;
 
 				end case;
@@ -411,4 +319,97 @@ begin
 		end if;
 	end process;
 	end generate;
+end;
+
+
+--------------------------------------------------------------------------------
+-- PcieStreamMuxFifo.vhd Simple 1/2 stage Fifo
+-------------------------------------------------------------------------------
+--!
+--! @class	PcieStreamMuxFifo
+--! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
+--! @date	2020-05-31
+--! @version	1.0.0
+--!
+--! @brief
+--! This module implements a simple 1/2 stage Fifo for the PcieStreamMux module
+--!
+--! @details
+--! This is a simple 1/2 register FIFO of AxisStream's.
+--!
+--! @copyright GNU GPL License
+--! Copyright (c) Beam Ltd, All rights reserved. <br>
+--! This code is free software: you can redistribute it and/or modify
+--! it under the terms of the GNU General Public License as published by
+--! the Free Software Foundation, either version 3 of the License, or
+--! (at your option) any later version.
+--! This program is distributed in the hope that it will be useful,
+--! but WITHOUT ANY WARRANTY; without even the implied warranty of
+--! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+--! GNU General Public License for more details. <br>
+--! You should have received a copy of the GNU General Public License
+--! along with this code. If not, see <https://www.gnu.org/licenses/>.
+--!
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+library unisim;
+use unisim.vcomponents.all;
+
+library work;
+use work.NvmeStoragePkg.all;
+use work.NvmeStorageIntPkg.all;
+
+entity PcieStreamMuxFifo is
+port (
+	clk		: in std_logic;					--! The interface clock line
+	reset		: in std_logic;					--! The active high reset line
+	
+	streamIn	: inout AxisStreamType := AxisStreamInput;	--! Single multiplexed Input stream
+	streamOut	: inout AxisStreamType := AxisStreamOutput	--! Single multiplexed Ouput stream
+);
+end;
+
+architecture Behavioral of PcieStreamMuxFifo is
+
+constant TCQ		: time := 1 ns;
+signal reg0		: AxisStreamType;
+
+begin
+	process(clk)
+	begin
+		if(rising_edge(clk)) then
+			if(reset = '1') then
+				streamIn.ready	<= '1';
+				streamOut.valid <= '0';
+				reg0.valid	<= '0';
+				
+			else
+				if((streamIn.valid = '1') and (streamIn.ready = '1') and (streamOut.valid = '1') and (streamOut.ready = '0')) then
+					streamIn.ready	<= '0';
+					reg0.valid	<= '1';
+					reg0.last	<= streamIn.last;
+					reg0.keep	<= streamIn.keep;
+					reg0.data	<= streamIn.data;
+				elsif(streamOut.ready = '1') then
+					streamIn.ready	<= '1';
+					reg0.valid	<= '0';
+				end if;
+
+				if((streamOut.valid = '0') or (streamOut.ready = '1')) then
+					streamOut.valid <= streamIn.valid or reg0.valid;
+					if(reg0.valid = '1') then
+						streamOut.last <= reg0.last;
+						streamOut.keep <= reg0.keep;
+						streamOut.data <= reg0.data;
+					else
+						streamOut.last <= streamIn.last;
+						streamOut.keep <= streamIn.keep;
+						streamOut.data <= streamIn.data;
+					end if;
+				end if;
+			end if;
+		end if;
+	end process;
 end;

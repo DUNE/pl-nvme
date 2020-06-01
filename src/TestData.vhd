@@ -5,13 +5,13 @@
 --! @class	TestData
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-12
---! @version	0.5.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This module provides a simple test data source for testing the NvmeStorage system.
 --!
 --! @details
---! This module provides a sequence of 32bit incrementing values over a n bit wide AXI4 stream (multiple of 32 bits).
+--! This module provides a sequence of 32bit incrementing values over a <n> bit wide AXI4 stream (multiple of 32 bits).
 --! It sets the AXI4 streams last signal in the last word transfer of a configurable BlockSize block of data.
 --! the enable signal enables its operation and when set to 0 clears its state back to intial reset state.
 --!

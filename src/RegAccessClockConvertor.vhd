@@ -5,17 +5,20 @@
 --! @class	RegAccessClockConvertor
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-18
---! @version	0.0.1
+--! @version	1.0.0
 --!
 --! @brief
 --! This module passes register access signals across a clock domain
 --!
 --! @details
---! This is a very simple, low utilisation clock domain crossing unit for the register interface.
+--! This is a very simple, low utilisation, clock domain crossing unit for the register interface.
 --! It is designed to work with asynchronous clocks of the same frequency.
 --! It assumes the write signal is delayed by 1 cycle from the address and data transitions to
 --! make sure all bits are stable before the actual register write.
---! For reads you need to wait 5 cycles.
+--! For reads you need to wait 6 cycles for the read data to be latched and sent across the clock
+--! domains.
+--! Note this module requires appropriate timing constraints for the CDC applied. This would normally
+--! a set_max_delay or set_false_path constraint on the timing to the sendCdcReg1 and recvCdcReg1 registers.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
@@ -54,7 +57,7 @@ port (
 	clk2		: in std_logic;				--! The interface clock line
 	reset2		: in std_logic;				--! The active high reset line
 
-	regWrite2	: out std_logic;				--! Enable write to register
+	regWrite2	: out std_logic;			--! Enable write to register
 	regAddress2	: out unsigned(5 downto 0);		--! Register to read/write
 	regDataIn2	: out std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut2	: in std_logic_vector(31 downto 0)	--! Register contents
@@ -92,6 +95,7 @@ attribute async_reg	of recvCdcReg1 : signal is "true";
 attribute async_reg	of recvCdcReg2 : signal is "true";
 
 begin
+	--! The send process
 	regWrite2	<= sendCdcReg2(38);
 	regAddress2	<= unsigned(sendCdcReg2(37 downto 32));
 	regDataIn2	<= sendCdcReg2(31 downto 0);
@@ -112,6 +116,7 @@ begin
 		end if;
 	end process;
 
+	--! The receive process
 	regDataOut1 <= recvCdcReg2;
 
 	process(clk1)

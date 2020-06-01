@@ -5,7 +5,7 @@
 --! @class	StreamSwitch
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-04-08
---! @version	0.2
+--! @version	1.0.0
 --!
 --! @brief
 --! This module implements a PCIe packet switch transfering packets between streams.
@@ -16,10 +16,13 @@
 --! It expects Xilinx PCIe Gen3 PCIe packet headers to be used.
 --! Packets are switched based on the address fields bits 27 downto 24 in the case of request packets
 --! and on the requesterId field in the case of replies.
+--! A special bit, 29, is set in the reply header to indicate that the packet is a reply type.
 --! The switch uses a priority based on the input stream number, with 0 being the highest priority.
 --! When the switch sees a valid signal on one of the streams and its desitation stream is ready then
 --! the switch will send a complete packet, using the "last" signal to denote the end of packet.
 --! Note this simple implementation can only send one packet at a time.
+--! This simple switch only allows one packet to be transfered at a time and uses unregistered outputs
+--! to reduce latency.
 --!
 --! @copyright GNU GPL License
 --! Copyright (c) Beam Ltd, All rights reserved. <br>
