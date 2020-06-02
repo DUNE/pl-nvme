@@ -57,9 +57,11 @@
 #include <sys/ioctl.h>
 #include <bfpga_driver/bfpga.h>
 
-const Bool	UseQueueEngine = 1;			///< Use the FPGA queue engine implementation
+const Bool	UseFpgaConfigure = 0;			///< Expect the NvmeStorage module to have configured the Nvme's
 const Bool	UseConfigEngine = 0;			///< Use the FPGA configuration engine
+const Bool	UseQueueEngine = 1;			///< Use the FPGA queue engine implementation
 const BUInt	PcieMaxPayloadSize = 32;		///< The Pcie maximim packet payload in 32bit DWords
+const BUInt	BlockSize = 4096;			///< The NvmeStorage block size in bytes
 
 const BUInt	RegIdent		= 0x000;	///< The ident and version
 const BUInt	RegControl		= 0x004;	///< The control register
@@ -138,6 +140,7 @@ public:
 	void		close();
 
 	void		setNvme(BUInt n);
+	BUInt		getNvme();
 	void		reset();
 
 	// Send a queued request to the NVMe
@@ -145,6 +148,7 @@ public:
 	
 	// NVMe process received requests thread
 	int		nvmeProcess();
+	virtual void	nvmeDataPacket(NvmeRequestPacket& packet);			///< Called when read data packet received
 	
 	// NvmeStorage units register access
 	BUInt32		readNvmeStorageReg(BUInt32 address);

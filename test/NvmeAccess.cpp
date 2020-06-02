@@ -175,24 +175,11 @@ void NvmeAccess::setNvme(BUInt n){
 		onvmeRegbase = 0x000;
 }
 
-#ifdef ZAP
-void NvmeAccess::reset(){
-	BUInt32	data;
-
-	dl1printf("NvmeAccess::reset\n");
-	writeNvmeStorageReg(4, 0x00000001);
-
-	data = 1;
-	while(data & 3){
-		data = readNvmeStorageReg(8);
-		usleep(1000);
-	}
-	usleep(100000);
-
-	data = 0x06;
-	pcieWrite(10, 4, 1, &data);			///< Set PCIe config command for memory accesses
+BUInt NvmeAccess::getNvme(){
+	return onvmeNum;
 }
-#else
+
+#if LDEBUG1
 void NvmeAccess::reset(){
 	BUInt32	data;
 	double	ts, te;
@@ -227,9 +214,28 @@ void NvmeAccess::reset(){
 		usleep(100000);
 		printf("Last status was: %8.8x\n", data);
 	}
+	usleep(100000);
+}
+#else
+void NvmeAccess::reset(){
+	BUInt32	data;
+
+	dl1printf("NvmeAccess::reset\n");
+	writeNvmeStorageReg(4, 0x00000001);
+
+	if(UseFpgaConfigure){
+		data = 1;
+		while(data & 3){
+			data = readNvmeStorageReg(8);
+			usleep(1000);
+		}
+	}
 	else {
-		data = 0x06;
-		pcieWrite(10, 4, 1, &data);			///< Set PCIe config command for memory accesses
+		data = 1;
+		while(data & 1){
+			data = readNvmeStorageReg(8);
+			usleep(1000);
+		}
 	}
 	usleep(100000);
 }
@@ -359,6 +365,8 @@ int NvmeAccess::nvmeProcess(){
 		if(request.request == 0){
 			// PCIe Read requests
 			dl3printf("NvmeAccess::nvmeProcess: Read memory: address: %8.8x nWords: %d\n", request.address, request.numWords);
+			printf("NvmeAccess::nvmeProcess: Read memory: address: %8.8x nWords: %d\n", request.address, request.numWords);
+
 			if((request.address & 0x00FF0000) == 0x00000000){
 				data = oqueueAdminMem;
 			}
@@ -451,10 +459,12 @@ int NvmeAccess::nvmeProcess(){
 
 				memcpy(&odataBlockMem[(request.address & 0x0000FFFF) / 4], request.data, request.numWords * 4);
 			}
-			else if((request.address & 0x00FF0000) == 0x00F00000){
-				printf("NvmeAccess::nvmeProcess: Write: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), nWords);
-				memcpy(&odataBlockMem[(request.address & 0x0000FFFF) / 4], request.data, request.numWords * 4);
-				bhd32(odataBlockMem, request.numWords);
+			else if((request.address & 0x00F00000) == 0x00F00000){
+				dl3printf("NvmeAccess::nvmeProcess: Write: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), nWords);
+
+				//memcpy(&odataBlockMem[(request.address & 0x00000FFF) / 4], request.data, request.numWords * 4);
+				//dl3hd32(odataBlockMem, request.numWords);
+				nvmeDataPacket(request);
 			}
 			else {
 				printf("NvmeAccess::nvmeProcess: Write data: unknown address: 0x%8.8x\n", request.address);
@@ -471,6 +481,9 @@ int NvmeAccess::nvmeProcess(){
 	}
 
 	return 0;
+}
+
+void NvmeAccess::nvmeDataPacket(NvmeRequestPacket& packet){
 }
 
 BUInt32 NvmeAccess::readNvmeStorageReg(BUInt32 address){
@@ -540,10 +553,6 @@ int NvmeAccess::pcieWrite(BUInt8 request, BUInt32 address, BUInt32 num, BUInt32*
 		dl2hd32(&opacketReply, 3 + opacketReply.numWords);
 		if(opacketReply.error)
 			return opacketReply.error;
-	}
-	else {
-		// Not sure why this is needed ?
-		//usleep(1000);
 	}
 	
 	return 0;

@@ -32,6 +32,8 @@
 
 #include <BeamLibBasic.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <sys/time.h>
 
@@ -84,6 +86,111 @@ int BSemaphore::getValue() const {
 	return v;
 }
 
+// Simple Byte Fifo implementation
+
+// The BFifoBytes functions
+BFifoBytes::BFifoBytes(BUInt size){
+	osize = size;
+	odata = new char [osize];
+	owritePos = 0;
+	oreadPos = 0;
+}
+
+BFifoBytes::~BFifoBytes(){
+	delete [] odata;
+	odata = 0;
+	osize = 0;
+	owritePos = 0;
+	oreadPos = 0;
+}
+
+void BFifoBytes::clear(){
+	owritePos = 0;
+	oreadPos = 0;
+}
+
+BUInt BFifoBytes::size(){
+	return osize;
+}
+
+int BFifoBytes::resize(BUInt size){
+	int	err = 0;
+	
+	delete [] odata;
+	osize = size;
+	odata = new char [osize];
+	owritePos = 0;
+	oreadPos = 0;
+	
+	return err;
+}
+
+BUInt BFifoBytes::writeAvailable(){
+	BUInt	readPos = oreadPos;
+
+	if(readPos <= owritePos)
+		return osize - owritePos + readPos - 1;
+	else
+		return (readPos - owritePos - 1);
+}
+
+int BFifoBytes::write(const void* data, BUInt num){
+	int	err = 0;
+	char*	d = (char*)data;
+	BUInt	nt;
+
+	while(num){
+		nt = num;
+		if(nt > (osize - owritePos))
+			nt = (osize - owritePos);
+		
+		memcpy(&odata[owritePos], d, nt);
+
+		if((owritePos + nt) == osize)
+			owritePos = 0;
+		else
+			owritePos += nt;
+
+		d += nt;
+		num -= nt;
+	}
+		
+	return err;
+}
+
+BUInt BFifoBytes::readAvailable(){
+	BUInt		writePos = owritePos;
+	
+	if(oreadPos <= writePos)
+		return writePos - oreadPos;
+	else
+		return osize - oreadPos + writePos;
+}
+
+int BFifoBytes::read(void* data, BUInt num){
+	int	err = 0;
+	char*	d = (char*)data;
+	BUInt	nt;
+
+	while(num){
+		nt = num;
+		if(nt > (osize - oreadPos))
+			nt = (osize - oreadPos);
+		
+		memcpy(d, &odata[oreadPos], nt);
+
+		if((oreadPos + nt) == osize)
+			oreadPos = 0;
+		else
+			oreadPos += nt;
+
+		d += nt;
+		num -= nt;
+	}
+
+	return err;
+}
+
 
 
 void tprintf(const char* fmt, ...){
@@ -110,7 +217,8 @@ void bhd8(void* data, BUInt32 n){
 		if((i & 0xF) == 0xF)
 			printf("\n");
 	}
-	printf("\n");
+	if(n % 16)
+		printf("\n");
 }
 
 void bhd32(void* data, BUInt32 n){
@@ -122,7 +230,8 @@ void bhd32(void* data, BUInt32 n){
 		if((i & 0x7) == 0x7)
 			printf("\n");
 	}
-	printf("\n");
+	if(n % 8)
+		printf("\n");
 }
 
 void bhd32a(void* data, BUInt32 n){
@@ -140,7 +249,7 @@ void bhd32a(void* data, BUInt32 n){
 		a += 4;
 	}
 	
-	if(n % 16)
+	if(n % 8)
 		printf("\n");
 }
 

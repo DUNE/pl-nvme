@@ -70,7 +70,8 @@ signal nvmeNumber	: std_logic;
 type MuxStateType	is (MUX_STATE_START, MUX_STATE_SENDPACKET0, MUX_STATE_SENDPACKET1);
 signal muxState		: MuxStateType := MUX_STATE_START;
 signal muxReply		: std_logic;
-signal nvme1Stream	: std_logic;
+signal nvmeStream	: std_logic;
+signal nvmeStream0Last	: std_logic;
 signal nvme1StreamData	: std_logic_vector(127 downto 0);
 
 begin
@@ -132,41 +133,42 @@ begin
 	end process;
 	
 	
-	-- Multiplex streams. Sets the Nvme number to 1 in the Nvme1 reply streams in appropriate location for request and reply packets
-	nvme1Stream <= '1' when(((muxState = MUX_STATE_START) and (nvme1In.valid = '1')) or (muxState = MUX_STATE_SENDPACKET1)) else '0';
+	-- Multiplex streams. Sets the Nvme number based on if streams have valid status and toggling between streams to give a fair share
+	nvmeStream <= '0' when(((muxState = MUX_STATE_START) and (nvme0In.valid = '1') and (nvmeStream0Last = '0')) or (muxState = MUX_STATE_SENDPACKET0)) else '1';
 
 	nvme1StreamData <= nvme1In.data(127 downto 81) & '1' & nvme1In.data(79 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '1'))
 		else nvme1In.data(127 downto 32) & x"1" & nvme1In.data(27 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '0'))
 		else nvme1In.data;
 	
-	hostOut.valid <= nvme0In.valid when(nvme1Stream = '0') else nvme1In.valid;
-	hostOut.last <= nvme0In.last when(nvme1Stream = '0') else nvme1In.last;
-	hostOut.keep <= nvme0In.keep when(nvme1Stream = '0') else nvme1In.keep;
-	hostOut.data <= nvme0In.data when(nvme1Stream = '0')  else nvme1StreamData;
+	hostOut.valid <= nvme0In.valid when(nvmeStream = '0') else nvme1In.valid;
+	hostOut.last <= nvme0In.last when(nvmeStream = '0') else nvme1In.last;
+	hostOut.keep <= nvme0In.keep when(nvmeStream = '0') else nvme1In.keep;
+	hostOut.data <= nvme0In.data when(nvmeStream = '0')  else nvme1StreamData;
 
-	nvme0In.ready <= hostOut.ready when(nvme1Stream = '0') else '0';
-	nvme1In.ready <= hostOut.ready when(nvme1Stream = '1') else '0';
+	nvme0In.ready <= hostOut.ready when(nvmeStream = '0') else '0';
+	nvme1In.ready <= hostOut.ready when(nvmeStream = '1') else '0';
 
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				muxState <= MUX_STATE_START;
+				nvmeStream0Last	<= '0';
+				muxState	<= MUX_STATE_START;
 			else
 				case(muxState) is
 				when MUX_STATE_START =>
-					if((nvme0In.valid = '1') and (hostOut.ready = '1')) then
-						if(nvme0In.last = '1') then
-							muxState <= MUX_STATE_START;
-						else
+					if((nvme0In.valid = '1') and (nvme0In.ready = '1')) then
+						nvmeStream0Last	<= '1';
+						if(nvme0In.last = '0') then
 							muxState <= MUX_STATE_SENDPACKET0;
 						end if;
-					elsif((nvme1In.valid = '1') and (hostOut.ready = '1')) then
-						if(nvme1In.last = '1') then
-							muxState <= MUX_STATE_START;
-						else
+					elsif((nvme1In.valid = '1') and (nvme1In.ready = '1')) then
+						nvmeStream0Last	<= '0';
+						if(nvme1In.last = '0') then
 							muxState <= MUX_STATE_SENDPACKET1;
 						end if;
+					elsif((nvme0In.valid = '1') and (nvme1In.valid = '0')) then
+						nvmeStream0Last <= '0';
 					end if;
 
 				when MUX_STATE_SENDPACKET0 =>

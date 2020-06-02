@@ -47,6 +47,7 @@
 #include <NvmeAccess.h>
 #include <stdio.h>
 #include <getopt.h>
+#include <stdarg.h>
 
 #define VERSION		"0.0.1"
 
@@ -57,9 +58,22 @@ public:
 			~Control();
 
 	int		init();					///< Initialise
+	void		setStartBlock(BUInt32 startBlock);	///< Set the starting block number
+	void		setNumBlocks(BUInt32 numBlocks);	///< Set the number of blocks to operate on
+	void		setFilename(const char* filename);	///< Set the file name for read data
 
+	int		nvmeInit();				///< Reset and configure Nvme's for operation
+	int		nvmeConfigure();			///< Configure single Nvme for operation
+	void		nvmeDataPacket(NvmeRequestPacket& packet);	///< Called when read data packet receiver
+
+	// Normal test functions
+	int		nvmeProcess();				///< Process FPGA datastream writing to Nvme
+	int		nvmeTrim();				///< Trim blocks on Nvme
+	int		nvmeWrite();				///< Write blocks to Nvme
+	int		nvmeRead();				///< Read blocks from Nvme
+
+	// Basic/Raw test functions
 	int		test1();				///< Run test1
-	int		configureNvme();			///< Configure Nvme for operation
 	int		test2();				///< Run test2
 	int		test3();				///< Run test3
 	int		test4();				///< Run test4
@@ -69,19 +83,36 @@ public:
 	int		test8();				///< Run test8
 	int		test9();				///< Run test9
 	int		test10();				///< Run test10
-
 	int		test_misc();				///< Collection of misc tests
 
+	// Support functions
+	void		uprintf(const char* fmt, ...);		///< User verbose printf
+	int		validateBlock(BUInt32 blockNum, void* data);	///< Validate a data block
+	void		dumpDataBlock(void* data, Bool full);	///< Print out a data blocks contents
 	void		dumpNvmeRegisters();			///< Dump the Nvme registers to stdout
 
 public:
 	// Params
-	Bool		overbose;
-	NvmeAccess	onvmeAccess;
+	Bool		overbose;				///< Verbose operation
+	Bool		ovalidate;				///< Validate data
+	BUInt32		ostartBlock;				///< The starting block number
+	BUInt32		onumBlocks;				///< The number of blocks
+	const char*	ofilename;				///< Output file name
+	
+	BFifoBytes	ofifo0;					///< Fifo for Nvme0 read data
+	BFifoBytes	ofifo1;					///< Fifo for Nvme1 read data
+	BUInt32		oblockNum;				///< The output block number
+	BUInt8		odataBlock[BlockSize];			///< Data block's from NVme's
+	BSemaphore	oreadComplete;				///< The read process is complete
 };
 
-Control::Control(){
+Control::Control() : ofifo0(1024*1024), ofifo1(1024*1024){
 	overbose = 0;
+	ovalidate = 1;
+	ostartBlock = 0;
+	onumBlocks = 1;
+	ofilename = 0;
+	oblockNum = 0;
 }
 
 Control::~Control(){
@@ -91,49 +122,73 @@ int Control::init(){
 	return NvmeAccess::init();
 }
 
-int Control::test1(){
-	BUInt32	data[8];
-
-	printf("Test1: Simple PCIe command register read, write and read.\n");
-
-	printf("Configure PCIe for memory accesses\n");
-	pcieRead(8, 4, 1, data);
-	dl1printf("Commandreg: %8.8x\n", data[0]);
-
-	data[0] |= 6;
-	pcieWrite(10, 4, 1, data);
-
-	pcieRead(8, 4, 1, data);
-	dl1printf("Commandreg: %8.8x\n", data[0]);
-
-	printf("Complete\n");
-
-	return 0;
+void Control::setStartBlock(BUInt32 startBlock){
+	ostartBlock = startBlock;
 }
 
-int Control::configureNvme(){
-	int	e;
-	BUInt32	data;
-	BUInt32	cmd0;
+void Control::setNumBlocks(BUInt32 numBlocks){
+	onumBlocks = numBlocks;
+}
 
-	printf("Configure Nvme for operation\n");
+void Control::setFilename(const char* filename){
+	ofilename = filename;
+}
+
+int Control::nvmeInit(){
+	int	e;
+	
+	printf("Initialise Nvme's for operation\n");
 	
 	// Perform reset
 	reset();
 
+	if(!UseFpgaConfigure){
+		if(onvmeNum == 2){
+			setNvme(0);
+			if(e = nvmeConfigure())
+				return e;
+
+			setNvme(1);
+			if(e = nvmeConfigure())
+				return e;
+
+			setNvme(2);
+		}
+		else {
+			e = nvmeConfigure();
+		}
+	}
+	
+	return e;
+}
+
+int Control::nvmeConfigure(){
+	int	e;
+	BUInt32	data;
+	BUInt32	cmd0;
+
+	uprintf("nvmeConfigure: Configure Nvme %u for operation\n", onvmeNum);
+	
 #ifdef ZAP
 	dumpNvmeRegisters();
 	return 0;
 #endif
 
-#ifndef ZAP
 	if(UseConfigEngine){	
-		printf("Start configuration\n");
+		uprintf("Start configuration\n");
 		writeNvmeStorageReg(4, 0x00000002);
-		usleep(100000);
-		printf("Waited 100ms: Status: %8.8x\n", readNvmeStorageReg(RegStatus));
+
+		data = 2;
+		while(data & 2){
+			data = readNvmeStorageReg(8);
+			usleep(1000);
+		}
+		uprintf("Configuration complete: Status: %8.8x\n", readNvmeStorageReg(RegStatus));
 	}
 	else {
+		data = 0x06;
+		pcieWrite(10, 4, 1, &data);			///< Set PCIe config command for memory accesses
+
 #ifdef ZAP
 		// Setup Max payload, hardcoded for Seagate Nvme
 		pcieRead(8, 4, 1, &data);
@@ -169,143 +224,94 @@ int Control::configureNvme(){
 		// Stop controller
 		if(e = writeNvmeReg32(0x14, 0x00460000)){
 			printf("Error: %d\n", e);
-			return 1;
+			return e;
 		}
 		usleep(10000);
 
 		// Setup Nvme registers
 		// Disable interrupts
 		if(e = writeNvmeReg32(0x0C, 0xFFFFFFFF)){
-			printf("Error: %d\n", e);
-			return 1;
+			return e;
 		}
 
 		// Admin queue lengths
 		if(e = writeNvmeReg32(0x24, ((oqueueNum - 1) << 16) | (oqueueNum - 1))){
-			printf("Error: %d\n", e);
-			return 1;
+			return e;
 		}
 
 		if(UseQueueEngine){
 			// Admin request queue base address
 			if(e = writeNvmeReg64(0x28, 0x02000000)){
-				printf("Error: %d\n", e);
-				return 1;
+				return e;
 			}
 
 			// Admin reply queue base address
 			//if(e = writeNvmeReg64(0x30, 0x01100000)){		// Get replies sent directly to host
 			if(e = writeNvmeReg64(0x30, 0x02100000)){		// Get replies sent via QueueEngine
-				printf("Error: %d\n", e);
-				return 1;
+				return e;
 			}
 		}
 		else {
 			// Admin request queue base address
 			if(e = writeNvmeReg64(0x28, 0x01000000)){
-				printf("Error: %d\n", e);
-				return 1;
+				return e;
 			}
 
 			// Admin reply queue base address
 			if(e = writeNvmeReg64(0x30, 0x01100000)){
-				printf("Error: %d\n", e);
-				return 1;
+				return e;
 			}
 		}
 
 		// Start controller
 		if(e = writeNvmeReg32(0x14, 0x00460001)){
-			printf("Error: %d\n", e);
-			return 1;
+			return e;
 		}
+		
+		// Wait for Nvme to start
 		usleep(100000);
 
 		//dumpNvmeRegisters();
 
 		cmd0 = ((oqueueNum - 1) << 16);
 
-#ifdef ZAP
-		// Test the queue engine
-		printf("Create/delete IO queue 1 for replies repeatidly\n");
-
-		if(UseQueueEngine){
-			for(int c = 0; c < 10; c++){
-				printf("Do: %d\n", c);
-
-				nvmeRequest(0, 0, 0x05, 0x02110000, cmd0 | 1, 0x00000001);
-				sleep(1);
-
-				nvmeRequest(0, 0, 0x04, 0x02110000, cmd0 | 1, 0x00000001);
-				sleep(1);
-			}
-		}
-		else {
-			for(int c = 0; c < 10; c++){
-				printf("Do: %d\n", c);
-
-				nvmeRequest(0, 0, 0x05, 0x00110000, cmd0 | 1, 0x00000001);
-				sleep(1);
-
-				nvmeRequest(0, 0, 0x04, 0x00110000, cmd0 | 1, 0x00000001);
-				sleep(1);
-			}
-		}
-		return 0;
-#endif
-
 		if(UseQueueEngine){
 			// Create an IO queue
-			if(overbose)
-				printf("Create IO queue 1 for replies\n");
-
+			uprintf("Create IO queue 1 for replies\n");
 			nvmeRequest(1, 0, 0x05, 0x02110000, cmd0 | 1, 0x00000001);
 
 			// Create an IO queue
-			if(overbose)
-				printf("Create IO queue 1 for requests\n");
-
+			uprintf("Create IO queue 1 for requests\n");
 			nvmeRequest(1, 0, 0x01, 0x02010000, cmd0 | 1, 0x00010001);
 
 			// Create an IO queue
-			if(overbose)
-				printf("Create IO queue 2 for replies\n");
-
+			uprintf("Create IO queue 2 for replies\n");
 			nvmeRequest(1, 0, 0x05, 0x02120000, cmd0 | 2, 0x00000001);
 
 			// Create an IO queue
-			if(overbose)
-				printf("Create IO queue 1 for requests\n");
-
+			uprintf("Create IO queue 2 for requests\n");
 			nvmeRequest(1, 0, 0x01, 0x02020000, cmd0 | 2, 0x00020001);
 		}
 		else {
 			// Create an IO queue
-			if(overbose)
-				printf("Create IO queue 1 for replies\n");
-
+			uprintf("Create IO queue 1 for replies\n");
 			nvmeRequest(1, 0, 0x05, 0x01110000, cmd0 | 1, 0x00000001);
 
 			// Create an IO queue
-			if(overbose)
-				printf("Create IO queue 1 for requests\n");
-
+			uprintf("Create IO queue 1 for requests\n");
 			nvmeRequest(1, 0, 0x01, 0x01010000, cmd0 | 1, 0x00010001);
 
 			// Create an IO queue
-			if(overbose)
-				printf("Create IO queue 2 for replies\n");
-
+			uprintf("Create IO queue 2 for replies\n");
 			nvmeRequest(1, 0, 0x05, 0x01120000, cmd0 | 2, 0x00000001);
 
 			// Create an IO queue
-			if(overbose)
-				printf("Create IO queue 2 for requests\n");
-
+			uprintf("Create IO queue 2 for requests\n");
 			nvmeRequest(1, 0, 0x01, 0x01020000, cmd0 | 2, 0x00020001);
 		}
 	}
-#endif
+
+	// Make sure all is settled
 	usleep(100000);
 
 	//dumpNvmeRegisters();
@@ -313,11 +319,214 @@ int Control::configureNvme(){
 	return 0;
 }
 
+
+
+
+void Control::nvmeDataPacket(NvmeRequestPacket& packet){
+	//printf("Control::nvmeDataPacket: Address: %x\n", packet.address);
+	//bhd32(packet.data, packet.numWords);
+
+	// This assumes the PcieWrites are in order
+	if(packet.address & 0xF0000000){
+		// Nvme 1
+		ofifo1.write(packet.data, packet.numWords * 4);
+	}
+	else {
+		// Nvme 0
+		ofifo0.write(packet.data, packet.numWords * 4);
+	}
+
+	// Output data blocks from FIFO's	
+	while((ofifo0.readAvailable() >= BlockSize) && (ofifo1.readAvailable() >= BlockSize)){
+		ofifo0.read(odataBlock, BlockSize);
+		if(overbose){
+			printf("Block: %u\n", oblockNum);
+			dumpDataBlock(odataBlock, 0);
+		}
+		if(ovalidate){
+			if(validateBlock(oblockNum, odataBlock)){
+				printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
+				dumpDataBlock(odataBlock, 1);
+				exit(1);
+			}
+		}
+		
+		oblockNum++;
+
+		ofifo1.read(odataBlock, BlockSize);
+		if(overbose){
+			printf("Block: %u\n", oblockNum);
+			dumpDataBlock(odataBlock, 0);
+		}
+		if(ovalidate){
+			if(validateBlock(oblockNum, odataBlock)){
+				printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
+				dumpDataBlock(odataBlock, 1);
+				exit(1);
+			}
+		}
+
+		oblockNum++;
+	}
+	
+	if(oblockNum >= (ostartBlock + onumBlocks))
+		oreadComplete.set();
+}
+
+int Control::nvmeProcess(){
+	int	e;
+	BUInt32	n;
+	BUInt32	t;
+	double	r;
+	double	ts;
+	
+	printf("nvmeProcess: Write FPGA data stream to Nvme devices\n");
+
+	// Initialise Nvme devices
+	if(e = nvmeInit())
+		return e;
+
+	//dumpRegs();
+	
+	// Set number of blocks to write
+	writeNvmeStorageReg(RegDataChunkStart, ostartBlock);
+	writeNvmeStorageReg(RegDataChunkSize, onumBlocks);
+	//dumpRegs();
+	
+	// Start off NvmeWrite engine
+	uprintf("Start NvmeWrite engine\n");
+	writeNvmeStorageReg(4, 0x00000004);
+
+	ts = getTime();
+	n = 0;
+	while(n != onumBlocks){
+		n = readNvmeStorageReg(RegWriteNumBlocks);
+		uprintf("NvmeWrite: numBlocks: %u\n", n);
+		usleep(100000);
+	}
+
+	printf("Time was: %f\n", getTime() - ts);
+	printf("Stats\n");
+	dumpRegs(0);
+	dumpRegs(1);
+
+	n = readNvmeStorageReg(RegWriteNumBlocks);
+	t = readNvmeStorageReg(RegWriteTime);
+	r = ((double(BlockSize) * n) / (1e-6 * t));
+	printf("NvmeWrite: rate:      %f MBytes/s\n", r / (1024 * 1024));
+
+	return 0;
+}
+
+int Control::nvmeRead(){
+	int	e;
+	BUInt32	block = 0;
+	BUInt32	numBlocks = 8;
+	double	r;
+	double	ts;
+	double	te;
+	
+	printf("NvmeRead: nvme: %u startBlock: %u numBlocks: %u\n",onvmeNum, ostartBlock, onumBlocks);
+	
+	if(e = nvmeInit())
+		return e;
+
+	oblockNum = ostartBlock;
+	memset(odataBlock, 0x0, sizeof(odataBlock));
+
+	if(onvmeNum == 2){
+		writeNvmeStorageReg(RegReadBlock, ostartBlock / 2);
+		writeNvmeStorageReg(RegReadNumBlocks, onumBlocks / 2);
+	}
+	else {
+		writeNvmeStorageReg(RegReadBlock, ostartBlock);
+		writeNvmeStorageReg(RegReadNumBlocks, onumBlocks);
+	}
+	
+	if(overbose)
+		dumpRegs();
+	
+	// Start off NvmeRead engine
+	uprintf("Start NvmeRead engine\n");
+	ts = getTime();
+	writeNvmeStorageReg(RegReadControl, 0x00000001);
+
+	if(overbose){
+		setNvme(0);
+		dumpRegs();
+		setNvme(1);
+		dumpRegs();
+	}
+
+	// Wait for complete
+	oreadComplete.wait();
+	te = getTime();
+	
+	printf("Time: %f\n", te - ts);
+
+	r = ((double(BlockSize) * onumBlocks) / (te - ts));
+	printf("NvmeRead: rate:      %f MBytes/s\n", r / (1024 * 1024));
+	
+	printf("Complete\n"); fflush(stdout);
+
+	return 0;
+}
+
+int Control::nvmeWrite(){
+	return 0;
+}
+
+int Control::nvmeTrim(){
+	int	e;
+	BUInt32	block;
+	BUInt	trimBlocks = 32768;
+
+	printf("NvmeTrim: nvme: %u startBlock: %u numBlocks: %u\n",onvmeNum, ostartBlock, onumBlocks);
+	
+	if(e = nvmeInit())
+		return e;
+
+	for(block = 0; block < onumBlocks; block += (trimBlocks/8)){
+		if(onvmeNum == 2){
+			setNvme(0);
+			nvmeRequest(1, 1, 0x08, 0x00000000, block * 8, 0x00000000, (1 << 25) | trimBlocks-1);	// Perform trim of 32k 512 Byte blocks
+			setNvme(1);
+			nvmeRequest(1, 1, 0x08, 0x00000000, block * 8, 0x00000000, (1 << 25) | trimBlocks-1);	// Perform trim of 32k 512 Byte blocks
+		}
+		else {
+			nvmeRequest(1, 1, 0x08, 0x00000000, block * 8, 0x00000000, (1 << 25) | trimBlocks-1);	// Perform trim of 32k 512 Byte blocks
+		}
+	}
+
+	return 0;
+}
+
+
+int Control::test1(){
+	BUInt32	data[8];
+
+	printf("Test1: Simple PCIe command register read, write and read.\n");
+
+	printf("Configure PCIe for memory accesses\n");
+	pcieRead(8, 4, 1, data);
+	dl1printf("Commandreg: %8.8x\n", data[0]);
+
+	data[0] |= 6;
+	pcieWrite(10, 4, 1, data);
+
+	pcieRead(8, 4, 1, data);
+	dl1printf("Commandreg: %8.8x\n", data[0]);
+
+	printf("Complete\n");
+
+	return 0;
+}
+
 int Control::test2(){
 	int	e;
 	
 	printf("Test2: Configure Nvme\n");
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	//dumpNvmeRegisters();
@@ -330,7 +539,7 @@ int Control::test3(){
 	
 	printf("Test3: Get info from Nvme\n");
 
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	printf("Get info\n");
@@ -350,7 +559,7 @@ int Control::test4(){
 	printf("Test4: Read blocks\n");
 	//onvmeNum = 2;
 	
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	printf("Perform block read\n");
@@ -408,7 +617,7 @@ int Control::test5(){
 	
 	printf("Test5: Write blocks\n");
 	
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	srand(time(0));
@@ -439,11 +648,11 @@ int Control::test6(){
 	printf("Test6: Enable FPGA write blocks\n");
 
 	setNvme(0);
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	setNvme(1);
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	setNvme(2);
@@ -535,7 +744,7 @@ int Control::test7(){
 	
 	printf("Test7: Validate 4k blocks\n");
 	
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	v = 0;
@@ -565,7 +774,7 @@ int Control::test8(){
 
 	printf("Test8: Trim Nvme\n");
 	
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	for(block = 0; block < numBlocks; block += (maxBlocks/8)){
@@ -631,12 +840,12 @@ int Control::test10(){
 	
 	printf("Test10: Read blocks using NvmeRead functionality\n");
 
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	//dumpRegs();
 	
-	// Set number of blocks to write
+	// Set number of blocks to read
 	writeNvmeStorageReg(RegReadBlock, 0);
 	writeNvmeStorageReg(RegReadNumBlocks, numBlocks);
 	dumpRegs();
@@ -664,7 +873,7 @@ int Control::test_misc(){
 
 	printf("Test_misc: Collection of misc tests\n");
 	
-	if(e = configureNvme())
+	if(e = nvmeInit())
 		return e;
 
 	printf("Get info\n");
@@ -695,6 +904,43 @@ int Control::test_misc(){
 	return 0;
 }
 
+void Control::uprintf(const char* fmt, ...){
+	va_list		args;
+	
+	if(overbose){
+		va_start(args, fmt);
+		
+		vprintf(fmt, args);
+	}
+}
+
+int Control::validateBlock(BUInt32 blockNum, void* data){
+	BUInt32*	d = (BUInt32*)data;
+	BUInt		w;
+	
+	for(w = 0; w < BlockSize / 4; w++){
+		if(d[w] != ((blockNum * BlockSize / 4) + w)){
+			printf("Validate Error: Block: %u Position: %u 0x%8.8x !- 0x%8.8x\n", blockNum, w, d[w], ((blockNum * BlockSize / 4) + w));
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
+void Control::dumpDataBlock(void* data, Bool full){
+	char*	d = (char*)data;
+	
+	if(full){
+		bhd32(data, BlockSize/4);
+	}
+	else {
+		bhd32(data, 8);
+		printf("...\n");
+		bhd32(&d[BlockSize - (8*4)], 8);
+	}
+}
+
 void Control::dumpNvmeRegisters(){
 	int	e;
 	BUInt	a;
@@ -710,24 +956,30 @@ void Control::dumpNvmeRegisters(){
 	}
 }
 
-
-
 void usage(void) {
 	fprintf(stderr, "test_nvme: Version: %s\n", VERSION);
 	fprintf(stderr, "Usage: test_nvme [options] <testname>\n");
 	fprintf(stderr, "This program provides the ability perform access tests to an Nvme device on a FPGA development board\n");
 	fprintf(stderr, " -help,-h              - Help on command line parameters\n");
 	fprintf(stderr, " -v                    - Verbose\n");
+	fprintf(stderr, " -no-validate          - Disable data validation\n");
 	fprintf(stderr, " -l                    - List tests\n");
-	fprintf(stderr, " -n <nvmeNum>          - Operate on: 0: Nvme0, 1: Nvme1, 2: Both Nvme's\n");
+	fprintf(stderr, " -d <nvmeNum>          - Nvme to operate on: 0: Nvme0, 1: Nvme1, 2: Both Nvme's (default)\n");
+	fprintf(stderr, " -s <block>            - The starting 4k block number (default is 0)\n");
+	fprintf(stderr, " -n <num>              - The number of blocks to read/write or trim (default is 1)\n");
+	fprintf(stderr, " -o <filename>         - The filename for output data.\n");
 }
 
 static struct option options[] = {
 		{ "h",			0, NULL, 0 },
 		{ "help",		0, NULL, 0 },
 		{ "v",			0, NULL, 0 },
+		{ "no-validate",	0, NULL, 0 },
 		{ "l",			0, NULL, 0 },
+		{ "d",			1, NULL, 0 },
+		{ "s",			1, NULL, 0 },
 		{ "n",			1, NULL, 0 },
+		{ "o",			1, NULL, 0 },
 		{ 0,0,0,0 }
 };
 int main(int argc, char** argv){
@@ -748,11 +1000,23 @@ int main(int argc, char** argv){
 		else if(!strcmp(s, "v")){
 			control.overbose = 1;
 		}
+		else if(!strcmp(s, "no-validate")){
+			control.ovalidate = 0;
+		}
 		else if(!strcmp(s, "l")){
 			listTests = 1;
 		}
-		else if(!strcmp(s, "n")){
+		else if(!strcmp(s, "d")){
 			control.setNvme(atoi(optarg));
+		}
+		else if(!strcmp(s, "s")){
+			control.setStartBlock(atoi(optarg));
+		}
+		else if(!strcmp(s, "n")){
+			control.setNumBlocks(atoi(optarg));
+		}
+		else if(!strcmp(s, "o")){
+			control.setFilename(optarg);
 		}
 		else {
 			fprintf(stderr, "Error: No option: %s\n", s);
@@ -761,13 +1025,23 @@ int main(int argc, char** argv){
 		}
 	}
 	
+	if(control.getNvme() == 2){
+		if(control.ostartBlock & 1){
+			fprintf(stderr, "Needs an even start block number when two Nvme's are being accessed\n");
+			return 1;
+		}
+		if(control.onumBlocks & 1){
+			fprintf(stderr, "Needs an even number of blocks when two Nvme's are being accessed\n");
+			return 1;
+		}
+	}
+	
 	if(listTests){
-		printf("test1: Simple PCIe command register read, write and read.\n");
-		printf("test2: Configure Nvme\n");
-		printf("test3: Get info from Nvme\n");
-		printf("test4: Read block\n");
-		printf("test5: Write block\n");
-		printf("test_misc: Collection of misc tests\n");
+		printf("process: Perform data input from FPGA TestData source into Nvme's.\n");
+		printf("read: Read data from Vvme's\n");
+		printf("write: Write data to Nvme's\n");
+		printf("trim: Trim/deallocate blocks on Nvme's\n");
+		printf("test*: Collection of misc programmed tests. See source code.\n");
 	}
 	else {
 		if((argc - optind) != 1){
@@ -781,7 +1055,21 @@ int main(int argc, char** argv){
 			return err;
 		}
 
-		if(!strcmp(test, "test1")){
+		if(!strcmp(test, "process")){
+			err = control.nvmeProcess();
+		}
+		else if(!strcmp(test, "read")){
+			err = control.nvmeRead();
+		}
+		else if(!strcmp(test, "write")){
+			err = control.nvmeWrite();
+		}
+		else if(!strcmp(test, "trim")){
+			err = control.nvmeTrim();
+		}
+		
+		// Basic programed tests
+		else if(!strcmp(test, "test1")){
 			err = control.test1();
 		}
 		else if(!strcmp(test, "test2")){

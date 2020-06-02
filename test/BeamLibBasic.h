@@ -94,6 +94,31 @@ private:
 	sem_t			osema;
 };
 
+// Simple Byte Fifo
+class BFifoBytes {
+public:
+			BFifoBytes(BUInt size);
+			~BFifoBytes();
+
+	void		clear();
+
+	BUInt		size();						///< Returns fifo size
+	int		resize(BUInt size);				///< Resize FIFO, clears it as well
+
+	BUInt		writeAvailable();				///< How many items that can be written
+	int		write(const void* data, BUInt num);		///< Write a set of items. Can only write a maximum of writeAvailableChunk() to save going beyond end of FIFO buffer
+
+	BUInt		readAvailable();				///< How many items are available to read
+	int		read(void* data, BUInt num);			///< Read a set of items
+
+protected:
+	BUInt		osize;						///< The size of the FIFO
+	char*		odata;						///< FIFO memory buffer
+	volatile BUInt	owritePos;					///< The write pointer
+	volatile BUInt	oreadPos;					///< The read pointer
+};
+
+
 void tprintf(const char* fmt, ...);
 void bhd8(void* data, BUInt32 n);
 void bhd32(void* data,BUInt32 n);

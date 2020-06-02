@@ -7,6 +7,8 @@
 PROG		= test_nvme
 OBJS		= test_nvme.o NvmeAccess.o BeamLibBasic.o
 
+#CXXFLAGS	+= -g
+CXXFLAGS	+= -O
 CXXFLAGS	+= -I.
 CXXFLAGS	+= -MMD
 LDLIBS		+= -lpthread
