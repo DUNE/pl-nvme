@@ -14,7 +14,8 @@ This directory contains the Dune NvmeStorage system that provides data storage o
 The directory contains the FPGA VHDL source code, VHDL simulation environment, build environment and test software for the NVME test FPGA firmware as well as the nvme_test host software.
 
 See the Readme.pdf file for more information as well as the
-<a href="../../DuneNvmeStorageManual.pdf">DuneNvmeStorageManual</a>
+<a href="../../DuneNvmeStorageTestSoftwarel.pdf">DuneNvmeStorageTestSoftware</a>
+ the, <a href="../../DuneNvmeStorageManual.pdf">DuneNvmeStorageManual</a>
 and <a href="../../DuneNvmeStorageDesign.pdf">DuneNvmeStorageDesign</a> documents.
 
 \section Directories
