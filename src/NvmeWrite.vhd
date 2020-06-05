@@ -87,6 +87,8 @@ port (
 
 	enable		: in std_logic;				--! Enable the data writing process
 	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
+	
+	waitingForData	: out std_logic;			--! Set when dataIn is empty so other tasks can be run.
 
 	-- To Nvme Request/reply streams
 	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
@@ -181,6 +183,7 @@ signal inState		: InStateType := INSTATE_IDLE;
 signal state		: StateType := STATE_IDLE;
 signal replyState	: ReplyStateType := REPSTATE_QUEUE_REPLY1;
 
+signal complete		: std_logic := '0';
 signal blockNumberIn	: unsigned(31 downto 0) := (others => '0');		--! Input block number
 signal numBlocksProc	: unsigned(31 downto 0) := (others => '0');		--! Number of block write requests sent
 signal numBlocksDone	: unsigned(31 downto 0) := (others => '0');		--! Number of block write completions received
@@ -318,6 +321,8 @@ begin
 
 	-- Input data process. Accepts data from input stream and stores it into a free buffer if available.
 	dataIn.ready <= writeEnable;
+	--waitingForData <= not enable or complete or not dataIn.valid;
+	waitingForData <= not enable or complete;
 
 	process(clk)
 	variable c: integer;
@@ -428,6 +433,7 @@ begin
 				processQueueOut		<= 0;
 				numBlocksTrimmed	<= (others => '0');
 				trimQueueProc		<= (others => '0');
+				complete		<= '0';
 				state			<= STATE_IDLE;
 			else
 				case(state) is
@@ -443,12 +449,14 @@ begin
 					numBlocksProc	<= (others => '0');
 					processQueueOut	<= 0;
 					numBlocksTrimmed<= (others => '0');
+					complete	<= '0';
 					state		<= STATE_RUN;
 					
 				when STATE_RUN =>
 					if(enable = '1') then
 						if(numBlocksProc >= dataChunkSize) then
-							state <= STATE_COMPLETE;
+							complete	<= '1';
+							state		<= STATE_COMPLETE;
 						
 						elsif(DoTrim and (numBlocksTrimmed < dataChunkSize) and ((trimQueueProc - trimQueueDone) < 4)) then
 							requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
@@ -465,7 +473,8 @@ begin
 
 						end if;
 					else
-						state <= STATE_COMPLETE;
+						complete	<= '1';
+						state		<= STATE_COMPLETE;
 					end if;
 				
 				when STATE_COMPLETE =>

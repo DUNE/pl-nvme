@@ -58,6 +58,8 @@ port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
 
+	enable		: in std_logic;				--! Enable operation, used to limit bandwidth used
+
 	-- To Nvme Request/reply streams
 	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
 	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
@@ -173,7 +175,7 @@ begin
 							complete <= '1';
 							state <= STATE_COMPLETE;
 						
-						else
+						elsif(enable = '1') then
 							requestOut.data		<= setHeader(1, 16#02020000#, 16, 0);
 							requestOut.valid	<= '1';
 							state			<= STATE_QUEUE_HEAD;

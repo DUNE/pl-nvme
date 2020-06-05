@@ -342,6 +342,8 @@ port (
 	enable		: in std_logic;				--! Enable the data writing process
 	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
+	waitingForData	: out std_logic;			--! Set when dataIn is empty so other tasks can be run.
+
 	-- To Nvme Request/reply streams
 	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
 	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
@@ -367,6 +369,8 @@ generic(
 port (
 	clk		: in std_logic;				--! The interface clock line
 	reset		: in std_logic;				--! The active high reset line
+
+	enable		: in std_logic;				--! Enable operation, used to limit bandwidth used
 
 	-- To Nvme Request/reply streams
 	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
@@ -450,7 +454,7 @@ signal configComplete		: std_logic := 'U';
 
 -- Nvme data write signals
 signal writeEnable		: std_logic := 'U';
-
+signal waitingForData		: std_logic := 'U';
 
 -- Pcie_nvme signals
 signal nvme_reset_local_n	: std_logic := '0';
@@ -464,10 +468,6 @@ signal cfg_mgmt_read			: std_logic;
 signal cfg_mgmt_read_data		: std_logic_vector(31 downto 0);
 signal cfg_mgmt_read_write_done		: std_logic;
 signal cfg_mgmt_type1_cfg_reg_access	: std_logic;
-
-signal dummy1			: AxisStreamType := AxisStreamInput;
-signal dummy2			: AxisStreamType := AxisStreamOutput;
-signal dummy3			: AxisStreamType := AxisStreamOutput;
 
 attribute keep	: string;
 attribute keep	of reset_local : signal is "true";
@@ -853,6 +853,8 @@ begin
 		enable		=> writeEnable,
 		dataIn		=> dataIn1,
 
+		waitingForData	=> waitingForData,
+		
 		requestOut	=> writeSend,
 		replyIn		=> writeRecv,
 
@@ -870,6 +872,8 @@ begin
 	port map (
 		clk		=> nvme_user_clk,
 		reset		=> nvme_user_reset,
+
+		enable		=> waitingForData,
 
 		requestOut	=> readSend,
 		replyIn		=> readRecv,
