@@ -6,8 +6,8 @@
 /**
  * @file	test_nvme.cpp
  * @author	Terry Barnaby <terry.barnaby@beam.ltd.uk>
- * @date	2020-03-13
- * @version	0.0.1
+ * @date	2020-06-05
+ * @version	1.0.0
  *
  * @brief
  * This is a simple test program that uses the Xilinx xdma Linux driver to access
@@ -49,7 +49,7 @@
 #include <getopt.h>
 #include <stdarg.h>
 
-#define VERSION		"0.0.1"
+#define VERSION		"1.0.0"
 
 /// Overal program control class
 class Control : public NvmeAccess {
@@ -109,6 +109,7 @@ public:
 	BUInt32		oblockNum;				///< The output block number
 	BUInt8		odataBlock[BlockSize];			///< Data block's from NVme's
 	BSemaphore	oreadComplete;				///< The read process is complete
+	FILE*		ofile;					///< The output file
 };
 
 Control::Control() : ofifo0(1024*1024), ofifo1(1024*1024){
@@ -120,6 +121,7 @@ Control::Control() : ofifo0(1024*1024), ofifo1(1024*1024){
 	oreadNumBlocks = 2;
 	ofilename = 0;
 	oblockNum = 0;
+	ofile = 0;
 }
 
 Control::~Control(){
@@ -378,6 +380,13 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 					exit(1);
 				}
 			}
+			
+			if(ofile){
+				if(fwrite(odataBlock, 1, BlockSize, ofile) != BlockSize){
+					fprintf(stderr, "Error: file write\n");
+					exit(1);
+				}
+			}
 
 			oblockNum++;
 		}
@@ -394,6 +403,13 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 				if(validateBlock(oblockNum, odataBlock)){
 					printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
 					dumpDataBlock(odataBlock, (overbose > 1)?1:0);
+					exit(1);
+				}
+			}
+
+			if(ofile){
+				if(fwrite(odataBlock, 1, BlockSize, ofile) != BlockSize){
+					fprintf(stderr, "Error: file write\n");
 					exit(1);
 				}
 			}
@@ -417,6 +433,13 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 				}
 			}
 
+			if(ofile){
+				if(fwrite(odataBlock, 1, BlockSize, ofile) != BlockSize){
+					fprintf(stderr, "Error: file write\n");
+					exit(1);
+				}
+			}
+
 			oblockNum++;
 
 			ofifo1.read(odataBlock, BlockSize);
@@ -428,6 +451,13 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 				if(validateBlock(oblockNum, odataBlock)){
 					printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
 					dumpDataBlock(odataBlock, (overbose > 1)?1:0);
+					exit(1);
+				}
+			}
+
+			if(ofile){
+				if(fwrite(odataBlock, 1, BlockSize, ofile) != BlockSize){
+					fprintf(stderr, "Error: file write\n");
 					exit(1);
 				}
 			}
@@ -1141,6 +1171,13 @@ int main(int argc, char** argv){
 		return 1;
 	}
 	
+	if(control.ofilename){
+		if(! (control.ofile = fopen(control.ofilename, "w"))){
+			fprintf(stderr, "Error: Unable to open file: %s\n", control.ofilename);
+			return 1;
+		}
+	}
+	
 	if(control.getNvme() == 2){
 		if(control.ostartBlock & 1){
 			fprintf(stderr, "Needs an even start block number when two Nvme's are being accessed\n");
@@ -1224,6 +1261,11 @@ int main(int argc, char** argv){
 		}
 		else {
 			fprintf(stderr, "No such test: %s\n", test);
+		}
+
+		// Close the output file if used
+		if(control.ofile){
+			fclose(control.ofile);
 		}
 	}
 
