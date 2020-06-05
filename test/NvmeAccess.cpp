@@ -77,8 +77,7 @@ NvmeAccess::NvmeAccess(){
 	ohostSendFd = -1;
 	ohostRecvFd = -1;
 	oregs = 0;
-	obufTx1 = 0;
-	obufTx2 = 0;
+	obufTx = 0;
 	obufRx = 0;
 	otag = 0;
 	onvmeNum = 0;
@@ -98,10 +97,8 @@ NvmeAccess::~NvmeAccess(){
 void NvmeAccess::close(){
 	if(obufRx)
 		free(obufRx);
-	if(obufTx2)
-		free(obufTx2);
-	if(obufTx1)
-		free(obufTx1);
+	if(obufTx)
+		free(obufTx);
 
 	if(odmaRegs)
 		munmap((void*)odmaRegs, 4096);
@@ -152,16 +149,9 @@ int NvmeAccess::init(){
 		return 1;
 	}
 
-	posix_memalign((void **)&obufTx1, 4096, 4096);
-	posix_memalign((void **)&obufTx2, 4096, 4096);
+	posix_memalign((void **)&obufTx, 4096, 4096);
 	posix_memalign((void **)&obufRx, 4096, 4096);
-
-	// Start of NVme request processing
-	pthread_create(&othread, 0, ::nvmeProcess, this);
 	
-	// Wait for this to have started
-	usleep(100000);
-
 	return 0;
 }
 
@@ -240,6 +230,12 @@ void NvmeAccess::reset(){
 	usleep(100000);
 }
 #endif
+
+void NvmeAccess::start(){
+	// Start of NVme request processing
+	pthread_create(&othread, 0, ::nvmeProcess, this);
+	usleep(100000);
+}
 
 // Send a queued request to the Nvme
 int NvmeAccess::nvmeRequest(Bool wait, int queue, int opcode, BUInt32 address, BUInt32 arg10, BUInt32 arg11, BUInt32 arg12){
@@ -339,7 +335,9 @@ int NvmeAccess::nvmeProcess(){
 		dl3printf("NvmeAccess::nvmeProcess: loop\n");
 
 		// Read the packet from the Nvme. Coupdl be a request or a reply
-		nt = read(ohostRecvFd, obufRx, 4096);
+		if((nt = read(ohostRecvFd, obufRx, 4096)) < 0){
+			return 1;
+		}
 
 		dl3printf("NvmeAccess::nvmeProcess: awoken with: %d bytes\n", nt);
 		//dl3hd32(obufRx, nt / 4);
@@ -365,7 +363,6 @@ int NvmeAccess::nvmeProcess(){
 		if(request.request == 0){
 			// PCIe Read requests
 			dl3printf("NvmeAccess::nvmeProcess: Read memory: address: %8.8x nWords: %d\n", request.address, request.numWords);
-			printf("NvmeAccess::nvmeProcess: Read memory: address: %8.8x nWords: %d\n", request.address, request.numWords);
 
 			if((request.address & 0x00FF0000) == 0x00000000){
 				data = oqueueAdminMem;
@@ -458,6 +455,12 @@ int NvmeAccess::nvmeProcess(){
 				//printf("NvmeAccess::nvmeProcess: IoBlockWrite: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), request.numWords);
 
 				memcpy(&odataBlockMem[(request.address & 0x0000FFFF) / 4], request.data, request.numWords * 4);
+			}
+			else if((request.address & 0x00F00000) == 0x00E00000){
+				dl3printf("NvmeAccess::nvmeProcess: Write: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), nWords);
+
+				memcpy(&odataBlockMem[(request.address & 0x00000FFF) / 4], request.data, request.numWords * 4);
+				bhd32(odataBlockMem, request.numWords);
 			}
 			else if((request.address & 0x00F00000) == 0x00F00000){
 				dl3printf("NvmeAccess::nvmeProcess: Write: address: %8.8x nWords: %d\n", (request.address & 0x0FFFFFFF), nWords);
@@ -598,16 +601,6 @@ int NvmeAccess::pcieRead(BUInt8 request, BUInt32 address, BUInt32 num, BUInt32* 
 	dumpDmaRegs(1, 0);
 #endif
 	
-#ifdef ZAP
-	nt = read(ohostRecvFd, obufRx, 4096);
-	dl2printf("Read %d\n", nt);
-
-	if(nt > 0)
-		dl2hd32(obufRx, nt / 4);
-
-	pause();
-#endif
-
 	// Wait for a reply
 	opacketReplySem.wait();
 	dl2printf("Received reply: status: %x, error: %x, numWords: %d\n", opacketReply.status, opacketReply.error, opacketReply.numWords);
@@ -627,31 +620,35 @@ int NvmeAccess::packetSend(const NvmeRequestPacket& packet){
 	if((packet.request == 1) || (packet.request == 10) || (packet.request == 12))
 		nb += (4 * packet.numWords);
 
-	memcpy(obufTx1, &packet, nb);
-	//printf("SendPacket: numWords: %d %d\n", packet.numWords, nb);
-	//bhd32(obufTx1, nb/4);
-
-	if(write(ohostSendFd, obufTx1, nb) != nb){
+	if(write(ohostSendFd, &packet, nb) != nb){
 		printf("Send error\n");
 		return 1;
 	}
+
 	return 0;
 }
 
 int NvmeAccess::packetSend(const NvmeReplyPacket& packet){
 	BUInt	nb = 12 + (4 * packet.numWords);
 
-	memcpy(obufTx2, &packet, nb);
-	//printf("NvmeAccess::packetSend: reply: nWords: %d nBytes: %d\n", packet.numWords, nb);
-	//bhd32(obufTx2, nb / 4);
-
-	if(write(ohostSendFd, obufTx2, nb) != nb){
+	if(write(ohostSendFd, &packet, nb) != nb){
 		printf("Send error\n");
 		return 1;
 	}
 	return 0;
 }
 
+int NvmeAccess::readAvailable(){
+	unsigned long	n = 0;
+
+	if(ohostRecvFd >= 0){
+		if(ioctl(ohostRecvFd, FIONREAD, &n) < 0){
+			n = 0;
+		}
+	}
+
+	return n;
+}
 
 void NvmeAccess::dumpRegs(int nvmeNum){
 	int	r;

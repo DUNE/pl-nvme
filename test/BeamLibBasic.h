@@ -10,7 +10,7 @@
  * @version	0.0.1
  *
  * @brief
- * Basic implementation of BeamLib functionality
+ * Basic implementation of BeamLib functionality for simple progeams.
  *
  * @details
  * This provides some of the basic functionality from the larger BeamLib system.
@@ -119,8 +119,8 @@ protected:
 };
 
 
-void tprintf(const char* fmt, ...);
-void bhd8(void* data, BUInt32 n);
-void bhd32(void* data,BUInt32 n);
-void bhd32a(void* data,BUInt32 n);
-double getTime();				///< Get current time in seconds
+void tprintf(const char* fmt, ...);			///< Printf with current time
+void bhd8(void* data, BUInt32 n);			///< Print hex dump of data as 8bit wide entities
+void bhd32(void* data,BUInt32 n);			///< Print hex dump of data as 32bit wide entities
+void bhd32a(void* data,BUInt32 n);			///< Print hex dump of data as 32bit wide entities, with address
+double getTime();					///< Get current time in seconds

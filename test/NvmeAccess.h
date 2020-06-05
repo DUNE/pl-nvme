@@ -142,6 +142,7 @@ public:
 	void		setNvme(BUInt n);
 	BUInt		getNvme();
 	void		reset();
+	void		start();							///< Start NVMe request processing thread
 
 	// Send a queued request to the NVMe
 	int		nvmeRequest(Bool wait, int queue, int opcode, BUInt32 address, BUInt32 arg10, BUInt32 arg11 = 0, BUInt32 arg12 = 0);
@@ -167,6 +168,7 @@ public:
 	// Packet send and receive
 	int		packetSend(const NvmeRequestPacket& packet);
 	int		packetSend(const NvmeReplyPacket& packet);
+	int		readAvailable();						///< The number of bytes available on the receive stream
 	
 	// Debug
 	void		dumpRegs(int nvmeNum = -1);
@@ -175,15 +177,14 @@ public:
 
 	
 protected:
-	int			oregsFd;
-	int			ohostSendFd;
-	int			ohostRecvFd;
-	BFpgaInfo		oinfo;
-	volatile BUInt32*	oregs;
-	volatile BUInt32*	odmaRegs;
+	int			oregsFd;			///< Device drive fd for register access
+	int			ohostSendFd;			///< Device driver fd for DMA send channel
+	int			ohostRecvFd;			///< Device driver fd for DMA receive channel
+	BFpgaInfo		oinfo;				///< Device driver information
+	volatile BUInt32*	oregs;				///< FPGA design's registers memory mapped
+	volatile BUInt32*	odmaRegs;			///< FPGA's PCIe XDMA modules DMA control registers memory mapped
 
-	BUInt32*		obufTx1;
-	BUInt32*		obufTx2;
+	BUInt32*		obufTx;
 	BUInt32*		obufRx;
 	BUInt8			otag;
 

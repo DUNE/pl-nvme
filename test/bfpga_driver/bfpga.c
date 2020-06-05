@@ -71,6 +71,7 @@
 #include <linux/sched/signal.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
+#include <asm/ioctls.h>
 #include <asm/uaccess.h>
 #include <asm/irq.h>
 #include <asm/set_memory.h>
@@ -536,13 +537,16 @@ static int bfpga_release(struct inode* inode, struct file* filp){
 }
 
 static long bfpga_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
-	int			ret = 0;
-	BFpgaInfo		info;
-	DeviceData*		dev;
-	uint32_t		v;
-	uint32_t		c;
+	int		ret = 0;
+	DeviceData*	dev = file->private_data;
+	unsigned int	minor = iminor(file_inode(file));
+	DmaChan*	dmaChan = 0;
+	BFpgaInfo	info;
+	uint32_t	v;
+	uint32_t	c;
 
-	dev = file->private_data;
+	if(minor > 1)
+		dmaChan = &dev->dmaChannels[minor - 1];
 
 	switch(cmd){
 	case BFPGA_CMD_GETINFO:
@@ -579,6 +583,16 @@ static long bfpga_ioctl(struct file* file, unsigned int cmd, unsigned long arg){
 		if(dev->pdev){
 			// Enable board dma and interrupts
 			bfpga_start(dev);
+		}
+		break;
+
+	case FIONREAD:
+		if(dmaChan){
+			if(put_user(dmaChan->available, (int __user*)arg))
+				ret= -EFAULT;
+		}
+		else {
+			ret = -EINVAL;
 		}
 		break;
 		

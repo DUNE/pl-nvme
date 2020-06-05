@@ -205,7 +205,7 @@ void tprintf(const char* fmt, ...){
 	strftime(tbuf, sizeof(tbuf), "%H:%M:%S", localtime(&tv.tv_sec));
 	sprintf(buf, "%s.%3.3d: %s", tbuf, tv.tv_usec/1000, fmt);
 
-	vfprintf(stderr, buf, args);
+	vfprintf(stdout, buf, args);
 }
 
 void bhd8(void* data, BUInt32 n){
