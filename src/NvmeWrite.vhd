@@ -5,7 +5,7 @@
 --! @class	NvmeWrite
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-11
---! @version	1.0.0
+--! @version	0.9.0
 --!
 --! @brief
 --! This module performs the Nvme write data functionality.
@@ -138,6 +138,28 @@ port (
 );
 end component;
 
+component Fifo is
+generic (
+	DataWidth	: integer := 128;			--! The data width of the Fifo in bits
+	FifoSize	: integer := 8;				--! The size of the fifo
+	NearFull	: integer := 6				--! Nearly full level, 0 disables
+);
+port (
+	clk		: in std_logic;					--! The interface clock line
+	reset		: in std_logic;					--! The active high reset line
+	
+	fifoNearFull	: out std_logic;
+	fifoInReady	: out std_logic;
+	fifoInValid	: in std_logic;
+	fifoIn		: in std_logic_vector(127 downto 0);
+
+
+	fifoOutReady	: in std_logic;
+	fifoOutValid	: out std_logic;
+	fifoOut		: out std_logic_vector(127 downto 0)
+);
+end component;
+
 --! Input buffer status
 type BufferType is record
 	inUse1		: std_logic;				--! inUse1 and inUse2 are used to indicate buffer is in use when different
@@ -185,7 +207,7 @@ signal processQueueIn	: integer range 0 to NvmeWriteNum := 0;
 signal processQueueOut	: integer range 0 to NvmeWriteNum := 0;
 
 -- Buffer read
-type MemStateType	is (MEMSTATE_IDLE, MEMSTATE_READHEAD, MEMSTATE_READDATA);
+type MemStateType	is (MEMSTATE_IDLE, MEMSTATE_READSTART, MEMSTATE_READHEAD, MEMSTATE_READDATA);
 signal memState		: MemStateType := MEMSTATE_IDLE;
 signal memRequestHead	: PcieRequestHeadType;
 signal memRequestHead1	: PcieRequestHeadType;
@@ -193,7 +215,17 @@ signal memReplyHead	: PcieReplyHeadType;
 signal nvmeReplyHead	: NvmeReplyHeadType;
 signal memCount		: unsigned(10 downto 0);		-- DWord data send count
 signal memChunkCount	: unsigned(10 downto 0);		-- DWord data send within a chunk count
-signal memData		: std_logic_vector(127 downto 0);
+
+signal readValid0	: std_logic;
+signal readValid1	: std_logic;
+
+signal fifoReset	: std_logic;
+signal fifoNearFull	: std_logic;
+signal fifoInReady	: std_logic;
+signal fifoOutValid	: std_logic;
+signal fifoOutReady	: std_logic;
+signal fifoData0	: std_logic_vector(127 downto 0);
+signal fifoData1	: std_logic_vector(127 downto 0);
 
 -- Register information
 signal dataChunkStart	: RegisterType := (others => '0');	-- The data chunk start position in blocks
@@ -642,22 +674,66 @@ begin
 			end if;
 		end if;
 	end process;
-	
+
 	-- Process Nvme read data requests
 	-- This processes the Nvme Pcie memory read requests for the data buffers memory.
-	readEnable <= '1';
 	memRequestHead	<= to_PcieRequestHeadType(memReqIn.data);
-	memReplyOut.data <= memData(31 downto 0) & to_stl(memReplyHead) when(memState = MEMSTATE_READHEAD)
-		else readData(31 downto 0) & memData(127 downto 32);
+	memReplyOut.data <=
+		fifoData0(31 downto 0) & to_stl(memReplyHead) when(memState = MEMSTATE_READHEAD)
+		else fifoData0(31 downto 0) & fifoData1(127 downto 32);
 
+	fifoOutReady <= memReplyOut.ready when((memReplyOut.valid = '1') and (memReplyOut.last = '0')) else '0';
+	fifoReset <= not readEnable;
+
+	fif0 : Fifo
+	port map (
+		clk		=> clk,
+		reset		=> fifoReset,
+
+		fifoNearFull	=> fifoNearFull,
+		fifoInReady	=> fifoInReady,
+
+		fifoInValid	=> readValid1,
+		fifoIn		=> readData,
+
+		--fifoInValid	=> enable,
+		--fifoIn		=> dataOut.data,
+
+		fifoOutReady	=> fifoOutReady,
+		fifoOutValid	=> fifoOutValid,
+		fifoOut		=> fifoData0
+	);
+	
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				memReqIn.ready	<= '0';
-				memState	<= MEMSTATE_IDLE;
+				memReqIn.ready		<= '0';
+				readEnable		<= '0';
+				readValid0		<= '0';
+				readValid1		<= '0';
+				memReplyOut.valid	<= '0';
+				memState		<= MEMSTATE_IDLE;
 			else
-				case(MEMSTATE) is
+				-- Fill fifo from buffer RAM. There are two cycles latency when reading from the RAM
+				if(readEnable = '1') then
+					readValid1 <= readValid0;
+
+					if(fifoNearFull = '1') then
+						readValid0 <= '0';
+					else
+						readAddress <= readAddress + 1;
+						readValid0 <= '1';
+					end if;
+
+					-- Output from Fifo
+					if((fifoOutValid = '1') and (fifoOutReady = '1')) then
+						fifoData1 <= fifoData0;
+					end if;
+				end if;
+			
+			
+				case(memState) is
 				when MEMSTATE_IDLE =>
 					if((memReqIn.ready = '1') and (memReqIn.valid = '1')) then
 						memRequestHead1	<= memRequestHead;
@@ -665,12 +741,21 @@ begin
 
 						if(memRequestHead.request = 0) then
 							readAddress	<= memRequestHead.address(AddressWidth+3 downto 4);
+							readEnable	<= '1';
+							readValid0	<= '1';
+							readValid1	<= '0';
 							memReqIn.ready	<= '0';
-							memState	<= MEMSTATE_READHEAD;
+							memState	<= MEMSTATE_READSTART;
 						end if;
 					else
-						memReqIn.ready <= '1';
+						readEnable	<= '0';
+						readValid0	<= '0';
+						readValid1	<= '0';
+						memReqIn.ready	<= '1';
 					end if;
+
+				when MEMSTATE_READSTART =>
+					memState  <= MEMSTATE_READHEAD;
 
 				when MEMSTATE_READHEAD =>
 					if(memReplyOut.valid = '0') then
@@ -689,31 +774,25 @@ begin
 							memChunkCount		<= memCount;
 						end if;
 
-						memReplyOut.valid 	<= '1';
-						memData			<= readData;
-						readAddress		<= readAddress + 1;
+						memReplyOut.keep <= (others => '1');
+						memReplyOut.valid <= '1';
 					else
-						memReplyOut.keep 	<= (others => '1');
 
-						if(memReplyOut.ready = '1' and memReplyOut.valid = '1') then
-							readAddress	<= readAddress + 1;
-							memState	<= MEMSTATE_READDATA;
+						if((memReplyOut.ready = '1') and (memReplyOut.valid = '1')) then
+							memState <= MEMSTATE_READDATA;
 						end if;
 					end if;
 				
 				when MEMSTATE_READDATA =>
-					if(memReplyOut.ready = '1' and memReplyOut.valid = '1') then
-						memData		<= readData;
-
+					if((memReplyOut.ready = '1') and (memReplyOut.valid = '1')) then
 						if(memChunkCount = 4) then
+							memReplyOut.last	<= '0';
+							memReplyOut.valid	<= '0';
 							if(memCount = 4) then
-								memReplyOut.last	<= '0';
-								memReplyOut.valid	<= '0';
-								memState		<= MEMSTATE_IDLE;
+								readEnable	<= '0';
+								memState	<= MEMSTATE_IDLE;
 							else
-								memReplyOut.last	<= '0';
-								memReplyOut.valid	<= '0';
-								memState		<= MEMSTATE_READHEAD;
+								memState	<= MEMSTATE_READHEAD;
 							end if;
 
 						elsif(memChunkCount = 8) then
@@ -721,8 +800,7 @@ begin
 							memReplyOut.last <= '1';
 
 						else
-							readAddress		<= readAddress + 1;
-							memReplyOut.last	<= '0';
+							memReplyOut.last <= '0';
 						end if;
 
 						memChunkCount		<= memChunkCount - 4;

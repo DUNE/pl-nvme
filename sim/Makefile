@@ -18,9 +18,9 @@
 #TEST	= test010-queueram
 #TEST	= test011-switch
 #TEST	= test012-hostnvme
-#TEST	= test013-hostnvme
+#TEST	= test013-memread
 #TEST	= test014-queueram
-#TEST	= test015-hostnvme
+#TEST	= test015-nvmemux
 #TEST	= test016-fifo
 #TEST	= test017-write
 #TEST	= test018-buffer
@@ -29,7 +29,7 @@ TEST	= test020-write
 
 # VHDL source files
 FILES_BASE	+= testbench/TestPkg.vhd ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd ../src/AxilClockConverter.vhd ../src/AxisClockConverter.vhd 
-FILES_BASE	+= ../src/PcieStreamMux.vhd ../src/Ram.vhd ../src/Cdc.vhd
+FILES_BASE	+= ../src/PcieStreamMux.vhd ../src/Ram.vhd ../src/Fifo.vhd ../src/Cdc.vhd
 FILES_BASE	+= ../src/NvmeStreamMux.vhd ../src/AxisDataConvertFifo.vhd ../src/RegAccessClockConvertor.vhd
 
 #FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo4k/Fifo4k_sim_netlist.vhdl
@@ -52,9 +52,10 @@ FILES_test009-packets += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeStorage
 FILES_test010-queueram += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeQueues.vhd ../src/NvmeConfig.vhd
 FILES_test011-switch += testbench/${TEST}.vhd ${FILES_BASE} ../src/StreamSwitch.vhd
 FILES_test012-hostnvme += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
-FILES_test013-hostnvme += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
+FILES_test013-memread += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test014-queueram += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeQueues.vhd
 FILES_test015-hostnvme += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
+FILES_test015-nvmemux += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test016-fifo += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test017-write += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
 FILES_test018-buffer += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}

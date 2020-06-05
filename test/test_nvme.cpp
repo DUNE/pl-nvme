@@ -137,7 +137,7 @@ void Control::setFilename(const char* filename){
 int Control::nvmeInit(){
 	int	e;
 	
-	printf("Initialise Nvme's for operation\n");
+	uprintf("Initialise Nvme's for operation\n");
 	
 	// Perform reset
 	reset();
@@ -320,13 +320,12 @@ int Control::nvmeConfigure(){
 }
 
 
-
-
+/// This function is called from the Nvme request processing thread when PciWrite to memory requests arrive
 void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 	//printf("Control::nvmeDataPacket: Address: %x\n", packet.address);
 	//bhd32(packet.data, packet.numWords);
 
-	// This assumes the PcieWrites are in order
+	// The data is written to the approprate Nvme's fifo. This assumes the PcieWrites are in order
 	if(packet.address & 0xF0000000){
 		// Nvme 1
 		ofifo1.write(packet.data, packet.numWords * 4);
@@ -336,7 +335,7 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 		ofifo0.write(packet.data, packet.numWords * 4);
 	}
 
-	// Output data blocks from FIFO's	
+	// Output data blocks from FIFO's
 	while((ofifo0.readAvailable() >= BlockSize) && (ofifo1.readAvailable() >= BlockSize)){
 		ofifo0.read(odataBlock, BlockSize);
 		if(overbose){
@@ -368,7 +367,8 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 
 		oblockNum++;
 	}
-	
+
+	// Check if the last block of a Nvme read operation	
 	if(oblockNum >= (ostartBlock + onumBlocks))
 		oreadComplete.set();
 }
@@ -380,7 +380,7 @@ int Control::nvmeProcess(){
 	double	r;
 	double	ts;
 	
-	printf("nvmeProcess: Write FPGA data stream to Nvme devices\n");
+	printf("nvmeProcess: Write FPGA data stream to Nvme devices. nvme: %u startBlock: %u numBlocks: %u\n",onvmeNum, ostartBlock, onumBlocks);
 
 	// Initialise Nvme devices
 	if(e = nvmeInit())
@@ -397,6 +397,7 @@ int Control::nvmeProcess(){
 	uprintf("Start NvmeWrite engine\n");
 	writeNvmeStorageReg(4, 0x00000004);
 
+	// Wait untill all blocks have been processed.
 	ts = getTime();
 	n = 0;
 	while(n != onumBlocks){
@@ -405,10 +406,12 @@ int Control::nvmeProcess(){
 		usleep(100000);
 	}
 
-	printf("Time was: %f\n", getTime() - ts);
-	printf("Stats\n");
-	dumpRegs(0);
-	dumpRegs(1);
+	if(overbose){
+		printf("Software measured time was: %f\n", getTime() - ts);
+		printf("Registers\n");
+		dumpRegs(0);
+		dumpRegs(1);
+	}
 
 	n = readNvmeStorageReg(RegWriteNumBlocks);
 	t = readNvmeStorageReg(RegWriteTime);
@@ -432,7 +435,6 @@ int Control::nvmeRead(){
 		return e;
 
 	oblockNum = ostartBlock;
-	memset(odataBlock, 0x0, sizeof(odataBlock));
 
 	if(onvmeNum == 2){
 		writeNvmeStorageReg(RegReadBlock, ostartBlock / 2);
@@ -462,13 +464,11 @@ int Control::nvmeRead(){
 	oreadComplete.wait();
 	te = getTime();
 	
-	printf("Time: %f\n", te - ts);
+	uprintf("Read time: %f\n", te - ts);
 
 	r = ((double(BlockSize) * onumBlocks) / (te - ts));
 	printf("NvmeRead: rate:      %f MBytes/s\n", r / (1024 * 1024));
 	
-	printf("Complete\n"); fflush(stdout);
-
 	return 0;
 }
 
@@ -486,18 +486,29 @@ int Control::nvmeTrim(){
 	if(e = nvmeInit())
 		return e;
 
-	for(block = 0; block < onumBlocks; block += (trimBlocks/8)){
-		if(onvmeNum == 2){
+	// Note this 
+	if(onvmeNum == 2){
+		for(block = 0; block < onumBlocks/2; block += (trimBlocks/8)){
+			if((block + (trimBlocks/8)) > onumBlocks){
+				trimBlocks = 8 * (onumBlocks - block);
+			}
+			
 			setNvme(0);
 			nvmeRequest(1, 1, 0x08, 0x00000000, block * 8, 0x00000000, (1 << 25) | trimBlocks-1);	// Perform trim of 32k 512 Byte blocks
 			setNvme(1);
 			nvmeRequest(1, 1, 0x08, 0x00000000, block * 8, 0x00000000, (1 << 25) | trimBlocks-1);	// Perform trim of 32k 512 Byte blocks
 		}
-		else {
+		setNvme(2);
+	}
+	else {
+		for(block = 0; block < onumBlocks; block += (trimBlocks/8)){
+			if((block + (trimBlocks/8)) > onumBlocks){
+				trimBlocks = 8 * (onumBlocks - block);
+			}
 			nvmeRequest(1, 1, 0x08, 0x00000000, block * 8, 0x00000000, (1 << 25) | trimBlocks-1);	// Perform trim of 32k 512 Byte blocks
 		}
 	}
-
+	
 	return 0;
 }
 

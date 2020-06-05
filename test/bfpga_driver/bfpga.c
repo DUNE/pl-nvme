@@ -495,26 +495,41 @@ static ssize_t bfpga_write(struct file* file, const char __user* buf, size_t nby
 static int bfpga_open(struct inode* inode, struct file* filp){
 	int		ret = 0;
 	unsigned int	minor = iminor(inode);
+	unsigned int	c;
 	DeviceData*	dev;
 
 	dev = container_of(inode->i_cdev, DeviceData, cdev);
 	filp->private_data = dev;;
 
-	dl1printk("bfpga_open address: %p\n", dev);
+	dl1printk("bfpga_open address: %p minor: %u\n", dev, minor);
 	
 	if(minor && (dev->pdev == 0)){
 		return -EBUSY;
 	}
 
+	if(minor > 1){
+		c = minor - 1;
+		dma_stop(dev, &dev->dmaChannels[c]);
+		if(dev->dmaChannels[c].c2h){
+			dev->dmaChannels[c].waitForEvent = 1;
+			dma_start(dev, &dev->dmaChannels[c],  dev->dmaChannels[c].dmaBufferLen);
+		}
+	}
 	dev->opened++;
 	
 	return ret;
 }
 
 static int bfpga_release(struct inode* inode, struct file* filp){
+	unsigned int	minor = iminor(inode);
 	DeviceData*	dev;
 
 	dev = filp->private_data;
+
+	dl1printk("bfpga_release address: %p minor: %u\n", dev, minor);
+	if(minor > 1){
+		dma_stop(dev, &dev->dmaChannels[minor - 1]);
+	}
 	dev->opened --;
 
 	return 0;
@@ -737,6 +752,7 @@ static int unmap_region(struct pci_dev* pdev, int region, MemMap* map){
 }
 
 static void bfpga_start(DeviceData* dev){
+#ifdef ZAP
 	uint32_t	c;
 
 	// Start all C2H DMA engines
@@ -748,15 +764,11 @@ static void bfpga_start(DeviceData* dev){
 	}
 
 	// Enable board interrupts
+#endif
 }
 
 static void bfpga_stop(DeviceData* dev){
 	uint32_t	c;
-
-#ifdef DZAP
-	// Disable board interrupts
-	reg_write(dev, BFpgaIntControl, 0);
-#endif
 
 	// DisableEnable DMA engines
 	for(c = 0; c < dev->numChannels; c++)
@@ -831,10 +843,6 @@ static int bfpga_probe(struct pci_dev* pdev, const struct pci_device_id* id){
 	printk("bfpga: NumChannels: %d\n", dev->numChannels);
 
 	dl1printk("FpgaId ID: %8.8x\n", reg_read(dev, 0x0000));
-
-#ifdef DZAP
-	bfpga_reset(dev);
-#endif
 
 	// Enable board dma and interrupts
 	bfpga_start(dev);
