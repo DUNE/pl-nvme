@@ -685,19 +685,15 @@ begin
 	fifoOutReady <= memReplyOut.ready when((memReplyOut.valid = '1') and (memReplyOut.last = '0')) else '0';
 	fifoReset <= not readEnable;
 
-	fif0 : Fifo
+	fifo0 : Fifo
 	port map (
 		clk		=> clk,
 		reset		=> fifoReset,
 
 		fifoNearFull	=> fifoNearFull,
 		fifoInReady	=> fifoInReady,
-
 		fifoInValid	=> readValid1,
 		fifoIn		=> readData,
-
-		--fifoInValid	=> enable,
-		--fifoIn		=> dataOut.data,
 
 		fifoOutReady	=> fifoOutReady,
 		fifoOutValid	=> fifoOutValid,
