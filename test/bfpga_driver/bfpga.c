@@ -15,18 +15,18 @@
  * The Xilinx XDMA IP provides up to 8 AXI4 streams on the FPGA.
  * The driver creates a physically contiguous memory region for each DMA channel of a
  * fixed size. This simplifies the DMA as multiple scatter/gather regions are not needed.
- * For simplicty data is coped from/to the applications user space memort from these regions
+ * For simplicity data is coped from/to the applications user space memory from these regions
  * by the driver. It would be possible to map these regions into the applications memory if
  * wanted for greater performance.
  * The Xilinx XDMA PCIe IP core manual, PG195, should be looked at for information on
  * the hardware interface that this driver uses.
  *
  * As stated it is simple, lots of improvements could be had, but it is relatively
- * easy to use and to debug bcuase of its simplicity.
+ * easy to use and to debug because of its simplicity.
  *
  * There is some problem with interrupt status reporting. Not sure if this is the test FPGA hardware
- * design or someing in this driver. It appears that the end of dma status interrupt is lost occassionaly.
- * Here we force a retest of status in the wait loops if a timeout occures.
+ * design or something in this driver. It appears that the end of DMA status interrupt is lost occasionally.
+ * Here we force a retest of status in the wait loops if a timeout occurs.
  *
  * Copyright (c) 2020 BEAM Ltd. All rights reserved.
  *

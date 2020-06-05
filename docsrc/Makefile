@@ -45,6 +45,7 @@ docs:
 	soffice --headless --convert-to pdf --outdir ../doc DuneNvmeStorageManual.odt
 	soffice --headless --convert-to pdf --outdir ../doc DuneNvmeStorageDesign.odt
 	soffice --headless --convert-to pdf --outdir ../doc DuneNvmeStorageProject.odt
+	soffice --headless --convert-to pdf --outdir ../doc DuneNvmeStorageTestSoftware.odt
 
 docspdf: docs
 	(cd ../doc/host/latex; make)

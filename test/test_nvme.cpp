@@ -612,7 +612,7 @@ int Control::nvmeCaptureAndRead(){
 	te = getTime();
 	
 	uprintf("Read time: %f\n", te - ts);
-	r = ((double(BlockSize) * onumBlocks) / (te - ts));
+	r = ((double(BlockSize) * oreadNumBlocks) / (te - ts));
 	printf("NvmeRead: rate: %f MBytes/s\n", r / (1024 * 1024));
 	
 	return 0;
@@ -1154,7 +1154,7 @@ int main(int argc, char** argv){
 	
 	if(listTests){
 		printf("capture: Perform data input from FPGA TestData source into Nvme's.\n");
-		printf("read: Read data from Vvme's\n");
+		printf("read: Read data from Nvme's\n");
 		printf("captureAndRead: Perform data input from FPGA TestData source into Nvme's and read data.\n");
 		printf("write: Write data to Nvme's\n");
 		printf("trim: Trim/deallocate blocks on Nvme's\n");
