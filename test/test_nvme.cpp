@@ -70,6 +70,7 @@ public:
 
 	// Normal test functions
 	int		nvmeCapture();				///< Capture FPGA datastream writing to Nvme
+	int		nvmeCaptureRepeat();			///< Capture FPGA datastream writing to Nvme multiple times
 	int		nvmeRead();				///< Read blocks from Nvme
 	int		nvmeCaptureAndRead();			///< Capture FPGA datastream writing to Nvme
 	int		nvmeTrim();				///< Trim blocks on Nvme
@@ -476,6 +477,7 @@ int Control::nvmeCapture(){
 	int	e;
 	BUInt32	n;
 	BUInt32	t;
+	BUInt32	l;
 	double	r;
 	double	ts;
 	BUInt	numBlocks;
@@ -522,10 +524,101 @@ int Control::nvmeCapture(){
 	}
 
 	t = readNvmeStorageReg(RegWriteTime);
+	l = readNvmeStorageReg(RegWritePeakLatency);
 	r = ((double(BlockSize) * onumBlocks) / (1e-6 * t));
 
-	printf("Time: %u\n", t);
-	printf("NvmeWrite: rate: %f MBytes/s\n", r / (1024 * 1024));
+	uprintf("Time: %u\n", t);
+	printf("NvmeWrite: rate: %f MBytes/s, PeakLatancy: %8u us\n", r / (1024 * 1024), l);
+	
+	e = readNvmeStorageReg(RegWriteError);
+	if(overbose || e){
+		printf("Error status: 0x%x\n", e);
+		return 1;
+	}
+
+	return 0;
+}
+
+int Control::nvmeCaptureRepeat(){
+	int	e;
+	BUInt32	n;
+	BUInt32	t;
+	BUInt32	l;
+	double	r;
+	BUInt	startBlock;
+	BUInt	numBlocks;
+	BUInt32	b;
+	double	ts;
+	double	tExpected;
+	
+	printf("nvmeCaptureRepeat: Write FPGA data stream to Nvme devices multiple time. nvme: %u startBlock: %u numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
+
+	tExpected = (double(onumBlocks) * BlockSize) / (4000.0 * 1024 * 1024);
+
+	// Initialise Nvme devices
+	if(e = nvmeInit())
+		return e;
+
+	n = 0;
+	while(1){
+		// Toggle start location
+		if(l & 1){
+			startBlock = ostartBlock + onumBlocks;
+		}
+		else {
+			startBlock = ostartBlock;
+		}
+
+		// Set number of blocks to write
+		if(onvmeNum == 2){
+			writeNvmeStorageReg(RegDataChunkStart, startBlock / 2);
+			writeNvmeStorageReg(RegDataChunkSize, onumBlocks / 2);
+			numBlocks = onumBlocks / 2;
+		}
+		else {
+			writeNvmeStorageReg(RegDataChunkStart, startBlock);
+			writeNvmeStorageReg(RegDataChunkSize, onumBlocks);
+			numBlocks = onumBlocks;
+		}
+
+		// Start off NvmeWrite engine
+		uprintf("Start NvmeWrite engine\n");
+		writeNvmeStorageReg(4, 0x00000004);
+
+		// Wait until all blocks have been processed.
+		b = 0;
+		ts = getTime();
+		while(b != numBlocks){
+			b = readNvmeStorageReg(RegWriteNumBlocks);
+			uprintf("NvmeWrite: numBlocks: %u\n", n);
+			usleep(100000);
+			if((getTime() - ts) > (2 * tExpected)){
+				printf("Took to long. At block: %u\n", b);
+				printf("Registers\n");
+				dumpRegs(0);
+				dumpRegs(1);
+				return 1;
+			}
+		}
+
+		e = readNvmeStorageReg(RegWriteError);
+		t = readNvmeStorageReg(RegWriteTime);
+		l = readNvmeStorageReg(RegWritePeakLatency);
+		r = ((double(BlockSize) * onumBlocks) / (1e-6 * t));
+
+		uprintf("Time: %u\n", t);
+		tprintf("%8d ErrorStatus: 0x%x, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", n, e, r / (1024 * 1024), l);
+
+		if(e){
+			printf("Error status: 0x%x, aborted\n", e);
+			return 1;
+		}
+
+		uprintf("Stop/Clear NvmeWrite engine\n");
+		writeNvmeStorageReg(4, 0x00000000);
+
+		n++;
+	}
 
 	return 0;
 }
@@ -635,6 +728,12 @@ int Control::nvmeCaptureAndRead(){
 	r = ((double(BlockSize) * onumBlocks) / (1e-6 * t));
 	printf("Time: %u\n", t);
 	printf("NvmeWrite: rate: %f MBytes/s\n", r / (1024 * 1024));
+
+	e = readNvmeStorageReg(RegWriteError);
+	if(overbose || e){
+		printf("Error status: 0x%x\n", e);
+		return 1;
+	}
 
 	// Wait for read complete
 	oreadComplete.wait();
@@ -1190,6 +1289,7 @@ int main(int argc, char** argv){
 	
 	if(listTests){
 		printf("capture: Perform data input from FPGA TestData source into Nvme's.\n");
+		printf("captureRepeat: Perform data input from FPGA TestData source into Nvme's multiple times.\n");
 		printf("read: Read data from Nvme's\n");
 		printf("captureAndRead: Perform data input from FPGA TestData source into Nvme's and read data.\n");
 		printf("write: Write data to Nvme's\n");
@@ -1210,6 +1310,9 @@ int main(int argc, char** argv){
 
 		if(!strcmp(test, "capture")){
 			err = control.nvmeCapture();
+		}
+		else if(!strcmp(test, "captureRepeat")){
+			err = control.nvmeCaptureRepeat();
 		}
 		else if(!strcmp(test, "read")){
 			err = control.nvmeRead();

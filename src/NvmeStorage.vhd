@@ -58,7 +58,7 @@ generic(
 	NumBlocksDrop	: integer	:= 2;				--! The number of blocks to drop at a time
 	UseConfigure	: boolean	:= False;			--! The module configures the Nvme's on reset
 	NvmeBlockSize	: integer	:= 512;				--! The NVMe's formatted block size
-	NvmeTotalBlocks	: integer	:= 134217728;			--! The total number of 4k blocks available
+	NvmeTotalBlocks	: integer	:= 104857600;			--! The total number of 4k blocks available (400 G)
 	NvmeRegStride	: integer	:= 4				--! The doorbell register stride
 );
 port (

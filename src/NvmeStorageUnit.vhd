@@ -62,7 +62,7 @@ generic(
 	PcieCore	: integer	:= 0;			--! The Pcie hardblock block to use
 	UseConfigure	: boolean	:= False;		--! The module configures the Nvme's on reset
 	NvmeBlockSize	: integer	:= 512;			--! The NVMe's formatted block size
-	NvmeTotalBlocks	: integer	:= 134217728;		--! The total number of 4k blocks available
+	NvmeTotalBlocks	: integer	:= 104857600;		--! The total number of 4k blocks available (400G)
 	NvmeRegStride	: integer	:= 4			--! The doorbell register stride
 );
 port (
@@ -785,7 +785,6 @@ begin
 	end generate;
 	
 	-- Full switched communications
-	gen03: if true generate
 	set1: for i in 7 to 7 generate
 		streamSend(i).valid	<= '0';
 		streamRecv(i).ready	<= '1';
@@ -883,6 +882,4 @@ begin
 		regDataIn	=> regDataIn1,
 		regDataOut	=> reg_nvmeRead
 	);
-
-	end generate;
 end;

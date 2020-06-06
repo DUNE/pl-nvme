@@ -275,7 +275,7 @@ begin
 		NumBlocksDrop	=> 2,				--! The number of blocks to drop at a time
 		UseConfigure	=> False,			--! The module configures the Nvme's on reset
 		NvmeBlockSize	=> 512,				--! The NVMe's formatted block size
-		NvmeTotalBlocks	=> 134217728,			--! The total number of 4k blocks available
+		NvmeTotalBlocks	=> 104857600,			--! The total number of 4k blocks available (400G)
 		NvmeRegStride	=> 4				--! The doorbell register stride
 	)
 	port map (
