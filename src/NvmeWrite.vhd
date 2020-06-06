@@ -142,23 +142,25 @@ end component;
 
 component Fifo is
 generic (
-	DataWidth	: integer := 128;			--! The data width of the Fifo in bits
-	FifoSize	: integer := 8;				--! The size of the fifo
-	NearFull	: integer := 6				--! Nearly full level, 0 disables
+	Simulate	: boolean := False;				--! Simulation
+	DataWidth	: integer := 128;				--! The data width of the Fifo in bits
+	Size		: integer := 8;					--! The size of the fifo
+	NearFullLevel	: integer := 6					--! Nearly full level, 0 disables
 );
 port (
 	clk		: in std_logic;					--! The interface clock line
 	reset		: in std_logic;					--! The active high reset line
 	
-	fifoNearFull	: out std_logic;
-	fifoInReady	: out std_logic;
-	fifoInValid	: in std_logic;
-	fifoIn		: in std_logic_vector(127 downto 0);
+	nearFull	: out std_logic;				--! Fifo is nearly full
+
+	inReady		: out std_logic;				--! Fifo is ready for input
+	inValid		: in std_logic;					--! Data input is valid
+	inData		: in std_logic_vector(DataWidth-1 downto 0);	--! The input data
 
 
-	fifoOutReady	: in std_logic;
-	fifoOutValid	: out std_logic;
-	fifoOut		: out std_logic_vector(127 downto 0)
+	outReady	: in std_logic;					--! The external logic is ready for output
+	outValid	: out std_logic;				--! The data output is available
+	outData		: out std_logic_vector(DataWidth-1 downto 0)	--! The output data
 );
 end component;
 
@@ -699,14 +701,14 @@ begin
 		clk		=> clk,
 		reset		=> fifoReset,
 
-		fifoNearFull	=> fifoNearFull,
-		fifoInReady	=> fifoInReady,
-		fifoInValid	=> readValid1,
-		fifoIn		=> readData,
+		nearFull	=> fifoNearFull,
+		inReady		=> fifoInReady,
+		inValid		=> readValid1,
+		indata		=> readData,
 
-		fifoOutReady	=> fifoOutReady,
-		fifoOutValid	=> fifoOutValid,
-		fifoOut		=> fifoData0
+		outReady	=> fifoOutReady,
+		outValid	=> fifoOutValid,
+		outdata		=> fifoData0
 	);
 	
 	process(clk)
