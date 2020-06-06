@@ -192,14 +192,14 @@ void NvmeAccess::reset(){
 
 	printf("Last status was: %8.8x\n", data);
 	
-	if(UseConfigEngine){
+	if(UseFpgaConfigure){
 		data = 0;
-		while((data & 4) == 0){
+		while((data & 2) == 0){
 			data = readNvmeStorageReg(RegStatus);
 			usleep(1000);
 		}
 		te = getTime();
-		printf("Full Reset time was: %f ms\n", (te - ts) * 1000);
+		printf("Reset plus Config time was: %f ms\n", (te - ts) * 1000);
 
 		usleep(100000);
 		printf("Last status was: %8.8x\n", data);
@@ -215,7 +215,7 @@ void NvmeAccess::reset(){
 
 	if(UseFpgaConfigure){
 		data = 1;
-		while(data & 3){
+		while((data & 3) != 2){
 			data = readNvmeStorageReg(8);
 			usleep(1000);
 		}

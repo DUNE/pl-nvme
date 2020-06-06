@@ -267,6 +267,17 @@ begin
 	axil_reset <= not axil_reset_n;
 	
 	nvmeStorage0 : NvmeStorage
+	generic map (
+		Simulate	=> False,			--! Generate simulation core
+		Platform	=> "Ultrascale",		--! The underlying target platform
+		ClockPeriod	=> 4 ns,			--! Clock period for timers (250 MHz)
+		BlockSize	=> NvmeStorageBlockSize,	--! System block size
+		NumBlocksDrop	=> 2,				--! The number of blocks to drop at a time
+		UseConfigure	=> False,			--! The module configures the Nvme's on reset
+		NvmeBlockSize	=> 512,				--! The NVMe's formatted block size
+		NvmeTotalBlocks	=> 134217728,			--! The total number of 4k blocks available
+		NvmeRegStride	=> 4				--! The doorbell register stride
+	)
 	port map (
 		clk		=> axil_clk,
 		reset		=> axil_reset,

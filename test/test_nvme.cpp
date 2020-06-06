@@ -208,9 +208,9 @@ int Control::nvmeConfigure(){
 		uprintf("Start configuration\n");
 		writeNvmeStorageReg(4, 0x00000002);
 
-		data = 2;
-		while(data & 2){
-			data = readNvmeStorageReg(8);
+		data = 0;
+		while(! (data & 2)){
+			data = readNvmeStorageReg(RegStatus);
 			usleep(1000);
 		}
 		uprintf("Configuration complete: Status: %8.8x\n", readNvmeStorageReg(RegStatus));
@@ -299,7 +299,7 @@ int Control::nvmeConfigure(){
 		}
 		
 		// Wait for Nvme to start
-		usleep(100000);
+		usleep(10000);
 
 		//dumpNvmeRegisters();
 
@@ -340,7 +340,6 @@ int Control::nvmeConfigure(){
 			nvmeRequest(1, 0, 0x01, 0x01020000, cmd0 | 2, 0x00020001);
 		}
 	}
-
 	// Make sure all is settled
 	usleep(100000);
 
@@ -468,7 +467,7 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 
 	// Check if the last block of a Nvme read operation	
 	if(oblockNum >= oreadNumBlocks){
-		printf("Read complete at: %u\n", oreadNumBlocks);
+		printf("Read complete at: %u blocks\n", oreadNumBlocks);
 		oreadComplete.set();
 	}
 }

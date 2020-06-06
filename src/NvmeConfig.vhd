@@ -4,7 +4,7 @@
 --!
 --! @class	NvmeConfig
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
---! @date	2020-05-12
+--! @date	2020-06-06
 --! @version	1.0.0
 --!
 --! @brief
@@ -80,14 +80,18 @@ signal state		: StateType := STATE_IDLE;
 
 --! The Configuration requests				
 type RomType	is array(integer range <>) of std_logic_vector(127 downto 0);
-constant rom	: RomType(0 to 41) := (
+
+constant rom	: RomType(0 to 34) := (
 	-- Set PCIe configuration command word
 	setHeader(10, 16#00004#, 1, 0),	to_stl(16#00010006#, 128),
 	
+	-- Stop controller
+	setHeader(1, 16#0014#, 1, 0), to_stl(x"00460000", 128),
+
 	-- Disable interrupts
 	setHeader(1, 16#000C#, 1, 0), to_stl(x"FFFFFFFF", 128),
 
-	-- Admin queue lengths to 8 entries each
+	-- Admin queue lengths to NvmeQueueNum entries each
 	setHeader(1, 16#0024#, 1, 0), zeros(96) & to_stl(NvmeQueueNum-1, 16) & to_stl(NvmeQueueNum-1, 16),
 
 	-- Admin request queue base address
@@ -96,68 +100,55 @@ constant rom	: RomType(0 to 41) := (
 	-- Admin reply queue base address
 	setHeader(1, 16#0030#, 1, 0), to_stl(x"02100000", 128),
 
-	-- Create DataWrite reply queue (8 entries)  by sending 64byte request to Admin queue
-	setHeader(12, 16#02000000#, 16, 0),
-		zeros(96) & x"02000005",					-- Dwords 3, 2, 1, 0
+	-- Start controller
+	setHeader(1, 16#0014#, 1, 0), to_stl(x"00460001", 128),
+	
+	-- We should wait for CSTS.RDY. For simplicity we delay for 1ms between each command
+
+	-- Create DataWrite reply queue (16 entries)  by sending 64byte request to Admin queue
+	setHeader(1, 16#02000000#, 16, 0),
+		zeros(96) & x"03000005",					-- Dwords 3, 2, 1, 0
 		zeros(32) & x"02110000" & zeros(64), 				-- DWords 7, 6, 5, 4
 		x"00000001" & to_stl(NvmeQueueNum-1, 16) & x"0001" & zeros(64),	-- DWords 11, 10, 9, 8
 		zeros(128),							-- DWords 15, 14, 13, 12
 
-	-- Notify queue entry to Nvme
-	setHeader(1, 16#1000#, 1, 0), to_stl(1, 128),
-	
 	-- Could Wait for reply in queue
 
 	-- Create DataWrite request queue by sending 64byte request to Admin queue
-	setHeader(12, 16#02000000#, 16, 0),
-		zeros(96) & x"02000001",					-- Dwords 3, 2, 1, 0
+	setHeader(1, 16#02000000#, 16, 0),
+		zeros(96) & x"03010001",					-- Dwords 3, 2, 1, 0
 		zeros(32) & x"02010000" & zeros(64), 				-- DWords 7, 6, 5, 4
 		x"00010001" & to_stl(NvmeQueueNum-1, 16) & x"0001" & zeros(64),	-- DWords 11, 10, 9, 8
 		zeros(128),							-- DWords 15, 14, 13, 12
 
-	-- Notify queue entry to Nvme
-	setHeader(1, 16#1000#, 1, 0), to_stl(2, 128),
-	
 	-- Could Wait for reply in queue
 	
-	-- Create DataRead reply queue (8 entries)  by sending 64byte request to Admin queue
-	setHeader(12, 16#02000000#, 16, 0),
-		zeros(96) & x"02000005",					-- Dwords 3, 2, 1, 0
+	-- Create DataRead reply queue (16 entries)  by sending 64byte request to Admin queue
+	setHeader(1, 16#02000000#, 16, 0),
+		zeros(96) & x"03020005",					-- Dwords 3, 2, 1, 0
 		zeros(32) & x"02120000" & zeros(64), 				-- DWords 7, 6, 5, 4
 		x"00000001" & to_stl(NvmeQueueNum-1, 16) & x"0002" & zeros(64),	-- DWords 11, 10, 9, 8
 		zeros(128),							-- DWords 15, 14, 13, 12
 
-	-- Notify queue entry to Nvme
-	setHeader(1, 16#1000#, 1, 0), to_stl(1, 128),
-	
 	-- Could Wait for reply in queue
 
 	-- Create DataRead request queue by sending 64byte request to Admin queue
-	setHeader(12, 16#02000000#, 16, 0),
-		zeros(96) & x"02000001",					-- Dwords 3, 2, 1, 0
+	setHeader(1, 16#02000000#, 16, 0),
+		zeros(96) & x"03030001",					-- Dwords 3, 2, 1, 0
 		zeros(32) & x"02020000" & zeros(64), 				-- DWords 7, 6, 5, 4
 		x"00020001" & to_stl(NvmeQueueNum-1, 16) & x"0002" & zeros(64),	-- DWords 11, 10, 9, 8
 		zeros(128),							-- DWords 15, 14, 13, 12
 
-	-- Notify queue entry to Nvme
-	setHeader(1, 16#1000#, 1, 0), to_stl(2, 128),
-	
 	-- Could Wait for reply in queue
 
-	-- Start controller
-	setHeader(1, 16#0014#, 1, 0), to_stl(x"00460001", 128),
-
-	(others => '0'),
 	(others => '0')
-	);
-
+);
 
 signal requestHead	: PcieRequestHeadType;			--! The PCIe TLP request header fields
 signal tag		: unsigned(7 downto 0);
 signal count		: integer range 0 to rom'length;	--! The ROM position pointer
 signal numWords		: unsigned(10 downto 0);		--! The number of 32 bit data words left to transfer
 signal delay		: integer;				--! Delay counter in clock periods
-
 
 begin
 	streamIn.ready	<= '1';					--! Ignore any replies
@@ -224,7 +215,8 @@ begin
 					count		<= count + 1;
 					streamOut.valid <= '0';
 					streamOut.last 	<= '0';
-					state		<= STATE_NEXT_ITEM;
+					delay		<= 1 ms / ClockPeriod;
+					state		<= STATE_DELAY;
 
 				end case;
 			end if;
