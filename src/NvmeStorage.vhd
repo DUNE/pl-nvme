@@ -184,6 +184,7 @@ end component;
 
 constant TCQ		: time := 1 ns;
 
+signal reset_l		: std_logic := '0';
 signal wvalid_delay	: std_logic := '0';
 signal rvalid_delay	: unsigned(5 downto 0) := (others => '0');
 
@@ -198,6 +199,7 @@ signal data1		: AxisStreamType := AxisStreamOutput;
 signal nvme1Send	: AxisStreamType;
 signal nvme1Recv	: AxisStreamType;
 
+signal regControl	: std_logic_vector(31 downto 0) := (others => '0');	--! Control register
 signal regWrite		: std_logic := '0';					--! Enable write to register
 signal regAddress	: unsigned(9 downto 0) := (others => '0');		--! Register to read/write
 signal regWrite0	: std_logic := '0';
@@ -234,7 +236,8 @@ begin
 	axilOut.bresp	<= "00";
 	axilOut.bvalid	<= '1';
 
-	regWrite	<= wvalid_delay;	-- Delayed to make sure bits are stable across CDC
+	reset_l		<= reset or regControl(0);
+	regWrite	<= wvalid_delay;		-- Delayed to make sure bits are stable across CDC
 	
 	regWrite0	<= regWrite when(regAddress < 512) else '0';
 	regWrite1	<= regWrite when((regAddress < 256) or (regAddress >= 512)) else '0';
@@ -245,6 +248,7 @@ begin
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
+				regControl	<= (others => '0');	
 				regAddress	<= (others => '0');
 				rvalid_delay	<= (others => '0');
 				wvalid_delay	<= '0';
@@ -257,6 +261,11 @@ begin
 				else
 					-- rvalid delay to handle clock domain crossing latency
 					rvalid_delay <= shift_left(rvalid_delay, 1);
+				end if;
+				
+				-- Control register
+				if((regWrite = '1') and (regAddress = 4)) then
+					regControl <= axilIn.wdata;
 				end if;
 				
 				wvalid_delay <= axilIn.wvalid;
@@ -308,7 +317,7 @@ begin
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
-			if(reset = '1') then
+			if(reset_l = '1') then
 				dataSelect	<= '0';
 				dropCount	<= 0;
 				dropBlocks	<= '0';
