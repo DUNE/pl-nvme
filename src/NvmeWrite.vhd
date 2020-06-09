@@ -142,10 +142,13 @@ end component;
 
 component Fifo is
 generic (
-	Simulate	: boolean := False;				--! Simulation
+	Simulate	: boolean := Simulate;				--! Simulation
 	DataWidth	: integer := 128;				--! The data width of the Fifo in bits
 	Size		: integer := 8;					--! The size of the fifo
-	NearFullLevel	: integer := 6					--! Nearly full level, 0 disables
+	NearFullLevel	: integer := 6;					--! Nearly full level, 0 disables
+	--Size		: integer := 64;				--! The size of the fifo
+	--NearFullLevel	: integer := 50;				--! Nearly full level, 0 disables
+	RegisterOutputs	: boolean := False				--! Register the outputs
 );
 port (
 	clk		: in std_logic;					--! The interface clock line
@@ -240,6 +243,9 @@ signal timeUs		: RegisterType := (others => '0');	-- The time in us
 signal peakLatency	: RegisterType := (others => '0');	-- The peak latency in us
 signal timeCounter	: integer range 0 to (1 us / ClockPeriod) - 1 := 0;
 
+signal test0		: RegisterType := (others => '0');	-- Test information
+signal test1		: RegisterType := (others => '0');	-- Test information
+
 --! Set the fields in the PCIe TLP header
 function setHeader(request: integer; address: integer; count: integer; tag: integer) return std_logic_vector is
 begin
@@ -285,8 +291,15 @@ begin
 			else std_logic_vector(numBlocksDone) when(regAddress = 3)
 			else std_logic_vector(timeUs) when(regAddress = 4)
 			else std_logic_vector(peakLatency) when(regAddress = 5)
+			else std_logic_vector(test0) when(regAddress = 6)
+			else std_logic_vector(test1) when(regAddress = 7)
 			else ones(32);
 	
+	test0(31 downto 16) <= numBlocksProc(15 downto 0);
+	test0(15 downto 0) <= blockNumberIn(15 downto 0);
+	test1(31 downto 16) <= numBlocksTrimmed(15 downto 0);
+	test1(15 downto 0) <= numBlocksDone(15 downto 0);
+
 	-- Register process
 	process(clk)
 	begin
@@ -446,13 +459,17 @@ begin
 				
 				when STATE_INIT =>
 					-- Initialise for next run
-					timeUs		<= (others => '0');
-					timeCounter	<= 0;
-					numBlocksProc	<= (others => '0');
-					processQueueOut	<= 0;
-					numBlocksTrimmed<= (others => '0');
-					complete	<= '0';
-					state		<= STATE_RUN;
+					requestOut.valid 	<= '0';
+					requestOut.last 	<= '0';
+					requestOut.keep 	<= (others => '1');
+					timeUs			<= (others => '0');
+					timeCounter		<= 0;
+					numBlocksProc		<= (others => '0');
+					processQueueOut		<= 0;
+					numBlocksTrimmed	<= (others => '0');
+					trimQueueProc		<= (others => '0');
+					complete		<= '0';
+					state			<= STATE_RUN;
 					
 				when STATE_RUN =>
 					if(enable = '1') then
@@ -560,7 +577,7 @@ begin
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
 						requestOut.last		<= '0';
 						requestOut.valid	<= '0';
-						numBlocksTrimmed	<= numBlocksTrimmed + TrimNum;
+						numBlocksTrimmed	<= numBlocksTrimmed + numTrimBlocks(dataChunkSize, numBlocksTrimmed);
 						trimQueueProc		<= trimQueueProc + 1;
 						
 						if(SimWaitReply) then
@@ -637,9 +654,6 @@ begin
 				
 				when REPSTATE_QUEUE_REPLY1 =>
 					if(enable = '0') then
-						if(replyIn.valid = '0') then
-							replyIn.ready	<= '0';
-						end if;
 						replyState <= REPSTATE_COMPLETE;
 					else
 						if(numBlocksDone >= dataChunkSize) then
@@ -652,7 +666,6 @@ begin
 
 				when REPSTATE_QUEUE_REPLY2 =>
 					if(enable = '0') then
-						replyIn.ready	<= '0';
 						replyState	<= REPSTATE_COMPLETE;
 
 					elsif(replyIn.valid = '1' and replyIn.ready = '1') then
@@ -686,6 +699,8 @@ begin
 		end if;
 	end process;
 
+
+
 	-- Process Nvme read data requests
 	-- This processes the Nvme Pcie memory read requests for the data buffers memory.
 	memRequestHead	<= to_PcieRequestHeadType(memReqIn.data);
@@ -693,8 +708,9 @@ begin
 		fifoData0(31 downto 0) & to_stl(memReplyHead) when(memState = MEMSTATE_READHEAD)
 		else fifoData0(31 downto 0) & fifoData1(127 downto 32);
 
-	fifoOutReady <= memReplyOut.ready when((memReplyOut.valid = '1') and (memReplyOut.last = '0')) else '0';
-	fifoReset <= not readEnable;
+	fifoReset <= not enable or not readEnable;
+	fifoOutReady <= memReplyOut.ready and not memReplyOut.last;
+	memReplyOut.valid <= fifoOutValid;
 
 	fifo0 : Fifo
 	port map (
@@ -719,7 +735,6 @@ begin
 				readEnable		<= '0';
 				readValid0		<= '0';
 				readValid1		<= '0';
-				memReplyOut.valid	<= '0';
 				memState		<= MEMSTATE_IDLE;
 			else
 				-- Fill fifo from buffer RAM. There are two cycles latency when reading from the RAM
@@ -765,36 +780,31 @@ begin
 					memState  <= MEMSTATE_READHEAD;
 
 				when MEMSTATE_READHEAD =>
-					if(memReplyOut.valid = '0') then
-						memReplyHead.byteCount		<= memCount & "00";
-						memReplyHead.address		<= memRequestHead1.address(memReplyHead.address'length - 1 downto 0);
-						memReplyHead.error		<= (others => '0');
-						memReplyHead.status		<= (others => '0');
-						memReplyHead.tag		<= memRequestHead1.tag;
-						memReplyHead.requesterId	<= memRequestHead1.requesterId;
+					memReplyHead.byteCount		<= memCount & "00";
+					memReplyHead.address		<= memRequestHead1.address(memReplyHead.address'length - 1 downto 0);
+					memReplyHead.error		<= (others => '0');
+					memReplyHead.status		<= (others => '0');
+					memReplyHead.tag		<= memRequestHead1.tag;
+					memReplyHead.requesterId	<= memRequestHead1.requesterId;
 
-						if(memCount > PcieMaxPayloadSize) then
-							memReplyHead.count	<= to_unsigned(PcieMaxPayloadSize, memReplyHead.count'length);
-							memChunkCount		<= to_unsigned(PcieMaxPayloadSize, memChunkCount'length);
-						else
-							memReplyHead.count	<= memCount;
-							memChunkCount		<= memCount;
-						end if;
-
-						memReplyOut.keep <= (others => '1');
-						memReplyOut.valid <= '1';
+					if(memCount > PcieMaxPayloadSize) then
+						memReplyHead.count	<= to_unsigned(PcieMaxPayloadSize, memReplyHead.count'length);
+						memChunkCount		<= to_unsigned(PcieMaxPayloadSize, memChunkCount'length);
 					else
+						memReplyHead.count	<= memCount;
+						memChunkCount		<= memCount;
+					end if;
 
-						if((memReplyOut.ready = '1') and (memReplyOut.valid = '1')) then
-							memState <= MEMSTATE_READDATA;
-						end if;
+					memReplyOut.keep <= (others => '1');
+
+					if((memReplyOut.ready = '1') and (memReplyOut.valid = '1')) then
+						memState <= MEMSTATE_READDATA;
 					end if;
 				
 				when MEMSTATE_READDATA =>
 					if((memReplyOut.ready = '1') and (memReplyOut.valid = '1')) then
 						if(memChunkCount = 4) then
 							memReplyOut.last	<= '0';
-							memReplyOut.valid	<= '0';
 							if(memCount = 4) then
 								readEnable	<= '0';
 								memState	<= MEMSTATE_IDLE;

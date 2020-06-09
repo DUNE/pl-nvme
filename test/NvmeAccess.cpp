@@ -675,6 +675,9 @@ void NvmeAccess::dumpRegs(int nvmeNum){
 	printf("TimeUs:         %8.8x\n", oregs[nvmeRegbase/4 + 20]);
 	printf("PeakLatencyUs:  %8.8x\n", oregs[nvmeRegbase/4 + 21]);
 
+	printf("Test0:          %8.8x\n", oregs[nvmeRegbase/4 + 22]);
+	printf("Test1:          %8.8x\n", oregs[nvmeRegbase/4 + 23]);
+
 	printf("ReadControl:    %8.8x\n", oregs[nvmeRegbase/4 + 32]);
 	printf("ReadStatus:     %8.8x\n", oregs[nvmeRegbase/4 + 33]);
 	printf("ReadBlock:      %8.8x\n", oregs[nvmeRegbase/4 + 34]);

@@ -437,7 +437,7 @@ signal regDataIn1		: std_logic_vector(31 downto 0);	--! Register write data
 signal regDataOut0		: std_logic_vector(31 downto 0);	--! Register contents
 signal regDataOut1		: std_logic_vector(31 downto 0);	--! Register contents
 
-signal reg_id			: RegDataType := x"56010200";
+signal reg_id			: RegDataType := x"56000901";
 signal reg_control		: RegDataType := (others => '0');
 signal reg_status		: RegDataType := (others => '0');
 signal reg_totalBlocks		: RegDataType := to_stl(NvmeTotalBlocks, RegWidth);

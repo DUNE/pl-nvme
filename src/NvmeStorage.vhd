@@ -152,7 +152,7 @@ end component;
 
 component AxisDataConvertFifo is
 generic(
-	Simulate	: boolean	:= False;		--! Enable simulation core
+	Simulate	: boolean	:= Simulate;		--! Enable simulation core
 	FifoSizeBytes	: integer	:= BlockSize		--! The Fifo size in bytes
 );
 port (

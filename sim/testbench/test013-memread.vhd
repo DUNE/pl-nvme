@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
---	Test009-packets.vhd	Simple nvme interface tests
+--	Test013-memread.vhd	Test of NvmeWrite's memory read functionality
 --	T.Barnaby,	Beam Ltd.	2020-04-14
 --------------------------------------------------------------------------------
 --
@@ -23,22 +23,25 @@ constant TCQ		: time := 2 ns;
 
 component Fifo is
 generic (
+	Simulate	: boolean := True;			--! Simulation
 	DataWidth	: integer := 128;			--! The data width of the Fifo in bits
-	FifoSize	: integer := 8				--! The size of the fifo
+	Size		: integer := 8;				--! The size of the fifo
+	NearFullLevel	: integer := 6				--! Nearly full level, 0 disables
 );
 port (
 	clk		: in std_logic;					--! The interface clock line
 	reset		: in std_logic;					--! The active high reset line
 	
-	fifoInNearFull	: out std_logic;
-	fifoInReady	: out std_logic;
-	fifoInValid	: in std_logic;
-	fifoIn		: in std_logic_vector(127 downto 0);
+	nearFull	: out std_logic;				--! Fifo is nearly full
+
+	inReady		: out std_logic;				--! Fifo is ready for input
+	inValid		: in std_logic;					--! Data input is valid
+	inData		: in std_logic_vector(DataWidth-1 downto 0);	--! The input data
 
 
-	fifoOutReady	: in std_logic;
-	fifoOutValid	: out std_logic;
-	fifoOut		: out std_logic_vector(127 downto 0)
+	outReady	: in std_logic;					--! The external logic is ready for output
+	outValid	: out std_logic;				--! The data output is available
+	outData		: out std_logic_vector(DataWidth-1 downto 0)	--! The output data
 );
 end component;
 
@@ -79,7 +82,11 @@ signal nvmeReplyHead	: NvmeReplyHeadType;
 signal memCount		: unsigned(10 downto 0);		-- DWord data send count
 signal memChunkCount	: unsigned(10 downto 0);		-- DWord data send within a chunk count
 
-signal fifoInNearFull	: std_logic;
+signal readValid0	: std_logic;
+signal readValid1	: std_logic;
+
+signal fifoReset	: std_logic;
+signal fifoNearFull	: std_logic;
 signal fifoInReady	: std_logic;
 signal fifoInValid	: std_logic;
 signal fifoOutValid	: std_logic;
@@ -113,7 +120,7 @@ begin
 		wait for 100 ns;
 
 		-- Read PCIe data
-		pcieRequestRead(clk, memReqIn, 5, 0, 0, 16#55#, 512);
+		pcieRequestRead(clk, memReqIn, 5, 0, 0, 16#55#, 512/4);
 
 		wait;
 	end process;
@@ -136,12 +143,14 @@ begin
 		memReplyOut.ready <= '0';
 		wait until reset = '0';
 
-		--memReplyOut.ready <= '1';
-		--wait;
+		memReplyOut.ready <= '1';
+		wait;
 
 		wait until rising_edge(clk) and memReplyOut.valid = '1';
 		wait until rising_edge(clk);
 		memReplyOut.ready <= '1';
+		
+		wait;
 		
 		wait for 400 ns;
 		wait until rising_edge(clk);
@@ -162,53 +171,52 @@ begin
 	end process;
 
 
+
 	-- Process Nvme read data requests
 	-- This processes the Nvme Pcie memory read requests for the data buffers memory.
-	readEnable <= '1';
 	memRequestHead	<= to_PcieRequestHeadType(memReqIn.data);
 	memReplyOut.data <=
 		fifoData0(31 downto 0) & to_stl(memReplyHead) when(memState = MEMSTATE_READHEAD)
 		else fifoData0(31 downto 0) & fifoData1(127 downto 32);
 
-	fifoOutReady <= memReplyOut.ready when((memReplyOut.valid = '1') and (memReplyOut.last = '0')) else '0';
+	fifoReset <= not readEnable;
+	fifoOutReady <= memReplyOut.ready and not memReplyOut.last;
+	memReplyOut.valid <= fifoOutValid;
 
-	fif0 : Fifo
+	fifo0 : Fifo
 	port map (
 		clk		=> clk,
-		reset		=> reset,
+		reset		=> fifoReset,
 
-		fifoInNearFull	=> fifoInNearFull,
-		fifoInReady	=> fifoInReady,
-		fifoInValid	=> fifoInValid,
-		fifoIn		=> readData,
+		nearFull	=> fifoNearFull,
+		inReady		=> fifoInReady,
+		inValid		=> readValid1,
+		indata		=> readData,
 
-		fifoOutReady	=> fifoOutReady,
-		fifoOutValid	=> fifoOutValid,
-		fifoOut		=> fifoData0
+		outReady	=> fifoOutReady,
+		outValid	=> fifoOutValid,
+		outdata		=> fifoData0
 	);
-
+	
 	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
 				memReqIn.ready		<= '0';
-				readValid		<= '0';
-				fifoInValid		<= '0';
-				memReplyOut.valid	<= '0';
+				readEnable		<= '0';
+				readValid0		<= '0';
+				readValid1		<= '0';
 				memState		<= MEMSTATE_IDLE;
 			else
-				if(memState /= MEMSTATE_IDLE) then
-					-- Fill fifo
-					if(readValid = '1') then
-						fifoInValid <= '1';
-						readValid <= '0';
-					end if;
-					
-					if(fifoInNearFull = '1') then
-						fifoInValid <= '0';
+				-- Fill fifo from buffer RAM. There are two cycles latency when reading from the RAM
+				if(readEnable = '1') then
+					readValid1 <= readValid0;
+
+					if(fifoNearFull = '1') then
+						readValid0 <= '0';
 					else
 						readAddress <= readAddress + 1;
-						fifoInValid <= '1';
+						readValid0 <= '1';
 					end if;
 
 					-- Output from Fifo
@@ -226,53 +234,53 @@ begin
 
 						if(memRequestHead.request = 0) then
 							readAddress	<= memRequestHead.address(AddressWidth+3 downto 4);
-							fifoInValid	<= '0';
-							readValid	<= '1';
+							readEnable	<= '1';
+							readValid0	<= '1';
+							readValid1	<= '0';
 							memReqIn.ready	<= '0';
 							memState	<= MEMSTATE_READSTART;
 						end if;
 					else
-						memReqIn.ready <= '1';
+						readEnable	<= '0';
+						readValid0	<= '0';
+						readValid1	<= '0';
+						memReqIn.ready	<= '1';
 					end if;
 
 				when MEMSTATE_READSTART =>
 					memState  <= MEMSTATE_READHEAD;
 
 				when MEMSTATE_READHEAD =>
-					if(memReplyOut.valid = '0') then
-						memReplyHead.byteCount		<= memCount & "00";
-						memReplyHead.address		<= memRequestHead1.address(memReplyHead.address'length - 1 downto 0);
-						memReplyHead.error		<= (others => '0');
-						memReplyHead.status		<= (others => '0');
-						memReplyHead.tag		<= memRequestHead1.tag;
-						memReplyHead.requesterId	<= memRequestHead1.requesterId;
+					memReplyHead.byteCount		<= memCount & "00";
+					memReplyHead.address		<= memRequestHead1.address(memReplyHead.address'length - 1 downto 0);
+					memReplyHead.error		<= (others => '0');
+					memReplyHead.status		<= (others => '0');
+					memReplyHead.tag		<= memRequestHead1.tag;
+					memReplyHead.requesterId	<= memRequestHead1.requesterId;
 
-						if(memCount > PcieMaxPayloadSize) then
-							memReplyHead.count	<= to_unsigned(PcieMaxPayloadSize, memReplyHead.count'length);
-							memChunkCount		<= to_unsigned(PcieMaxPayloadSize, memChunkCount'length);
-						else
-							memReplyHead.count	<= memCount;
-							memChunkCount		<= memCount;
-						end if;
-
-						memReplyOut.keep <= (others => '1');
-						memReplyOut.valid <= '1';
+					if(memCount > PcieMaxPayloadSize) then
+						memReplyHead.count	<= to_unsigned(PcieMaxPayloadSize, memReplyHead.count'length);
+						memChunkCount		<= to_unsigned(PcieMaxPayloadSize, memChunkCount'length);
 					else
+						memReplyHead.count	<= memCount;
+						memChunkCount		<= memCount;
+					end if;
 
-						if((memReplyOut.ready = '1') and (memReplyOut.valid = '1')) then
-							memState <= MEMSTATE_READDATA;
-						end if;
+					memReplyOut.keep <= (others => '1');
+
+					if((memReplyOut.ready = '1') and (memReplyOut.valid = '1')) then
+						memState <= MEMSTATE_READDATA;
 					end if;
 				
 				when MEMSTATE_READDATA =>
 					if((memReplyOut.ready = '1') and (memReplyOut.valid = '1')) then
 						if(memChunkCount = 4) then
 							memReplyOut.last	<= '0';
-							memReplyOut.valid	<= '0';
 							if(memCount = 4) then
-								memState <= MEMSTATE_IDLE;
+								readEnable	<= '0';
+								memState	<= MEMSTATE_IDLE;
 							else
-								memState <= MEMSTATE_READHEAD;
+								memState	<= MEMSTATE_READHEAD;
 							end if;
 
 						elsif(memChunkCount = 8) then

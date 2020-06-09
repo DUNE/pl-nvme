@@ -110,6 +110,7 @@ unisim: simu/unisim-obj93.cf
 
 simu/unisim-obj93.cf:
 	ghdl -i $(GFLAGS) --workdir=simu --work=unisim /opt/Xilinx/Vivado/2019.2/data/vhdl/src/unisims/*.vhd
+	#ghdl -i $(GFLAGS) --workdir=simu --work=xpm /opt/Xilinx/Vivado/2019.2/data/ip/xpm/xpm_VCOMP.vhd
 	#ghdl -i $(GFLAGS) --workdir=simu --work=unisim /opt/Xilinx/Vivado/2019.2/data/vhdl/src/unisims/primitive/*.vhd
 	#ghdl -i $(GFLAGS) --workdir=simu --work=xilinxcorelib /opt/Xilinx/13.4/ISE_DS/ISE/vhdl/src/XilinxCoreLib/*.vhd
 

@@ -60,119 +60,82 @@ architecture Behavioral of AxisDataConvertFifo is
 
 constant TCQ		: time := 1 ns;
 constant FifoSize	: integer := (FifoSizeBytes * 8 / AxisDataStreamWidth);
-constant AddressWidth	: integer := log2_roundup(FifoSize);
 constant DataWidth	: integer := AxisDataStreamWidth + 1;
 
-component Ram is
+component Fifo is
 generic (
-	DataWidth	: integer := DataWidth;			--! The data width of the RAM in bits
-	Size		: integer := FifoSize;			--! The size in RAM locations
-	AddressWidth	: integer := AddressWidth
+	Simulate	: boolean := Simulate;				--! Simulation
+	DataWidth	: integer := DataWidth;				--! The data width of the Fifo in bits
+	Size		: integer := FifoSize;				--! The size of the fifo
+	NearFullLevel	: integer := 0;					--! Nearly full level, 0 disables
+	RegisterOutputs	: boolean := False				--! Register the outputs
 );
 port (
-	clk		: in std_logic;				--! The interface clock line
-	reset		: in std_logic;				--! The active high reset line
+	clk		: in std_logic;					--! The interface clock line
+	reset		: in std_logic;					--! The active high reset line
+	
+	nearFull	: out std_logic;				--! Fifo is nearly full
 
-	writeEnable	: in std_logic;
-	writeAddress	: in unsigned(AddressWidth-1 downto 0);	
-	writeData	: in std_logic_vector(DataWidth-1 downto 0);	
+	inReady		: out std_logic;				--! Fifo is ready for input
+	inValid		: in std_logic;					--! Data input is valid
+	inData		: in std_logic_vector(DataWidth-1 downto 0);	--! The input data
 
-	readEnable	: in std_logic;
-	readAddress	: in unsigned(AddressWidth-1 downto 0);	
-	readData	: out std_logic_vector(DataWidth-1 downto 0)	
+
+	outReady	: in std_logic;					--! The external logic is ready for output
+	outValid	: out std_logic;				--! The data output is available
+	outData		: out std_logic_vector(DataWidth-1 downto 0)	--! The output data
 );
 end component;
 
-signal streamRx_readyl	: std_logic;
-signal writeEnable	: std_logic;
 signal writeData	: std_logic_vector(DataWidth-1 downto 0) := (others => '0');
-
-signal readEnable	: std_logic;
 signal readData		: std_logic_vector(DataWidth-1 downto 0) := (others => 'U');
 
-signal writePos		: unsigned(AddressWidth-1 downto 0) := (others => '0');
-signal readPos		: unsigned(AddressWidth-1 downto 0) := (others => '0');
-signal posLooped	: boolean := False;
-
-signal readDataValid	: std_logic := '0';
 signal readDataReady	: std_logic := '0';
+signal readDataValid	: std_logic := '0';
 signal readDataHigh	: std_logic_vector(127 downto 0) := (others => '0');
-signal readHigh		: boolean := False;
+signal readLastHigh	: std_logic := '0';
+signal readHigh		: std_logic := '0';
 
 begin
 	--! Fifo memory
-	fifoMem : Ram
+	fifo0 : Fifo
 	port map (
 		clk		=> clk,
 		reset		=> reset,
 
-		writeEnable	=> writeEnable,
-		writeAddress	=> writePos,
-		writeData	=> writeData,
+		inReady		=> streamRx_ready,
+		inValid		=> streamRx.valid,
+		indata		=> writeData,
 
-		readEnable	=> '1',
-		readAddress	=> readPos,
-		readData	=> readData
+		outReady	=> readDataReady,
+		outValid	=> readDataValid,
+		outdata		=> readData
 	);
 
 	--! Fifo input
-	streamRx_readyl		<= '1' when(not posLooped or (readPos /= writePos)) else '0';
-	streamRx_ready		<= streamRx_readyl;
-	writeEnable		<= streamRx.valid and streamRx_readyl when((not posLooped) or (writePos /= readPos)) else '0';
 	writeData		<= streamRx.last & streamRx.data;
 	
-	readEnable		<= readDataReady when((readDataValid = '1') and ((posLooped) or (writePos /= readPos))) else '0';
-
 	--! Data bit width conversion and output
-	readDataReady		<= streamTx.ready when(not readHigh) else '0';
-	streamTx.valid		<= readDataValid;
-	streamTx.last		<= readData(256) when(readHigh) else '0';
-	streamTx.data		<= readDataHigh when(readHigh) else readData(127 downto 0);
+	readDataReady		<= streamTx.ready when(readHigh = '0') else '0';
+	streamTx.valid		<= readDataValid or readHigh;
+	streamTx.last		<= readLastHigh when(readHigh = '1') else '0';
+	streamTx.data		<= readDataHigh when(readHigh) = '1' else readData(127 downto 0);
 
-	fifo: process(clk)
+	process(clk)
 	begin
 		if(rising_edge(clk)) then
 			if(reset = '1') then
-				writePos	<= (others => '0');
-				readPos		<= (others => '0');
-				posLooped	<= False;
-				readHigh	<= False;
-				readDataValid	<= '0';
+				readHigh	<= '0';
+				readDataHigh	<= (others => '0');
+				readLastHigh	<= '0';
 
 			else
-				-- Handle Fifo input
-				if(writeEnable = '1') then
-					if(writePos = FifoSize-1) then
-						writePos	<= (others => '0');
-						posLooped	<= True;
-					else 
-						writePos <= writePos + 1;
-					end if;
-				end if;
-				
 				-- Handle Fifo output
-				if(readEnable = '1') then
-					readDataHigh <= readData(255 downto 128);
-
-					if(readPos = FifoSize-1) then
-						readPos		<= (others => '0');
-						posLooped	<= False;
-					else 
-						readPos <= readPos + 1;
-					end if;
+				if((readDataValid = '1') and (readHigh = '0')) then
+					readDataHigh	<= readData(255 downto 128);
+					readLastHigh	<= readData(256);
 				end if;
 
-				-- Handle Fifo full
-				if(readPos = writePos) then
-					if(posLooped) then
-						readDataValid	<= '1';
-					else
-						readDataValid	<= '0';
-					end if;
-				else
-					readDataValid	<= '1';
-				end if;
-				
 				-- Handle bit width change
 				if((streamTx.valid = '1') and (streamTx.ready = '1')) then
 					readHigh <= not readHigh;

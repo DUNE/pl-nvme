@@ -19,10 +19,13 @@ end;
 
 architecture sim of Test is
 
+constant TCQ		: time := 1 ns;
+constant BlockSize	: integer := 512;
+
 component AxisDataConvertFifo is
 generic(
-	Simulate	: boolean	:= False;			--! Enable simulation core
-	FifoSizeBytes	: integer	:= NvmeStorageBlockSize		--! The Fifo size in bytes
+	Simulate	: boolean	:= True;			--! Enable simulation core
+	FifoSizeBytes	: integer	:= BlockSize			--! The Fifo size in bytes
 );
 port (
 	clk		: in std_logic;					--! Module clock
@@ -34,8 +37,6 @@ port (
 	streamTx	: inout AxisStreamType := AxisStreamOutput	--! Output data stream
 );
 end component;
-
-constant TCQ		: time := 1 ns;
 
 signal clk		: std_logic := '0';
 signal reset		: std_logic := '0';
@@ -61,7 +62,7 @@ begin
 	
 	stop : process
 	begin
-		wait for 1000 ns;
+		wait for 3000 ns;
 		assert false report "simulation ended ok" severity failure;
 	end process;
 
@@ -69,6 +70,9 @@ begin
 	-- Fifo tests
 	-- The test data interface
 	testData0 : TestData
+	generic map (
+		BlockSize	=> BlockSize
+	)
 	port map (
 		clk		=> clk,
 		reset		=> reset,
@@ -95,6 +99,8 @@ begin
 		streamTx.ready <= '0';
 		wait until reset = '0';
 
+		--wait;
+		
 		wait until rising_edge(clk);
 		streamTx.ready <= '1';
 		
