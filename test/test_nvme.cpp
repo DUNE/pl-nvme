@@ -194,6 +194,10 @@ int Control::nvmeInit(){
 			}
 		}
 	}
+	else {
+		// Start Nvme request processing thread
+		start();
+	}
 	
 	return e;
 }
@@ -544,7 +548,7 @@ int Control::nvmeCapture(){
 	}
 
 	uprintf("Time: %u\n", t);
-	tprintf("StartBlock: 0x%8.8x ErrorStatus: 0x%x, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", ostartBlock, e, r / (1024 * 1024), l);
+	tprintf("StartBlock: %8u ErrorStatus: 0x%x, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", ostartBlock, e, r / (1024 * 1024), l);
 
 	uprintf("Stop NvmeWrite engine\n");
 	writeNvmeStorageReg(RegControl, 0x00000000);
@@ -610,6 +614,7 @@ int Control::nvmeCaptureRepeat(){
 			b = readNvmeStorageReg(RegWriteNumBlocks);
 			uprintf("NvmeWrite: numBlocks: %u\n", n);
 			usleep(100000);
+
 			if((getTime() - ts) > tExpected){
 				e = readNvmeStorageReg(RegWriteError);
 				if(onvmeNum == 2){
@@ -641,7 +646,7 @@ int Control::nvmeCaptureRepeat(){
 		}
 
 		uprintf("Process time: %u\n", t);
-		tprintf("%8d StartBlock: 0x%8.8x ErrorStatus: 0x%x, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", n, startBlock, e, r / (1024 * 1024), l);
+		tprintf("%8d StartBlock: %8u ErrorStatus: 0x%x, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", n, startBlock, e, r / (1024 * 1024), l);
 
 		if(e){
 			printf("Error status: 0x%x, aborted\n", e);
@@ -686,7 +691,7 @@ int Control::nvmeRead(){
 		writeNvmeStorageReg(RegReadNumBlocks, onumBlocks);
 	}
 	
-	if(overbose)
+	if(overbose > 2)
 		dumpRegs();
 	
 	// Start off NvmeRead engine
@@ -694,7 +699,7 @@ int Control::nvmeRead(){
 	ts = getTime();
 	writeNvmeStorageReg(RegReadControl, 0x00000001);
 
-	if(overbose){
+	if(overbose > 2){
 		dumpRegs(0);
 		dumpRegs(1);
 	}
@@ -838,7 +843,7 @@ int Control::nvmeTrim(){
 	
 	if(e = nvmeInit())
 		return e;
-
+	
 	// Note this 
 	if(onvmeNum == 2){
 		for(block = 0; block < onumBlocks/2; block += (trimBlocks/8)){
@@ -1245,15 +1250,15 @@ void usage(void) {
 	fprintf(stderr, "Usage: test_nvme [options] <testname>\n");
 	fprintf(stderr, "This program provides the ability perform access tests to an Nvme device on a FPGA development board\n");
 	fprintf(stderr, " -help,-h              - Help on command line parameters\n");
-	fprintf(stderr, " -v                    - Verbose\n");
-	fprintf(stderr, " -no-reset             - Disable reset/config on startup\n");
-	fprintf(stderr, " -no-validate          - Disable data validation\n");
+	fprintf(stderr, " -v                    - Verbose. Two adds more verbosity\n");
 	fprintf(stderr, " -l                    - List tests\n");
+	fprintf(stderr, " -no-reset || -nr      - Disable reset/config on startup\n");
+	fprintf(stderr, " -no-validate || -nv   - Disable data validation on read's\n");
 	fprintf(stderr, " -d <nvmeNum>          - Nvme to operate on: 0: Nvme0, 1: Nvme1, 2: Both Nvme's (default)\n");
 	fprintf(stderr, " -s <block>            - The starting 4k block number (default is 0)\n");
-	fprintf(stderr, " -n <num>              - The number of blocks to read/write or trim (default is 1)\n");
+	fprintf(stderr, " -n <num>              - The number of 4k blocks to read/write or trim (default is 2)\n");
 	fprintf(stderr, " -rs <block>           - The starting 4k block number for reads in captureAndRead (default is 0)\n");
-	fprintf(stderr, " -rn <num>             - The number of blocks for reads in captureAndRead (default is 2)\n");
+	fprintf(stderr, " -rn <num>             - The number of 4k blocks for reads in captureAndRead (default is 2)\n");
 	fprintf(stderr, " -o <filename>         - The filename for output data.\n");
 }
 
@@ -1261,9 +1266,11 @@ static struct option options[] = {
 		{ "h",			0, NULL, 0 },
 		{ "help",		0, NULL, 0 },
 		{ "v",			0, NULL, 0 },
-		{ "no-reset",		0, NULL, 0 },
-		{ "no-validate",	0, NULL, 0 },
 		{ "l",			0, NULL, 0 },
+		{ "no-reset",		0, NULL, 0 },
+		{ "nr",			0, NULL, 0 },
+		{ "no-validate",	0, NULL, 0 },
+		{ "nv",			0, NULL, 0 },
 		{ "d",			1, NULL, 0 },
 		{ "s",			1, NULL, 0 },
 		{ "n",			1, NULL, 0 },
@@ -1290,14 +1297,14 @@ int main(int argc, char** argv){
 		else if(!strcmp(s, "v")){
 			control.overbose++;
 		}
-		else if(!strcmp(s, "no-reset")){
-			control.oreset = 0;
-		}
-		else if(!strcmp(s, "no-validate")){
-			control.ovalidate = 0;
-		}
 		else if(!strcmp(s, "l")){
 			listTests = 1;
+		}
+		else if(!strcmp(s, "no-reset") || !strcmp(s, "nr")){
+			control.oreset = 0;
+		}
+		else if(!strcmp(s, "no-validate") || !strcmp(s, "nv")){
+			control.ovalidate = 0;
 		}
 		else if(!strcmp(s, "d")){
 			control.setNvme(atoi(optarg));

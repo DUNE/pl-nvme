@@ -455,6 +455,7 @@ signal configComplete		: std_logic := 'U';
 -- Nvme data write signals
 signal writeEnable		: std_logic := 'U';
 signal waitingForData		: std_logic := 'U';
+signal dataEnabledOut1		: std_logic := 'U';
 
 -- Pcie_nvme signals
 signal nvme_reset_local_n	: std_logic := '0';
@@ -522,11 +523,11 @@ begin
 	axisClockConverter2 :  AxisClockConverter
 	port map (
 		clkRx		=> clk,
-		resetRx		=> reset,
+		resetRx		=> "not"(dataEnabledOut1),
 		streamRx	=> dataIn,
 
 		clkTx		=> nvme_user_clk,
-		resetTx		=> nvme_user_reset,
+		resetTx		=> "not"(writeEnable),
 		streamTx	=> dataIn1
 	);
 	
@@ -538,8 +539,10 @@ begin
 
 		clk2		=> clk,
 		reset2		=> reset,
-		signal2		=> dataEnabledOut
+		signal2		=> dataEnabledOut1
 	);
+
+	dataEnabledOut <= dataEnabledOut1;
 
 	-- Register access
 	regDataOut1 <= reg_id when(regAddress1 = 0) else
