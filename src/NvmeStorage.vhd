@@ -257,7 +257,7 @@ begin
 					regAddress <= unsigned(axilIn.awaddr(9 downto 0));
 				elsif(axilIn.arvalid = '1') then
 					regAddress <= unsigned(axilIn.araddr(9 downto 0));
-					rvalid_delay(0) <= '1';
+					rvalid_delay <= to_unsigned(1, rvalid_delay'length);
 				else
 					-- rvalid delay to handle clock domain crossing latency
 					rvalid_delay <= shift_left(rvalid_delay, 1);

@@ -32,5 +32,9 @@ driver_load:
 
 ${PROG}: ${OBJS}
 
+installPackages:
+	# Install the necessary Fedora Linux packages
+	dnf install @development-tools gcc-c++ kernel-devel
+	
 # Dependancies
 -include $(OBJS:.o=.d)

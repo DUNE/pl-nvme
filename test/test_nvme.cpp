@@ -101,6 +101,7 @@ public:
 	BUInt		overbose;				///< Verbose operation
 	Bool		oreset;					///< Perform reset/config
 	Bool		ovalidate;				///< Validate data
+	Bool		omachine;				///< Return machine readable data only
 	BUInt32		ostartBlock;				///< The starting block number
 	BUInt32		onumBlocks;				///< The number of blocks
 	BUInt32		oreadStartBlock;			///< The read starting block number
@@ -117,6 +118,7 @@ public:
 
 Control::Control() : ofifo0(1024*1024), ofifo1(1024*1024){
 	overbose = 0;
+	omachine = 0;
 	oreset = 1;
 	ovalidate = 1;
 	ostartBlock = 0;
@@ -491,7 +493,8 @@ int Control::nvmeCapture(){
 	double	ts;
 	BUInt	numBlocks;
 	
-	printf("nvmeCapture: Write FPGA data stream to Nvme devices. nvme: %u startBlock: %u numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
+	if(!omachine)
+		printf("nvmeCapture: Write FPGA data stream to Nvme devices. nvme: %u startBlock: %u numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
 
 	// Initialise Nvme devices
 	if(e = nvmeInit())
@@ -548,7 +551,10 @@ int Control::nvmeCapture(){
 	}
 
 	uprintf("Time: %u\n", t);
-	tprintf("StartBlock: %8u ErrorStatus: 0x%x, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", ostartBlock, e, r / (1024 * 1024), l);
+	if(omachine)
+		printf("0x%x,%u,%.3f,%u\n", e, ostartBlock, r / (1024 * 1024), l);
+	else
+		tprintf("ErrorStatus: 0x%x, StartBlock: %8u, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", e, ostartBlock, r / (1024 * 1024), l);
 
 	uprintf("Stop NvmeWrite engine\n");
 	writeNvmeStorageReg(RegControl, 0x00000000);
@@ -646,7 +652,7 @@ int Control::nvmeCaptureRepeat(){
 		}
 
 		uprintf("Process time: %u\n", t);
-		tprintf("%8d StartBlock: %8u ErrorStatus: 0x%x, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", n, startBlock, e, r / (1024 * 1024), l);
+		tprintf("%8u ErrorStatus: 0x%x, StartBlock: %8u, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", n, e, ostartBlock, r / (1024 * 1024), l);
 
 		if(e){
 			printf("Error status: 0x%x, aborted\n", e);
@@ -872,12 +878,34 @@ int Control::nvmeTrim(){
 
 int Control::nvmeRegs(){
 	int	e = 0;
+	BUInt	n = 0;
+	BUInt32	v;
 
 	printf("NvmeRegs\n");
 	
 	// Note no reset and config
 	dumpRegs(0);
 	dumpRegs(1);
+
+#ifdef ZAP
+	// Soak test register interface	
+	//setNvme(1);
+
+	while(1){
+		v = readNvmeStorageReg(RegIdent);
+		if(v != 0x56000901){
+			printf("Error: %u RegIdent: %8.8x\n", n, v);
+			return 1;
+		}
+
+		v = readNvmeStorageReg(RegTotalBlocks);
+		if(v != 104857600){
+			printf("Error: %u RegTotalBlocks: %u %8.8x\n", n, v, v);
+			return 1;
+		}
+		n++;
+	}
+#endif
 	
 	return 0;
 }
@@ -1251,6 +1279,7 @@ void usage(void) {
 	fprintf(stderr, "This program provides the ability perform access tests to an Nvme device on a FPGA development board\n");
 	fprintf(stderr, " -help,-h              - Help on command line parameters\n");
 	fprintf(stderr, " -v                    - Verbose. Two adds more verbosity\n");
+	fprintf(stderr, " -m                    - Just return software readable data.\n");
 	fprintf(stderr, " -l                    - List tests\n");
 	fprintf(stderr, " -no-reset || -nr      - Disable reset/config on startup\n");
 	fprintf(stderr, " -no-validate || -nv   - Disable data validation on read's\n");
@@ -1266,6 +1295,7 @@ static struct option options[] = {
 		{ "h",			0, NULL, 0 },
 		{ "help",		0, NULL, 0 },
 		{ "v",			0, NULL, 0 },
+		{ "m",			0, NULL, 0 },
 		{ "l",			0, NULL, 0 },
 		{ "no-reset",		0, NULL, 0 },
 		{ "nr",			0, NULL, 0 },
@@ -1296,6 +1326,9 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(s, "v")){
 			control.overbose++;
+		}
+		else if(!strcmp(s, "m")){
+			control.omachine = 1;
 		}
 		else if(!strcmp(s, "l")){
 			listTests = 1;
