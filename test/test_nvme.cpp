@@ -491,7 +491,7 @@ int Control::nvmeCapture(){
 	double	ts;
 	BUInt	numBlocks;
 	
-	printf("nvmeCapture: Write FPGA data stream to Nvme devices. nvme: %u startBlock: 0x%8.8x numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
+	printf("nvmeCapture: Write FPGA data stream to Nvme devices. nvme: %u startBlock: %u numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
 
 	// Initialise Nvme devices
 	if(e = nvmeInit())

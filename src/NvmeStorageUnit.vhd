@@ -462,14 +462,6 @@ signal nvme_reset_local_n	: std_logic := '0';
 signal nvme_user_clk		: std_logic := 'U';
 signal nvme_user_reset		: std_logic := 'U';
 
-signal cfg_mgmt_addr			: std_logic_vector(18 downto 0);
-signal cfg_mgmt_write			: std_logic;
-signal cfg_mgmt_write_data		: std_logic_vector(31 downto 0);
-signal cfg_mgmt_read			: std_logic;
-signal cfg_mgmt_read_data		: std_logic_vector(31 downto 0);
-signal cfg_mgmt_read_write_done		: std_logic;
-signal cfg_mgmt_type1_cfg_reg_access	: std_logic;
-
 attribute keep	: string;
 attribute keep	of reset_local : signal is "true";
 attribute keep	of nvme_reset_local_n : signal is "true";
@@ -771,13 +763,6 @@ begin
 	nvmeReply.ready <= nvmeReply_ready(0) and nvmeReply_ready(1) and nvmeReply_ready(2) and nvmeReply_ready(3);
 	nvmeReply_user <= (others => '0');
 	
-	cfg_mgmt_addr <= (others => '0');
-	cfg_mgmt_write <= '0';
-	cfg_mgmt_write_data <= (others => '0');
-	cfg_mgmt_read <= '0';
-	cfg_mgmt_type1_cfg_reg_access <= '0';
-	
-
 	leds(2) <= '0';
 	end generate;
 	
