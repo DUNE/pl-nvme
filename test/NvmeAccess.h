@@ -81,6 +81,9 @@ const BUInt	RegReadStatus		= 0x084;	///< The read data status register
 const BUInt	RegReadBlock		= 0x088;	///< The read data starting block register
 const BUInt	RegReadNumBlocks	= 0x08C;	///< The read data number of blocks register
 
+const BUInt	NvmeRegCapLow		= 0x000;	///< NVMe capabilities low register
+const BUInt	NvmeRegCapHigh		= 0x004;	///< NVMe capabilities high register
+
 class NvmeRequestPacket {
 public:
 			NvmeRequestPacket(){
@@ -145,7 +148,7 @@ public:
 	void		start();							///< Start NVMe request processing thread
 
 	// Send a queued request to the NVMe
-	int		nvmeRequest(Bool wait, int queue, int opcode, BUInt32 address, BUInt32 arg10, BUInt32 arg11 = 0, BUInt32 arg12 = 0);
+	int		nvmeRequest(Bool wait, int queue, int opcode, BUInt nameSpace, BUInt32 address, BUInt32 arg10, BUInt32 arg11 = 0, BUInt32 arg12 = 0);
 	
 	// NVMe process received requests thread
 	int		nvmeProcess();

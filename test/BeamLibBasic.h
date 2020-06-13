@@ -67,6 +67,14 @@
 #define	dl4hd32(data, nWords)
 #endif
 
+#if LDEBUG5
+#define	dl5printf(fmt, a...)	tprintf(fmt, ##a)
+#define	dl5hd32(data, nWords)	bhd32(data, nWords)
+#else
+#define	dl5printf(fmt, a...)
+#define	dl5hd32(data, nWords)
+#endif
+
 typedef bool		Bool;
 typedef uint8_t		BUInt8;
 typedef uint32_t	BUInt32;
