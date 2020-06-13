@@ -2,14 +2,14 @@
 -- DuneNvmeTestTop.vhd Simple NVMe access test system
 --------------------------------------------------------------------------------
 --!
---! @class	DuneNvmeTestTop
+--! @class	DuneNvmeTestOsperoTop
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
 --! @date	2020-05-12
 --! @version	1.0.0
 --!
 --! @brief
 --! This module implements a complete test design for the NvmeStorage system with
---! the KCU104 and AB17-M2FMC boards.
+--! the KCU104 and Ospero OP47 boards.
 --!
 --! @details
 --! The FPGA bit file produced allows a host computer to access a NVMe storage device
@@ -60,14 +60,18 @@ port (
 	pci_exp_rxp	: in std_logic_vector(3 downto 0);
 	pci_exp_rxn	: in std_logic_vector(3 downto 0);
 
-	nvme_clk_p	: in std_logic;
-	nvme_clk_n	: in std_logic;
-	nvme_reset_n	: out std_logic;
+	nvme0_clk_p	: in std_logic;
+	nvme0_clk_n	: in std_logic;
+	nvme0_reset_n	: out std_logic;
 
 	nvme0_exp_txp	: out std_logic_vector(3 downto 0);
 	nvme0_exp_txn	: out std_logic_vector(3 downto 0);
 	nvme0_exp_rxp	: in std_logic_vector(3 downto 0);
 	nvme0_exp_rxn	: in std_logic_vector(3 downto 0);
+
+	nvme1_clk_p	: in std_logic;
+	nvme1_clk_n	: in std_logic;
+	nvme1_reset_n	: out std_logic;
 
 	nvme1_exp_txp	: out std_logic_vector(3 downto 0);
 	nvme1_exp_txn	: out std_logic_vector(3 downto 0);
@@ -157,8 +161,11 @@ signal sys_clk			: std_logic := 'U';
 
 signal pci_clk			: std_logic := 'U';
 signal pci_clk_gt		: std_logic := 'U';
-signal nvme_clk			: std_logic := 'U';
-signal nvme_clk_gt		: std_logic := 'U';
+signal nvme0_clk		: std_logic := 'U';
+signal nvme0_clk_gt		: std_logic := 'U';
+signal nvme1_clk		: std_logic := 'U';
+signal nvme1_clk_gt		: std_logic := 'U';
+signal nvme_reset_n		: std_logic := 'U';
 
 signal leds_l			: std_logic_vector(7 downto 0) := (others => '0');
 
@@ -192,14 +199,26 @@ begin
 		CEB     => '0'
 	);
 	
-	-- NVME PCIE Clock, 100MHz. Clock shared between both Nvme devices
+	-- NVME0 PCIE Clock, 100MHz.
 	nvme_clk_buf0 : IBUFDS_GTE3 port map (
-		I       => nvme_clk_p,
-		IB      => nvme_clk_n,
-		O       => nvme_clk_gt,
-		ODIV2   => nvme_clk,
+		I       => nvme0_clk_p,
+		IB      => nvme0_clk_n,
+		O       => nvme0_clk_gt,
+		ODIV2   => nvme0_clk,
 		CEB     => '0'
 	);
+	
+	-- NVME1 PCIE Clock, 100MHz.
+	nvme_clk_buf1 : IBUFDS_GTE3 port map (
+		I       => nvme1_clk_p,
+		IB      => nvme1_clk_n,
+		O       => nvme1_clk_gt,
+		ODIV2   => nvme1_clk,
+		CEB     => '0'
+	);
+
+	nvme0_reset_n <= not nvme_reset_n;
+	nvme1_reset_n <= not nvme_reset_n;
 	
 	-- The PCIe interface to the host
 	pcie_host0 : Pcie_host
@@ -302,15 +321,15 @@ begin
 		-- NVMe interface
 		nvme_reset_n	=> nvme_reset_n,
 
-		nvme0_clk	=> nvme_clk,
-		nvme0_clk_gt	=> nvme_clk_gt,
+		nvme0_clk	=> nvme0_clk,
+		nvme0_clk_gt	=> nvme0_clk_gt,
 		nvme0_exp_txp	=> nvme0_exp_txp,
 		nvme0_exp_txn	=> nvme0_exp_txn,
 		nvme0_exp_rxp	=> nvme0_exp_rxp,
 		nvme0_exp_rxn	=> nvme0_exp_rxn,
 
-		nvme1_clk	=> nvme_clk,
-		nvme1_clk_gt	=> nvme_clk_gt,
+		nvme1_clk	=> nvme1_clk,
+		nvme1_clk_gt	=> nvme1_clk_gt,
 		nvme1_exp_txp	=> nvme1_exp_txp,
 		nvme1_exp_txn	=> nvme1_exp_txn,
 		nvme1_exp_rxp	=> nvme1_exp_rxp,

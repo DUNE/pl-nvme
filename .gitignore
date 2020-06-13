@@ -4,3 +4,4 @@ doc/DuneNvmeStorageProject.pdf
 doc/fpga/
 doc/host/
 docsrc/.configured
+vivado/Config.mk

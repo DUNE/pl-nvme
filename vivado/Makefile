@@ -14,9 +14,11 @@
 PROJECT 	= nvme-test
 BOARD		= xilinx.com:kcu105:part0:1.6
 FPGA_PART	= xcku040-ffva1156-2-e
-FPGA_TOP	= DuneNvmeTestTop
+FPGA_TOP	?= DuneNvmeTestTop
 VIVADO_PATH	?= /opt/Xilinx/Vivado/2019.2/bin
 VIVADO_TARGET	?= ""
+
+-include Config.mk
 
 # Files for synthesis
 SYN_FILES	= ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd
@@ -35,7 +37,7 @@ SYN_FILES	+= ../src/NvmeRead.vhd
 SYN_FILES	+= ../src/NvmeStorageUnit.vhd
 SYN_FILES	+= ../src/NvmeStorage.vhd
 SYN_FILES	+= ../src/TestData.vhd
-SYN_FILES	+= ../src/DuneNvmeTestTop.vhd
+SYN_FILES	+= ../src/${FPGA_TOP}.vhd
 
 # IP cores
 XCI_FILES	= ../src/ip/Clk_core.xci
@@ -46,9 +48,8 @@ XCI_FILES	+= ../src/ip/Pcie_nvme0.xci
 XCI_FILES	+= ../src/ip/Pcie_nvme1.xci
 
 # XDC files
-XDC_FILES	= ../src/DuneNvmeTestTop.xdc
+XDC_FILES	= ../src/${FPGA_TOP}.xdc
 
--include Config.mk
 include Vivado.mk
 
 sync_ip:

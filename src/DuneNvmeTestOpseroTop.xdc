@@ -1,7 +1,8 @@
 ###############################################################################
-#	DuneNvmeTestTop.xdc	Constraints for DuneNvmeTestTop on a KCU105
+#	DuneNvmeTestOsperoTop.xdc	Constraints for DuneNvmeTestTop on a KCU105
 #	T.Barnaby,	Beam Ltd.	2020-02-23
 ###############################################################################
+#
 #
 # @class	DuneNvmeTestOsperoTop
 # @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
@@ -10,7 +11,7 @@
 #
 # @brief
 # This module implements a complete test design for the NvmeStorage system with
-# the KCU104 and AB17-M2FMC boards.
+# the KCU104 and Ospero OP47 boards.
 #
 # @details
 # The FPGA bit file produced allows a host computer to access a NVMe storage device
@@ -108,14 +109,14 @@ set_property PACKAGE_PIN M22 [get_ports {leds[5]}]
 set_property PACKAGE_PIN R23 [get_ports {leds[6]}]
 set_property PACKAGE_PIN P23 [get_ports {leds[7]}]
 
-# PCie Nvme interfaces
-set_property PACKAGE_PIN H11 [get_ports nvme_reset_n]
-set_property IOSTANDARD LVCMOS18 [get_ports nvme_reset_n]
-set_property PACKAGE_PIN K6 [get_ports {nvme_clk_p}]
-set_property PACKAGE_PIN K5 [get_ports {nvme_clk_n}]
+# PCie Nvme0 interfaces
+set_property PACKAGE_PIN H11 [get_ports nvme0_reset_n]
+set_property IOSTANDARD LVCMOS18 [get_ports nvme0_reset_n]
+set_property PACKAGE_PIN K6 [get_ports {nvme0_clk_p}]
+set_property PACKAGE_PIN K5 [get_ports {nvme0_clk_n}]
 #set_property LOC GTHE3_COMMON_X0Y1 [get_cells nvme_clk_buf0]
 
-# PCIe Nvme0 interface
+# PCIe Nvme0 PCIe lane interface
 set_property LOC GTHE3_CHANNEL_X0Y16 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST}]
 set_property LOC GTHE3_CHANNEL_X0Y17 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*gen_gthe3_channel_inst[1].GTHE3_CHANNEL_PRIM_INST}]
 set_property LOC GTHE3_CHANNEL_X0Y18 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*gen_gthe3_channel_inst[2].GTHE3_CHANNEL_PRIM_INST}]
@@ -133,8 +134,14 @@ set_property LOC RAMB18_X8Y105 [get_cells -hierarchical -filter {NAME =~ *nvmeSt
 set_property LOC RAMB18_X8Y106 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[2].ramb18e2_inst}]
 set_property LOC RAMB18_X8Y107 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[3].ramb18e2_inst}]
 
+# PCie Nvme1 interfaces
+set_property PACKAGE_PIN L12 [get_ports nvme1_reset_n]
+set_property IOSTANDARD LVCMOS18 [get_ports nvme1_reset_n]
+set_property PACKAGE_PIN H6 [get_ports {nvme1_clk_p}]
+set_property PACKAGE_PIN H5 [get_ports {nvme1_clk_n}]
+#set_property LOC GTHE3_COMMON_X0Y1 [get_cells nvme_clk_buf1]
 
-# PCIe Nvme1 interface
+# PCIe Nvme1 PCIe lane interface
 set_property LOC GTHE3_CHANNEL_X0Y12 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*gen_gthe3_channel_inst[0].GTHE3_CHANNEL_PRIM_INST}]
 set_property LOC GTHE3_CHANNEL_X0Y14 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*gen_gthe3_channel_inst[1].GTHE3_CHANNEL_PRIM_INST}]
 set_property LOC GTHE3_CHANNEL_X0Y13 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit1*gen_gthe3_channel_inst[2].GTHE3_CHANNEL_PRIM_INST}]

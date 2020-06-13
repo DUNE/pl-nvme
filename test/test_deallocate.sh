@@ -108,12 +108,11 @@ test1(){
 		./test_nvme -nr -d 2 -s ${captureBlocks} -n ${captureBlocks} capture
 
 		#delay=`expr $delay + $delay / 3`
-		#delay=`expr $delay + $delay / 3`
 	done
 }
 
 test2(){
-	delay=280
+	delay=140
 
 	# Initially allocate most of the drives blocks for worst case
 	echo "Allocate most of the drives blocks initially"
@@ -142,7 +141,7 @@ test2(){
 
 		./test_nvme -nr -d 2 -s ${captureBlocks} -n ${captureBlocks} capture
 
-		delay=`expr $delay + $delay / 3`
+		#delay=`expr $delay + $delay / 3`
 	done
 }
 

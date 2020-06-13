@@ -656,7 +656,7 @@ int Control::nvmeCaptureRepeat(){
 		}
 
 		uprintf("Process time: %u\n", t);
-		tprintf("%8u ErrorStatus: 0x%x, StartBlock: %8u, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", n, e, ostartBlock, r / (1024 * 1024), l);
+		tprintf("%8u ErrorStatus: 0x%x, StartBlock: %8u, DataRate: %.3f MBytes/s, PeakLatancy: %8u us\n", n, e, startBlock, r / (1024 * 1024), l);
 
 		if(e){
 			printf("Error status: 0x%x, aborted\n", e);
@@ -1041,6 +1041,9 @@ int Control::test1(){
 
 	printf("Test1: Simple PCIe command register read, write and read.\n");
 
+	reset();
+	start();
+	
 	printf("Configure PCIe for memory accesses\n");
 	pcieRead(8, 4, 1, data);
 	dl1printf("Commandreg: %8.8x\n", data[0]);
@@ -1051,6 +1054,7 @@ int Control::test1(){
 	pcieRead(8, 4, 1, data);
 	dl1printf("Commandreg: %8.8x\n", data[0]);
 
+	dumpNvmeRegisters();
 	printf("Complete\n");
 
 	return 0;

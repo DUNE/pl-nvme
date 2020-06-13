@@ -50,7 +50,7 @@ distclean: clean
 	-rm -rf rev
 
 # Vivado project file
-${PROJECT}.xpr: Makefile $(XCI_FILES)
+${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
 	rm -rf defines.v
 	touch defines.v
 	for x in $(DEFS); do echo '`define' $$x >> defines.v; done
