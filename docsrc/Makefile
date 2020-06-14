@@ -28,6 +28,7 @@ install:
 		cp -a ../doc/host/html ${DOCDIR}/host; \
 		cp -a ../doc/fpga/html ${DOCDIR}/fpga; \
 		cp -a ../doc/*.pdf ${DOCDIR}; \
+		cp -a ../doc/*.html ${DOCDIR}; \
 	fi;
 
 clean:
