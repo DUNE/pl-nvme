@@ -42,7 +42,7 @@ use unisim.vcomponents.all;
 library work;
 use work.NvmeStoragePkg.all;
 
-entity DuneNvmeTestTop is
+entity DuneNvmeTestOsperoTop is
 generic(
 	Simulate	: boolean	:= False
 );
@@ -82,7 +82,7 @@ port (
 );
 end;
 
-architecture Behavioral of DuneNvmeTestTop is
+architecture Behavioral of DuneNvmeTestOsperoTop is
 
 component Clk_core is                   
 port (

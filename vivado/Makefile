@@ -10,15 +10,15 @@
 #  clean:	Remove output files and project files
 #  distclean:	Clean all files
 #
+
 # Project and FPGA settings
-PROJECT 	= nvme-test
-BOARD		= xilinx.com:kcu105:part0:1.6
-FPGA_PART	= xcku040-ffva1156-2-e
-FPGA_TOP	?= DuneNvmeTestTop
+-include Config.mk
+PROJECT 	?= DuneNvmeTest
+BOARD		?= xilinx.com:kcu105:part0:1.6
+FPGA_PART	?= xcku040-ffva1156-2-e
+FPGA_TOP	?= ${PROJECT}Top
 VIVADO_PATH	?= /opt/Xilinx/Vivado/2019.2/bin
 VIVADO_TARGET	?= ""
-
--include Config.mk
 
 # Files for synthesis
 SYN_FILES	= ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd
@@ -51,6 +51,12 @@ XCI_FILES	+= ../src/ip/Pcie_nvme1.xci
 XDC_FILES	= ../src/${FPGA_TOP}.xdc
 
 include Vivado.mk
+
+all: dirs fpga
+
+all_targets:
+	make PROJECT=DuneNvmeTest
+	make PROJECT=DuneNvmeTestOspero
 
 sync_ip:
 	mkdir -p ../src/ip

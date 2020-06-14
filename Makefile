@@ -15,6 +15,11 @@ all:
 	make -C vivado
 	make -C test
 
+all_targets:
+	make -C vivado DuneNvmeTest
+	make -C vivado DuneNvmeTestOspero
+	make -C test
+
 install: all
 
 clean:
@@ -28,10 +33,13 @@ distclean: clean
 	make -C docsrc distclean
 	make -C test distclean
 	
-release: all
-	mkdir -p release
-	cp vivado/*.runs/impl_1/*.bit release/${PROJECT}-${VERSION}.bit
-	cp test/test-nvme release/test-nvme-${VERSION}
+#release: docs all
+release:
+	rm -fr /tmp/${PROJECT}-${VERSION}
+	mkdir -p /tmp/${PROJECT}-${VERSION} /tmp/${PROJECT}-${VERSION}/vivado
+	rsync -a --delete --exclude=*.[od] Config.mk license.txt Makefile sim src tools test /tmp/${PROJECT}-${VERSION}
+	rsync -a --delete --exclude=*.[od] vivado/Makefile vivado/Config.mk vivado/Config-template.mk vivado/Vivado.mk vivado/*.xpr vivado/bitfiles /tmp/${PROJECT}-${VERSION}/vivado
+	tar -czf ../../releases/${PROJECT}-${VERSION}.tar.gz -C /tmp ${PROJECT}-${VERSION}
 
 docs:
 	make -C docsrc

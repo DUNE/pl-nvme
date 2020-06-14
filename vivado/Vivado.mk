@@ -25,29 +25,35 @@
 
 VIVADO_PATH	?= /opt/Xilinx/Vivado/2019.2/bin
 VIVADO_TARGET	?= ""
+BITFILE		?= bitfiles/${PROJECT}.bit
 
 export PATH	:= ${VIVADO_PATH}:${PATH}
 
-.PHONY: clean fpga
+.PHONY: clean dirs project fpga
 
 # Prevent make from deleting intermediate files and reports
-.PRECIOUS: ${PROJECT}.xpr ${PROJECT}.bit ${PROJECT}.mcs ${PROJECT}.prm
+.PRECIOUS: ${PROJECT}.xpr ${BITFILE} ${PROJECT}.mcs ${PROJECT}.prm
 .SECONDARY:
 
-all: fpga
+all: dirs fpga
+
+dirs:
+	@mkdir -p bitfiles
 
 project: ${PROJECT}.xpr
 
-fpga: $(PROJECT).bit
+fpga: ${BITFILE}
 
 clean:
-	-rm -rf *.log *.jou *.cache *.hw *.ip_user_files *.runs *.xpr *.html *.xml *.sim *.srcs *.str .Xil defines.v
+	-rm -rf *.log *.jou *.html *.xml
+	-rm -fr ${PROJECT}.cache ${PROJECT}.hw ${PROJECT}.ip_user_files ${PROJECT}.runs ${PROJECT}.sim ${PROJECT}.srcs
 	-rm -rf create_project.tcl run_synth.tcl run_impl.tcl generate_bit.tcl
-	-rm -rf *.bit program.tcl generate_mcs.tcl *.mcs *.prm flash.tcl report.tcl
+	-rm -rf program.tcl generate_mcs.tcl *.mcs *.prm flash.tcl report.tcl
 	-rm -f utilisation.txt
 
 distclean: clean
-	-rm -rf rev
+	-rm -fr *.cache *.hw *.ip_user_files *.runs *.sim *.srcs .Xil defines.v
+	-rm -rf rev bitfiles
 
 # Vivado project file
 ${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
@@ -66,7 +72,7 @@ ${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
 
 # Synthesis run
 ${PROJECT}.runs/synth_1/${PROJECT}.dcp: ${PROJECT}.xpr $(SYN_FILES) $(INC_FILES) $(XDC_FILES)
-	rm -f $(PROJECT).bit
+	rm -f ${BITFILE}
 	echo "open_project ${PROJECT}.xpr" > run_synth.tcl
 	echo "reset_run synth_1" >> run_synth.tcl
 	echo "launch_runs synth_1 -jobs 4" >> run_synth.tcl
@@ -81,7 +87,7 @@ ${PROJECT}.runs/synth_1/${PROJECT}.dcp: ${PROJECT}.xpr $(SYN_FILES) $(INC_FILES)
 
 # Implementation run
 ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}.dcp
-	rm -f $(PROJECT).bit
+	rm -f ${BITFILE}
 	echo "open_project ${PROJECT}.xpr" > run_impl.tcl
 	echo "reset_run impl_1" >> run_impl.tcl
 	echo "launch_runs impl_1 -jobs 4" >> run_impl.tcl
@@ -98,14 +104,15 @@ ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}
 	vivado -nojournal -nolog -mode batch -source run_impl.tcl
 
 # Bit file
-${PROJECT}.bit: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
-	rm -f $(PROJECT).bit
+${BITFILE}: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
+	-mkdir -p bitfiles
+	rm -f ${BITFILE}
 	echo "open_project ${PROJECT}.xpr" > generate_bit.tcl
 	echo "open_run impl_1" >> generate_bit.tcl
 	echo "report_utilization -hierarchical -file utilisation.txt" >> generate_bit.tcl
-	echo "write_bitstream -force ${PROJECT}.bit" >> generate_bit.tcl
+	echo "write_bitstream -force ${BITFILE}" >> generate_bit.tcl
 	echo "exit" >> generate_bit.tcl
-	time vivado -nojournal -nolog -mode batch -source generate_bit.tcl
+	vivado -nojournal -nolog -mode batch -source generate_bit.tcl
 	mkdir -p rev
 	EXT=bit; COUNT=100; \
 	while [ -e rev/${PROJECT}_rev$$COUNT.$$EXT ]; \
@@ -114,8 +121,8 @@ ${PROJECT}.bit: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
 	echo "Output: rev/${PROJECT}_rev$$COUNT.$$EXT";
 
 # Extras for flash etc
-${PROJECT}_primary.mcs ${PROJECT}_secondary.mcs ${PROJECT}_primary.prm ${PROJECT}_secondary.prm: ${PROJECT}.bit
-	echo "write_cfgmem -force -format mcs -size 256 -interface SPIx8 -loadbit {up 0x0000000 $*.bit} -checksum -file $*.mcs" > generate_mcs.tcl
+${PROJECT}_primary.mcs ${PROJECT}_secondary.mcs ${PROJECT}_primary.prm ${PROJECT}_secondary.prm: ${BITFILE}
+	echo "write_cfgmem -force -format mcs -size 256 -interface SPIx8 -loadbit {up 0x0000000 ${BITFILE}} -checksum -file $*.mcs" > generate_mcs.tcl
 	echo "exit" >> generate_mcs.tcl
 	vivado -nojournal -nolog -mode batch -source generate_mcs.tcl
 	mkdir -p rev
@@ -134,13 +141,13 @@ report: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
 	echo "exit" >> report.tcl
 	vivado -nojournal -nolog -mode batch -source report.tcl
 
-program: $(PROJECT).bit
+program: ${BITFILE}
 	echo "open_hw_manager" > program.tcl
 	echo "connect_hw_server ${FPGA_TARGET}" >> program.tcl
 	echo "open_hw_target" >> program.tcl
 	echo "current_hw_device [lindex [get_hw_devices] 0]" >> program.tcl
 	echo "refresh_hw_device -update_hw_probes false [current_hw_device]" >> program.tcl
-	echo "set_property PROGRAM.FILE {$(PROJECT).bit} [current_hw_device]" >> program.tcl
+	echo "set_property PROGRAM.FILE {${BITFILE}} [current_hw_device]" >> program.tcl
 	echo "program_hw_devices [current_hw_device]" >> program.tcl
 	echo "exit" >> program.tcl
 	vivado -nojournal -nolog -mode batch -source program.tcl
