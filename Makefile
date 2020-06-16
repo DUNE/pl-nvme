@@ -17,8 +17,8 @@ all:
 	make -C test/bfpga_driver
 
 all_targets:
-	make -C vivado DuneNvmeTest
-	make -C vivado DuneNvmeTestOspero
+	make -C vivado PROJECT=DuneNvmeTest
+	make -C vivado PROJECT=DuneNvmeTestOpsero
 	make -C test
 	make -C test/bfpga_driver
 
@@ -39,7 +39,7 @@ distclean: clean
 release:
 	rm -fr /tmp/${PROJECT}-${VERSION}
 	mkdir -p /tmp/${PROJECT}-${VERSION} /tmp/${PROJECT}-${VERSION}/vivado
-	rsync -a --delete --exclude=*.[od] Config.mk license.txt Makefile sim src tools test /tmp/${PROJECT}-${VERSION}
+	rsync -a --delete --exclude=*.[od] Config.mk Readme.txt license.txt Makefile sim src tools test doc /tmp/${PROJECT}-${VERSION}
 	rsync -a --delete --exclude=*.[od] vivado/Makefile vivado/Config.mk vivado/Config-template.mk vivado/Vivado.mk vivado/*.xpr vivado/bitfiles /tmp/${PROJECT}-${VERSION}/vivado
 	tar -czf ../../releases/${PROJECT}-${VERSION}.tar.gz -C /tmp ${PROJECT}-${VERSION}
 

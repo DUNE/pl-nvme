@@ -844,6 +844,7 @@ begin
 		dataIn		=> dataIn1,
 
 		waitingForData	=> waitingForData,
+		complete	=> writeComplete,
 		
 		requestOut	=> writeSend,
 		replyIn		=> writeRecv,
