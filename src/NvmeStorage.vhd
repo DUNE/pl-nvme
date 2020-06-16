@@ -82,10 +82,9 @@ port (
 	dataIn_ready	: out std_logic;			--! Raw data input ready
 
 	-- NVMe interface
-	nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
-
 	nvme0_clk	: in std_logic;				--! Nvme0 external clock
 	nvme0_clk_gt	: in std_logic;				--! Nvme0 external GT clock
+	nvme0_reset_n	: out std_logic;			--! Nvme0 reset output to reset NVMe device
 	nvme0_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX plus lanes
 	nvme0_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX minus lanes
 	nvme0_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX plus lanes
@@ -93,6 +92,7 @@ port (
 
 	nvme1_clk	: in std_logic;				--! Nvme1 external clock
 	nvme1_clk_gt	: in std_logic;				--! Nvme1 external GT clock
+	nvme1_reset_n	: out std_logic;			--! Nvme1 reset output to reset NVMe device
 	nvme1_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX plus lanes
 	nvme1_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX minus lanes
 	nvme1_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme1 PCIe RX plus lanes
@@ -390,7 +390,7 @@ begin
 		-- NVMe interface
 		nvme_clk	=> nvme0_clk,
 		nvme_clk_gt	=> nvme0_clk_gt,
-		nvme_reset_n	=> nvme_reset_n,
+		nvme_reset_n	=> nvme0_reset_n,
 		nvme_exp_txp	=> nvme0_exp_txp,
 		nvme_exp_txn	=> nvme0_exp_txn,
 		nvme_exp_rxp	=> nvme0_exp_rxp,
@@ -422,6 +422,7 @@ begin
 		-- NVMe interface
 		nvme_clk	=> nvme1_clk,
 		nvme_clk_gt	=> nvme1_clk_gt,
+		nvme_reset_n	=> nvme1_reset_n,
 		nvme_exp_txp	=> nvme1_exp_txp,
 		nvme_exp_txn	=> nvme1_exp_txn,
 		nvme_exp_rxp	=> nvme1_exp_rxp,

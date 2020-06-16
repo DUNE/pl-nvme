@@ -89,6 +89,7 @@ port (
 	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 	
 	waitingForData	: out std_logic;			--! Set when dataIn is empty so other tasks can be run.
+	complete	: out std_logic;			--! Set when capture process is complete
 
 	-- To Nvme Request/reply streams
 	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
@@ -188,7 +189,7 @@ signal inState		: InStateType := INSTATE_IDLE;
 signal state		: StateType := STATE_IDLE;
 signal replyState	: ReplyStateType := REPSTATE_QUEUE_REPLY1;
 
-signal complete		: std_logic := '0';
+signal complete_l	: std_logic := '0';
 signal blockNumberIn	: unsigned(31 downto 0) := (others => '0');		--! Input block number
 signal numBlocksProc	: unsigned(31 downto 0) := (others => '0');		--! Number of block write requests sent
 signal numBlocksDone	: unsigned(31 downto 0) := (others => '0');		--! Number of block write completions received
@@ -295,6 +296,8 @@ begin
 			else std_logic_vector(test1) when(regAddress = 7)
 			else ones(32);
 	
+	complete <= complete_l;
+	
 	test0(31 downto 16) <= numBlocksProc(15 downto 0);
 	test0(15 downto 0) <= blockNumberIn(15 downto 0);
 	test1(31 downto 16) <= numBlocksTrimmed(15 downto 0);
@@ -336,8 +339,8 @@ begin
 
 	-- Input data process. Accepts data from input stream and stores it into a free buffer if available.
 	dataIn.ready <= writeEnable;
-	--waitingForData <= not enable or complete or not dataIn.valid;
-	waitingForData <= not enable or complete;
+	--waitingForData <= not enable or complete_l or not dataIn.valid;
+	waitingForData <= not enable or complete_l;
 
 	process(clk)
 	variable c: integer;
@@ -448,7 +451,7 @@ begin
 				processQueueOut		<= 0;
 				numBlocksTrimmed	<= (others => '0');
 				trimQueueProc		<= (others => '0');
-				complete		<= '0';
+				complete_l		<= '0';
 				state			<= STATE_IDLE;
 			else
 				case(state) is
@@ -468,13 +471,13 @@ begin
 					processQueueOut		<= 0;
 					numBlocksTrimmed	<= (others => '0');
 					trimQueueProc		<= (others => '0');
-					complete		<= '0';
+					complete_l		<= '0';
 					state			<= STATE_RUN;
 					
 				when STATE_RUN =>
 					if(enable = '1') then
 						if(numBlocksProc >= dataChunkSize) then
-							complete	<= '1';
+							complete_l	<= '1';
 							state		<= STATE_COMPLETE;
 						
 						elsif(DoTrim and (numBlocksTrimmed < dataChunkSize) and ((trimQueueProc - trimQueueDone) < 4)) then
@@ -492,7 +495,7 @@ begin
 
 						end if;
 					else
-						complete	<= '1';
+						complete_l	<= '1';
 						state		<= STATE_COMPLETE;
 					end if;
 				

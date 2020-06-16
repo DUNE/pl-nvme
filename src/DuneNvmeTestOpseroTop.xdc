@@ -38,7 +38,8 @@
 # System timings
 #create_clock -period 5.000 -name sys_clk_p -waveform {0.000 2.500} [get_ports sys_clk_p]
 create_clock -period 10.000 -name pci_clk [get_ports pci_clk_p]
-create_clock -period 10.000 -name nvme_clk [get_ports nvme_clk_p]
+create_clock -period 10.000 -name nvme0_clk [get_ports nvme0_clk_p]
+create_clock -period 10.000 -name nvme1_clk [get_ports nvme1_clk_p]
 
 # CDC crossings
 set_false_path -to [get_cells -hier sendCdcReg1*]
@@ -110,8 +111,8 @@ set_property PACKAGE_PIN R23 [get_ports {leds[6]}]
 set_property PACKAGE_PIN P23 [get_ports {leds[7]}]
 
 # PCie Nvme0 interfaces
-set_property PACKAGE_PIN H11 [get_ports nvme0_reset_n]
-set_property IOSTANDARD LVCMOS18 [get_ports nvme0_reset_n]
+set_property PACKAGE_PIN H11 [get_ports nvme0_reset]
+set_property IOSTANDARD LVCMOS18 [get_ports nvme0_reset]
 set_property PACKAGE_PIN K6 [get_ports {nvme0_clk_p}]
 set_property PACKAGE_PIN K5 [get_ports {nvme0_clk_n}]
 #set_property LOC GTHE3_COMMON_X0Y1 [get_cells nvme_clk_buf0]
@@ -135,8 +136,8 @@ set_property LOC RAMB18_X8Y106 [get_cells -hierarchical -filter {NAME =~ *nvmeSt
 set_property LOC RAMB18_X8Y107 [get_cells -hierarchical -filter {NAME =~ *nvmeStorageUnit0*pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/bram_inst/bram_cpl_inst/CPL_FIFO_16KB.bram_16k_inst/RAMB18E2[3].ramb18e2_inst}]
 
 # PCie Nvme1 interfaces
-set_property PACKAGE_PIN L12 [get_ports nvme1_reset_n]
-set_property IOSTANDARD LVCMOS18 [get_ports nvme1_reset_n]
+set_property PACKAGE_PIN L12 [get_ports nvme1_reset]
+set_property IOSTANDARD LVCMOS18 [get_ports nvme1_reset]
 set_property PACKAGE_PIN H6 [get_ports {nvme1_clk_p}]
 set_property PACKAGE_PIN H5 [get_ports {nvme1_clk_n}]
 #set_property LOC GTHE3_COMMON_X0Y1 [get_cells nvme_clk_buf1]

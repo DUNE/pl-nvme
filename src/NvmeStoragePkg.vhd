@@ -137,10 +137,9 @@ package NvmeStoragePkg is
 		dataIn_ready	: out std_logic;			--! Raw data input ready
 
 		-- NVMe interface
-		nvme_reset_n	: out std_logic;			--! Nvme reset output to reset NVMe devices
-
 		nvme0_clk	: in std_logic;				--! Nvme0 external clock
 		nvme0_clk_gt	: in std_logic;				--! Nvme0 external GT clock
+		nvme0_reset_n	: out std_logic;			--! Nvme0 reset output to reset NVMe device
 		nvme0_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX plus lanes
 		nvme0_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme0 PCIe TX minus lanes
 		nvme0_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme0 PCIe RX plus lanes
@@ -148,6 +147,7 @@ package NvmeStoragePkg is
 
 		nvme1_clk	: in std_logic;				--! Nvme1 external clock
 		nvme1_clk_gt	: in std_logic;				--! Nvme1 external GT clock
+		nvme1_reset_n	: out std_logic;			--! Nvme0 reset output to reset NVMe device
 		nvme1_exp_txp	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX plus lanes
 		nvme1_exp_txn	: out std_logic_vector(3 downto 0);	--! Nvme1 PCIe TX minus lanes
 		nvme1_exp_rxp	: in std_logic_vector(3 downto 0);	--! Nvme1 PCIe RX plus lanes

@@ -523,7 +523,7 @@ int Control::nvmeCapture(){
 	uprintf("Start NvmeWrite engine\n");
 	writeNvmeStorageReg(RegControl, 0x00000004);
 
-	// Wait untill all blocks have been processed.
+	// Wait until all blocks have been processed. Could wait for complete status instead.
 	ts = getTime();
 	n = 0;
 	while(n != numBlocks){

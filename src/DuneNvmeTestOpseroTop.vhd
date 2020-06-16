@@ -62,7 +62,7 @@ port (
 
 	nvme0_clk_p	: in std_logic;
 	nvme0_clk_n	: in std_logic;
-	nvme0_reset_n	: out std_logic;
+	nvme0_reset	: out std_logic;
 
 	nvme0_exp_txp	: out std_logic_vector(3 downto 0);
 	nvme0_exp_txn	: out std_logic_vector(3 downto 0);
@@ -71,7 +71,7 @@ port (
 
 	nvme1_clk_p	: in std_logic;
 	nvme1_clk_n	: in std_logic;
-	nvme1_reset_n	: out std_logic;
+	nvme1_reset	: out std_logic;
 
 	nvme1_exp_txp	: out std_logic_vector(3 downto 0);
 	nvme1_exp_txn	: out std_logic_vector(3 downto 0);
@@ -163,9 +163,10 @@ signal pci_clk			: std_logic := 'U';
 signal pci_clk_gt		: std_logic := 'U';
 signal nvme0_clk		: std_logic := 'U';
 signal nvme0_clk_gt		: std_logic := 'U';
+signal nvme0_reset_n		: std_logic := 'U';
 signal nvme1_clk		: std_logic := 'U';
 signal nvme1_clk_gt		: std_logic := 'U';
-signal nvme_reset_n		: std_logic := 'U';
+signal nvme1_reset_n		: std_logic := 'U';
 
 signal leds_l			: std_logic_vector(7 downto 0) := (others => '0');
 
@@ -217,8 +218,8 @@ begin
 		CEB     => '0'
 	);
 
-	nvme0_reset_n <= not nvme_reset_n;
-	nvme1_reset_n <= not nvme_reset_n;
+	nvme0_reset <= not nvme0_reset_n;
+	nvme1_reset <= not nvme1_reset_n;
 	
 	-- The PCIe interface to the host
 	pcie_host0 : Pcie_host
@@ -319,10 +320,9 @@ begin
 		dataIn_ready	=> dataStream_ready,
 
 		-- NVMe interface
-		nvme_reset_n	=> nvme_reset_n,
-
 		nvme0_clk	=> nvme0_clk,
 		nvme0_clk_gt	=> nvme0_clk_gt,
+		nvme0_reset_n	=> nvme0_reset_n,
 		nvme0_exp_txp	=> nvme0_exp_txp,
 		nvme0_exp_txn	=> nvme0_exp_txn,
 		nvme0_exp_rxp	=> nvme0_exp_rxp,
@@ -330,6 +330,7 @@ begin
 
 		nvme1_clk	=> nvme1_clk,
 		nvme1_clk_gt	=> nvme1_clk_gt,
+		nvme1_reset_n	=> nvme1_reset_n,
 		nvme1_exp_txp	=> nvme1_exp_txp,
 		nvme1_exp_txn	=> nvme1_exp_txn,
 		nvme1_exp_rxp	=> nvme1_exp_rxp,

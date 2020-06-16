@@ -300,10 +300,9 @@ begin
 		dataIn_ready	=> dataStream_ready,
 
 		-- NVMe interface
-		nvme_reset_n	=> nvme_reset_n,
-
 		nvme0_clk	=> nvme_clk,
 		nvme0_clk_gt	=> nvme_clk_gt,
+		nvme0_reset_n	=> nvme_reset_n,
 		nvme0_exp_txp	=> nvme0_exp_txp,
 		nvme0_exp_txn	=> nvme0_exp_txn,
 		nvme0_exp_rxp	=> nvme0_exp_rxp,
@@ -311,6 +310,7 @@ begin
 
 		nvme1_clk	=> nvme_clk,
 		nvme1_clk_gt	=> nvme_clk_gt,
+		--nvme1_reset_n	=> nvme1_reset_n,
 		nvme1_exp_txp	=> nvme1_exp_txp,
 		nvme1_exp_txn	=> nvme1_exp_txn,
 		nvme1_exp_rxp	=> nvme1_exp_rxp,

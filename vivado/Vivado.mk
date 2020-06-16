@@ -45,18 +45,20 @@ project: ${PROJECT}.xpr
 fpga: ${BITFILE}
 
 clean:
-	-rm -rf *.log *.jou *.html *.xml
+	-rm -f *.log *.jou *.html *.xml
 	-rm -fr ${PROJECT}.cache ${PROJECT}.hw ${PROJECT}.ip_user_files ${PROJECT}.runs ${PROJECT}.sim ${PROJECT}.srcs
-	-rm -rf create_project.tcl run_synth.tcl run_impl.tcl generate_bit.tcl
-	-rm -rf program.tcl generate_mcs.tcl *.mcs *.prm flash.tcl report.tcl
-	-rm -f utilisation.txt
+	-rm -f create_project.tcl run_synth.tcl run_impl.tcl generate_bit.tcl
+	-rm -f program.tcl generate_mcs.tcl *.mcs *.prm flash.tcl report.tcl
+	-rm -f utilisation.txt .built-${PROJECT}.xpr
 
 distclean: clean
 	-rm -fr *.cache *.hw *.ip_user_files *.runs *.sim *.srcs .Xil defines.v
-	-rm -rf rev bitfiles
+	-rm -fr rev bitfiles
 
 # Vivado project file
-${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
+${PROJECT}.xpr: .built-${PROJECT}.xpr
+
+.built-${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
 	rm -rf defines.v
 	touch defines.v
 	for x in $(DEFS); do echo '`define' $$x >> defines.v; done
@@ -69,9 +71,10 @@ ${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
 	for x in $(XCI_FILES); do echo "import_ip $$x" >> create_project.tcl; done
 	echo "exit" >> create_project.tcl
 	vivado -nojournal -nolog -mode batch -source create_project.tcl
+	touch .built-${PROJECT}.xpr
 
 # Synthesis run
-${PROJECT}.runs/synth_1/${PROJECT}.dcp: ${PROJECT}.xpr $(SYN_FILES) $(INC_FILES) $(XDC_FILES)
+${PROJECT}.runs/synth_1/${PROJECT}.dcp: .built-${PROJECT}.xpr $(SYN_FILES) $(INC_FILES) $(XDC_FILES)
 	rm -f ${BITFILE}
 	echo "open_project ${PROJECT}.xpr" > run_synth.tcl
 	echo "reset_run synth_1" >> run_synth.tcl
@@ -143,7 +146,7 @@ report: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
 
 program: ${BITFILE}
 	echo "open_hw_manager" > program.tcl
-	echo "connect_hw_server ${FPGA_TARGET}" >> program.tcl
+	echo "connect_hw_server ${VIVADO_TARGET}" >> program.tcl
 	echo "open_hw_target" >> program.tcl
 	echo "current_hw_device [lindex [get_hw_devices] 0]" >> program.tcl
 	echo "refresh_hw_device -update_hw_probes false [current_hw_device]" >> program.tcl

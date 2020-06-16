@@ -14,11 +14,13 @@ PACKAGES	+= "texlive-scheme-medium texlive-hanging texlive-stackengine texlive-e
 all:
 	make -C vivado
 	make -C test
+	make -C test/bfpga_driver
 
 all_targets:
 	make -C vivado DuneNvmeTest
 	make -C vivado DuneNvmeTestOspero
 	make -C test
+	make -C test/bfpga_driver
 
 install: all
 

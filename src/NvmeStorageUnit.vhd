@@ -343,6 +343,7 @@ port (
 	dataIn		: inout AxisStreamType := AxisStreamInput;	--! Raw data to save stream
 
 	waitingForData	: out std_logic;			--! Set when dataIn is empty so other tasks can be run.
+	complete	: out std_logic;			--! Set when capture process is complete
 
 	-- To Nvme Request/reply streams
 	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
@@ -437,7 +438,7 @@ signal regDataIn1		: std_logic_vector(31 downto 0);	--! Register write data
 signal regDataOut0		: std_logic_vector(31 downto 0);	--! Register contents
 signal regDataOut1		: std_logic_vector(31 downto 0);	--! Register contents
 
-signal reg_id			: RegDataType := x"56000901";
+signal reg_id			: RegDataType := x"56010000";
 signal reg_control		: RegDataType := (others => '0');
 signal reg_status		: RegDataType := (others => '0');
 signal reg_totalBlocks		: RegDataType := to_stl(NvmeTotalBlocks, RegWidth);
@@ -456,6 +457,7 @@ signal configComplete		: std_logic := 'U';
 signal writeEnable		: std_logic := 'U';
 signal waitingForData		: std_logic := 'U';
 signal dataEnabledOut1		: std_logic := 'U';
+signal writeComplete		: std_logic := 'U';
 
 -- Pcie_nvme signals
 signal nvme_reset_local_n	: std_logic := '0';
@@ -553,9 +555,10 @@ begin
 	-- Status register bits
 	reg_status(0)		<= '0';
 	reg_status(1)		<= configComplete;
-	reg_status(2)		<= '0';
-	reg_status(3)		<= '0';						-- **** Needs setting
-	reg_status(31 downto 4)	<= (others => '0');
+	reg_status(2)		<= reg_control(2);
+	reg_status(3)		<= writeComplete;
+	reg_status(4)		<= '0';				-- Error: ideally needs seting from various sources
+	reg_status(31 downto 5)	<= (others => '0');
 	
 	-- Perform reset of Nvme subsystem. This implements a 100ms reset suitable for the Nvme Pcie reset.
 	-- Local state machines and external Nvme devices use this reset_local signal.
