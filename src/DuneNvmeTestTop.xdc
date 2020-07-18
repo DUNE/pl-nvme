@@ -49,6 +49,9 @@ set_false_path -from [get_ports pci_reset_n]
 set_false_path -through [get_nets -hier -filter {NAME=~ */nvmeStorageUnit*/reset_local}]
 #set_false_path -through [get_nets -hier -filter {NAME=~ */nvmeStorageUnit*/nvme_reset_local_n}]
 
+set_false_path -through [get_nets -hier -filter {NAME=~ */nvmeStorageUnit*/phy_rdy_out}]
+set_false_path -through [get_nets -hier -filter {NAME=~ */nvmeStorageUnit*/user_lnk_up}]
+
 # Output pins
 set_output_delay -clock [get_clocks nvme_clk] -min 0.0 [get_ports -filter NAME=~nvme_reset_n]
 set_output_delay -clock [get_clocks nvme_clk] -max 1000.0 [get_ports -filter NAME=~nvme_reset_n]

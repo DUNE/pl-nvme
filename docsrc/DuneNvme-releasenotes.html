@@ -6,20 +6,29 @@
 	<meta name="generator" content="LibreOffice 6.3.6.2 (Linux)"/>
 	<meta name="created" content="00:00:00"/>
 	<meta name="changedby" content="Terry Barnaby"/>
-	<meta name="changed" content="2020-06-16T11:18:09.571516965"/>
+	<meta name="changed" content="2020-07-18T07:19:54.309394236"/>
+	<meta name="created" content="00:00:00">
 	<style type="text/css">
 		h3.cjk { font-family: "Noto Sans CJK SC" }
 		h3.ctl { font-family: "Lohit Devanagari" }
-		pre.cjk { font-family: "Noto Sans Mono CJK SC", monospace }
 	</style>
 </head>
 <body lang="en-GB" dir="ltr"><h1 align="center">DuneNvme test system
 Release Notes</h1>
+<h3 class="western">Release 1.0.1: <font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>2020-0</b></font></font><font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>7</b></font></font><font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>-1</b></font></font><font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>8</b></font></font></h3>
+<p>Minor bugfix release to aid debugging.</p>
+<ol>
+	<li><p>The bfpga_driver’s Makefile now finds the correct PCI
+	device when loading the bfpga Linux driver.</p>
+	<li><p>The bfpga driver’s udev file, bfpga.rules, now has the
+	correct device name.</p>
+	<li><p>Fix to the test code for correct bfpga device name string.</p>
+	<li><p>Added NVMe PCIe phy_status and link_status signals to the
+	NvmeStorageUnit’s status register (bits 30 and 31).</p>
+</ol>
 <h3 class="western">Release 1.0.0: <font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>2020-06-16</b></font></font></h3>
-<ul>
-	<li><p>First release of Dune NvmeStorage system. This includes
-	builds for the AB17-M2FMC and Opsero OP47 NVMe boards.</p>
-</ul>
+<p>First release of Dune NvmeStorage system. This includes builds for
+the AB17-M2FMC and Opsero OP47 NVMe boards.</p>
 <p>NvmeStorage Utilisation:</p>
 <table width="580" cellpadding="0" cellspacing="0" style="page-break-inside: avoid">
 	<col width="78"/>
@@ -90,6 +99,9 @@ Release Notes</h1>
 		</td>
 	</tr>
 </table>
-<pre class="western"></pre>
+<p><br/>
+<br/>
+
+</p>
 </body>
 </html>

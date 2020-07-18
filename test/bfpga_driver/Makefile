@@ -20,6 +20,9 @@ KERNELINSTALLDIR	= ${DEST_DIR}/lib/modules/$${KERNELVERSION}/extra
 PWD			:= $(shell pwd)
 endif
 
+PCI_DEV_SLOT 		= $(shell lspci -d 10ee:8024 | sed -e "s/ .*//")
+PCI_DEV 		= /sys/bus/pci/devices/0000:${PCI_DEV_SLOT}
+
 LDLIBS	+= -lpthread
 
 all:
@@ -43,11 +46,12 @@ install:
 # Debug
 installRules:
 	cp bfpga.rules ${DESTDIR}/etc/udev/rules.d/bfpga.rules 
-
+	
 load:
 	-rmmod bfpga
-	-echo 1 > /sys/bus/pci/devices/0000:01:00.0/remove
-	echo 1 > /sys/bus/pci/rescan
-	echo 1 > /sys/bus/pci/devices/0000:01:00.0/reset
+	@(if [ "${PCI_DEV_SLOT}" != "" ]; then\
+		echo "Rescan PCI device";\
+		echo 1 > ${PCI_DEV}/remove;\
+		echo 1 > /sys/bus/pci/rescan;\
+		echo 1 > ${PCI_DEV}/reset; fi)
 	insmod bfpga.ko
-	

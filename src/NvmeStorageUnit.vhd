@@ -438,7 +438,7 @@ signal regDataIn1		: std_logic_vector(31 downto 0);	--! Register write data
 signal regDataOut0		: std_logic_vector(31 downto 0);	--! Register contents
 signal regDataOut1		: std_logic_vector(31 downto 0);	--! Register contents
 
-signal reg_id			: RegDataType := x"56010000";
+signal reg_id			: RegDataType := x"56010001";
 signal reg_control		: RegDataType := (others => '0');
 signal reg_status		: RegDataType := (others => '0');
 signal reg_totalBlocks		: RegDataType := to_stl(NvmeTotalBlocks, RegWidth);
@@ -458,6 +458,10 @@ signal writeEnable		: std_logic := 'U';
 signal waitingForData		: std_logic := 'U';
 signal dataEnabledOut1		: std_logic := 'U';
 signal writeComplete		: std_logic := 'U';
+
+-- Status signals
+signal phy_rdy_out		: std_logic := 'U';
+signal user_lnk_up		: std_logic := 'U';
 
 -- Pcie_nvme signals
 signal nvme_reset_local_n	: std_logic := '0';
@@ -558,7 +562,9 @@ begin
 	reg_status(2)		<= reg_control(2);
 	reg_status(3)		<= writeComplete;
 	reg_status(4)		<= '0';				-- Error: ideally needs seting from various sources
-	reg_status(31 downto 5)	<= (others => '0');
+	reg_status(29 downto 5)	<= (others => '0');
+	reg_status(30)		<= phy_rdy_out;
+	reg_status(31)		<= user_lnk_up;
 	
 	-- Perform reset of Nvme subsystem. This implements a 100ms reset suitable for the Nvme Pcie reset.
 	-- Local state machines and external Nvme devices use this reset_local signal.
@@ -653,7 +659,7 @@ begin
 		sys_clk			=> nvme_clk,
 		sys_clk_gt		=> nvme_clk_gt,
 		sys_reset		=> nvme_reset_local_n,
-		phy_rdy_out		=> leds(0),
+		phy_rdy_out		=> phy_rdy_out,
 
 		pci_exp_txn		=> nvme_exp_txn,
 		pci_exp_txp		=> nvme_exp_txp,
@@ -662,7 +668,7 @@ begin
 
 		user_clk		=> nvme_user_clk,
 		user_reset		=> nvme_user_reset,
-		user_lnk_up		=> leds(1),
+		user_lnk_up		=> user_lnk_up,
 
 		s_axis_rq_tdata		=> hostReq.data,
 		s_axis_rq_tkeep		=> hostReq.keep,
@@ -705,7 +711,7 @@ begin
 		sys_clk			=> nvme_clk,
 		sys_clk_gt		=> nvme_clk_gt,
 		sys_reset		=> nvme_reset_local_n,
-		phy_rdy_out		=> leds(0),
+		phy_rdy_out		=> phy_rdy_out,
 
 		pci_exp_txn		=> nvme_exp_txn,
 		pci_exp_txp		=> nvme_exp_txp,
@@ -714,7 +720,7 @@ begin
 
 		user_clk		=> nvme_user_clk,
 		user_reset		=> nvme_user_reset,
-		user_lnk_up		=> leds(1),
+		user_lnk_up		=> user_lnk_up,
 
 		s_axis_rq_tdata		=> hostReq.data,
 		s_axis_rq_tkeep		=> hostReq.keep,
@@ -765,7 +771,9 @@ begin
 
 	nvmeReply.ready <= nvmeReply_ready(0) and nvmeReply_ready(1) and nvmeReply_ready(2) and nvmeReply_ready(3);
 	nvmeReply_user <= (others => '0');
-	
+
+	leds(0) <= phy_rdy_out;
+	leds(1) <= user_lnk_up;
 	leds(2) <= '0';
 	end generate;
 	

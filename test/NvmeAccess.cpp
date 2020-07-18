@@ -119,7 +119,7 @@ int NvmeAccess::init(){
 	int	r;
 
 	if((oregsFd = open("/dev/bfpga0", O_RDWR | O_SYNC)) < 0){
-		fprintf(stderr, "Unable to open /dev/xdma0_user\n");
+		fprintf(stderr, "Unable to open /dev/bfpga0\n");
 		return 1;
 	}
 
