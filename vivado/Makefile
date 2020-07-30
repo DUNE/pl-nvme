@@ -14,11 +14,10 @@
 # Project and FPGA settings
 -include Config.mk
 PROJECT 	?= DuneNvmeTest
-BOARD		?= xilinx.com:kcu105:part0:1.6
-FPGA_PART	?= xcku040-ffva1156-2-e
+FPGA_PART	?= xcku115-flva1517-2-e
 FPGA_TOP	?= ${PROJECT}Top
-VIVADO_PATH	?= /opt/Xilinx/Vivado/2019.2/bin
-VIVADO_TARGET	?= ""
+VIVADO_PATH	?= /software/CAD/Xilinx/2019.2/Vivado/2019.2/bin
+VIVADO_TARGET	?= "vivado"
 
 # Files for synthesis
 SYN_FILES	= ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd
