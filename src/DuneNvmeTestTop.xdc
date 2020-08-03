@@ -76,7 +76,7 @@ set_property IOSTANDARD LVCMOS18 [get_ports pci_reset_n]
 set_property LOC GTHE3_COMMON_X1Y1 [get_cells pci_clk_buf0]
 set_property PACKAGE_PIN AK9 [get_ports pci_clk_n]
 set_property PACKAGE_PIN AK10 [get_ports pci_clk_p]
-set_property LOC PCIE_3_1_X0Y0 [get_cells pcie_host0/inst/pcie3_ip)i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst]
+set_property LOC PCIE_3_1_X0Y0 [get_cells pcie_host0/inst/pcie3_ip_i/U0/pcie3_uscale_top_inst/pcie3_uscale_wrapper_inst/PCIE_3_1_inst]
 
 # CPU Reset
 set_property PACKAGE_PIN D36 [get_ports sys_reset]
