@@ -50,6 +50,7 @@ port (
 	reset1		: in std_logic;				--! The active high reset line
 	
 	regWrite1	: in std_logic;				--! Enable write to register
+	regRead1	: in std_logic;				--! Enable read from register
 	regAddress1	: in unsigned(5 downto 0);		--! Register to read/write
 	regDataIn1	: in std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut1	: out std_logic_vector(31 downto 0);	--! Register contents
@@ -58,6 +59,7 @@ port (
 	reset2		: in std_logic;				--! The active high reset line
 
 	regWrite2	: out std_logic;			--! Enable write to register
+	regRead2	: out std_logic;				--! Enable read from register
 	regAddress2	: out unsigned(5 downto 0);		--! Register to read/write
 	regDataIn2	: out std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut2	: in std_logic_vector(31 downto 0)	--! Register contents
@@ -67,7 +69,7 @@ end;
 architecture Behavioral of RegAccessClockConvertor is
 
 constant TCQ		: time := 1 ns;
-constant SigSendWidth	: integer := 1 + regAddress1'length + regDataIn1'length;
+constant SigSendWidth	: integer := 2 + regAddress1'length + regDataIn1'length;
 constant SigRecvWidth	: integer := 32;
 
 subtype SigSendType	is std_logic_vector(SigSendWidth-1 downto 0);
@@ -96,7 +98,8 @@ attribute async_reg	of recvCdcReg2 : signal is "true";
 
 begin
 	--! The send process
-	regWrite2	<= sendCdcReg2(38);
+	regWrite2	<= sendCdcReg2(39);
+	regRead2	<= sendCdcReg2(38);
 	regAddress2	<= unsigned(sendCdcReg2(37 downto 32));
 	regDataIn2	<= sendCdcReg2(31 downto 0);
 
@@ -109,7 +112,7 @@ begin
 				recvCdcReg0	<= (others => '0');
 			else
 				sendCdcReg2	<= sendCdcReg1;
-				sendCdcReg1	<= regWrite1 & to_stl(regAddress1) & regDataIn1;
+				sendCdcReg1	<= regWrite1 & regRead1 & to_stl(regAddress1) & regDataIn1;
 				
 				recvCdcReg0	<= regDataOut2;
 			end if;
