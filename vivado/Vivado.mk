@@ -40,7 +40,7 @@ all: dirs fpga
 dirs:
 	@mkdir -p bitfiles
 
-project: ${PROJECT}.xpr
+project: Projects/${PROJECT}_${BOARD_NAME}.xpr
 
 fpga: ${BITFILE}
 

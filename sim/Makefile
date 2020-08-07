@@ -35,7 +35,7 @@ FILES_BASE	+= ../src/NvmeStreamMux.vhd ../src/AxisDataConvertFifo.vhd ../src/Reg
 #FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo4k/Fifo4k_sim_netlist.vhdl
 #FILES_BASE	+= ../vivado/nvme-test.srcs/sources_1/ip/Fifo32k/Fifo32k_sim_netlist.vhdl
 
-FILES_SYSTEM	= ../src/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd ../src/StreamSwitch.vhd ../src/NvmeQueues.vhd
+FILES_SYSTEM	= ../src/${BOARD_NAME}/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd ../src/StreamSwitch.vhd ../src/NvmeQueues.vhd
 FILES_SYSTEM	+= ../src/TestDataStream.vhd ../src/TestData.vhd ../src/NvmeWrite.vhd
 FILES_SYSTEM	+= ../src/NvmeRead.vhd
 
@@ -48,7 +48,7 @@ FILES_test005-nvme += testbench/${TEST}.vhd ${FILES_BASE} ../src/NvmeSim.vhd
 FILES_test006-testdata += testbench/${TEST}.vhd ${FILES_BASE} ../src/TestData.vhd
 FILES_test007-hostnvme += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeStorage.vhd ../src/NvmeSim.vhd
 FILES_test008-nvmeconfig += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeStorage.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd
-FILES_test009-packets += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd
+FILES_test009-packets += testbench/${TEST}.vhd ${FILES_BASE}  ../src/${BOARD_NAME}/NvmeStorageUnit.vhd ../src/NvmeSim.vhd ../src/NvmeConfig.vhd
 FILES_test010-queueram += testbench/${TEST}.vhd ${FILES_BASE}  ../src/NvmeQueues.vhd ../src/NvmeConfig.vhd
 FILES_test011-switch += testbench/${TEST}.vhd ${FILES_BASE} ../src/StreamSwitch.vhd
 FILES_test012-hostnvme += testbench/${TEST}.vhd ${FILES_BASE} ${FILES_SYSTEM}
