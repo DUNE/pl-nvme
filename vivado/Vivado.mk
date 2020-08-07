@@ -40,7 +40,7 @@ all: dirs fpga
 dirs:
 	@mkdir -p bitfiles
 
-project: Projects/${PROJECT}_${BOARD_NAME}.xpr
+project: ${PROJECT}.xpr
 
 fpga: ${BITFILE}
 
@@ -61,8 +61,9 @@ ${PROJECT}.xpr: .built-${PROJECT}.xpr
 .built-${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
 	rm -rf defines.v
 	touch defines.v
+	test ! -d Projects && mkdir Projects
 	for x in $(DEFS); do echo '`define' $$x >> defines.v; done
-	echo "create_project -force -part $(FPGA_PART) ${PROJECT}" > create_project.tcl
+	echo "create_project -force -part $(FPGA_PART) Projects/${PROJECT_NAME}" > create_project.tcl
 	if [ "${BOARD}" != "" ]; then echo "set_property board_part ${BOARD} [current_project]" >> create_project.tcl; fi
 	echo "set_property target_language VHDL [current_project]" >> create_project.tcl
 	echo "add_files -fileset sources_1 defines.v" >> create_project.tcl
