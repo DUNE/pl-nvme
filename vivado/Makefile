@@ -13,10 +13,15 @@
 
 # Project and FPGA settings
 -include Config.mk
-PROJECT 	?= DuneNvme
-FPGA_TOP	?= ${PROJECT}Top
+PROJECT 	?= DuneNvme_${BOARD_NAME}_${CARD}
 VIVADO_PATH	?= /opt/Xilinx/Vivado/2019.2/bin
 VIVADO_TARGET	?= ""
+
+ifeq (${CARD}, Opsero)
+	FPGA_TOP	?= DuneNvme${CARD}Top
+else
+	FPGA_TOP	?= DuneNvmeTop
+endif
 
 ifeq (${BOARD_NAME}, KCU105)
 	BOARD		?= xilinx.com:kcu105:part0:1.6
@@ -31,6 +36,7 @@ ifeq (${BOARD_NAME}, VCU118)
 endif
 
 $(info $$PART is [${FPGA_PART}])
+$(info $$PROJECT is [${PROJECT}])
 
 # Files for synthesis
 SYN_FILES	= ../src/NvmeStoragePkg.vhd ../src/NvmeStorageIntPkg.vhd

@@ -32,7 +32,7 @@ export PATH	:= ${VIVADO_PATH}:${PATH}
 .PHONY: clean dirs project fpga
 
 # Prevent make from deleting intermediate files and reports
-.PRECIOUS: ${PROJECT}.xpr ${BITFILE} ${PROJECT}.mcs ${PROJECT}.prm
+.PRECIOUS: Projects/${PROJECT}.xpr ${BITFILE} Projects/${PROJECT}.mcs Projects/${PROJECT}.prm
 .SECONDARY:
 
 all: dirs fpga
@@ -40,30 +40,30 @@ all: dirs fpga
 dirs:
 	@mkdir -p bitfiles
 
-project: ${PROJECT}.xpr
+project: Projects/${PROJECT}.xpr
 
 fpga: ${BITFILE}
 
 clean:
 	-rm -f *.log *.jou *.html *.xml
-	-rm -fr ${PROJECT}.cache ${PROJECT}.hw ${PROJECT}.ip_user_files ${PROJECT}.runs ${PROJECT}.sim ${PROJECT}.srcs
+	-rm -fr Projects/${PROJECT}.cache Projects/${PROJECT}.hw Projects/${PROJECT}.ip_user_files Projects/${PROJECT}.runs Projects/${PROJECT}.sim Projects/${PROJECT}.srcs
 	-rm -f create_project.tcl run_synth.tcl run_impl.tcl generate_bit.tcl
 	-rm -f program.tcl generate_mcs.tcl *.mcs *.prm flash.tcl report.tcl
-	-rm -f utilisation.txt .built-${PROJECT}.xpr
+	-rm -f utilisation.txt Projects/.built-${PROJECT}.xpr
 
 distclean: clean
 	-rm -fr *.cache *.hw *.ip_user_files *.runs *.sim *.srcs .Xil defines.v
 	-rm -fr rev bitfiles
 
 # Vivado project file
-${PROJECT}.xpr: .built-${PROJECT}.xpr
+Projects/${PROJECT}.xpr: Projects/.built-${PROJECT}.xpr
 
-.built-${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
+Projects/.built-${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
 	rm -rf defines.v
 	touch defines.v
 	test ! -d Projects && mkdir Projects
 	for x in $(DEFS); do echo '`define' $$x >> defines.v; done
-	echo "create_project -force -part $(FPGA_PART) Projects/${PROJECT_NAME}" > create_project.tcl
+	echo "create_project -force -part $(FPGA_PART) Projects/${PROJECT}" > create_project.tcl
 	if [ "${BOARD}" != "" ]; then echo "set_property board_part ${BOARD} [current_project]" >> create_project.tcl; fi
 	echo "set_property target_language VHDL [current_project]" >> create_project.tcl
 	echo "add_files -fileset sources_1 defines.v" >> create_project.tcl
@@ -72,12 +72,12 @@ ${PROJECT}.xpr: .built-${PROJECT}.xpr
 	for x in $(XCI_FILES); do echo "import_ip $$x" >> create_project.tcl; done
 	echo "exit" >> create_project.tcl
 	vivado -nojournal -nolog -mode batch -source create_project.tcl
-	touch .built-${PROJECT}.xpr
+	touch Projects/.built-${PROJECT}.xpr
 
 # Synthesis run
-${PROJECT}.runs/synth_1/${PROJECT}.dcp: .built-${PROJECT}.xpr $(SYN_FILES) $(INC_FILES) $(XDC_FILES)
+Projects/${PROJECT}.runs/synth_1/${PROJECT}.dcp: Projects/.built-${PROJECT}.xpr $(SYN_FILES) $(INC_FILES) $(XDC_FILES)
 	rm -f ${BITFILE}
-	echo "open_project ${PROJECT}.xpr" > run_synth.tcl
+	echo "open_project Projects/${PROJECT}.xpr" > run_synth.tcl
 	echo "reset_run synth_1" >> run_synth.tcl
 	echo "launch_runs synth_1 -jobs 4" >> run_synth.tcl
 	echo "wait_on_run synth_1" >> run_synth.tcl
@@ -90,9 +90,9 @@ ${PROJECT}.runs/synth_1/${PROJECT}.dcp: .built-${PROJECT}.xpr $(SYN_FILES) $(INC
 	vivado -nojournal -nolog -mode batch -source run_synth.tcl
 
 # Implementation run
-${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}.dcp
+Projects/${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: Projects/${PROJECT}.runs/synth_1/${PROJECT}.dcp
 	rm -f ${BITFILE}
-	echo "open_project ${PROJECT}.xpr" > run_impl.tcl
+	echo "open_project Projects/${PROJECT}.xpr" > run_impl.tcl
 	echo "reset_run impl_1" >> run_impl.tcl
 	echo "launch_runs impl_1 -jobs 4" >> run_impl.tcl
 	#echo "launch_runs impl_1 -to_step write_bitstream -jobs 4" >> run_impl.tcl
@@ -108,10 +108,10 @@ ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp: ${PROJECT}.runs/synth_1/${PROJECT}
 	vivado -nojournal -nolog -mode batch -source run_impl.tcl
 
 # Bit file
-${BITFILE}: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
+${BITFILE}: Projects/${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
 	-mkdir -p bitfiles
 	rm -f ${BITFILE}
-	echo "open_project ${PROJECT}.xpr" > generate_bit.tcl
+	echo "open_project Projects/${PROJECT}.xpr" > generate_bit.tcl
 	echo "open_run impl_1" >> generate_bit.tcl
 	echo "report_utilization -hierarchical -file utilisation.txt" >> generate_bit.tcl
 	echo "write_bitstream -force ${BITFILE}" >> generate_bit.tcl
@@ -125,7 +125,7 @@ ${BITFILE}: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
 	echo "Output: rev/${PROJECT}_rev$$COUNT.$$EXT";
 
 # Extras for flash etc
-${PROJECT}_primary.mcs ${PROJECT}_secondary.mcs ${PROJECT}_primary.prm ${PROJECT}_secondary.prm: ${BITFILE}
+Projects/${PROJECT}_primary.mcs Projects/${PROJECT}_secondary.mcs Projects/${PROJECT}_primary.prm Projects/${PROJECT}_secondary.prm: ${BITFILE}
 	echo "write_cfgmem -force -format mcs -size 256 -interface SPIx8 -loadbit {up 0x0000000 ${BITFILE}} -checksum -file $*.mcs" > generate_mcs.tcl
 	echo "exit" >> generate_mcs.tcl
 	vivado -nojournal -nolog -mode batch -source generate_mcs.tcl
@@ -138,8 +138,8 @@ ${PROJECT}_primary.mcs ${PROJECT}_secondary.mcs ${PROJECT}_primary.prm ${PROJECT
 	do cp $*$$x rev/$*_rev$$COUNT$$x; \
 	echo "Output: rev/$*_rev$$COUNT$$x"; done;
 
-report: ${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
-	echo "open_project ${PROJECT}.xpr" > report.tcl
+report: Projects/${PROJECT}.runs/impl_1/${PROJECT}_routed.dcp
+	echo "open_project Projects/${PROJECT}.xpr" > report.tcl
 	echo "open_run impl_1" >> report.tcl
 	echo "report_utilization -hierarchical -file utilisation.txt" >> report.tcl
 	echo "exit" >> report.tcl
@@ -158,7 +158,7 @@ program: ${BITFILE}
 	# cs_server sits around using 100% CPU!
 	killall cs_server
 
-flash: $(PROJECT)_primary.mcs $(PROJECT)_secondary.mcs $(PROJECT)_primary.prm $(PROJECT)_secondary.prm
+flash: Projects/${PROJECT}_primary.mcs Projects/${PROJECT}_secondary.mcs Projects/${PROJECT}_primary.prm Projects/${PROJECT}_secondary.prm
 	echo "open_hw" > flash.tcl
 	echo "connect_hw_server" >> flash.tcl
 	echo "open_hw_target" >> flash.tcl
@@ -166,8 +166,8 @@ flash: $(PROJECT)_primary.mcs $(PROJECT)_secondary.mcs $(PROJECT)_primary.prm $(
 	echo "refresh_hw_device -update_hw_probes false [current_hw_device]" >> flash.tcl
 	echo "create_hw_cfgmem -hw_device [current_hw_device] [lindex [get_cfgmem_parts {mt25qu01g-spi-x1_x2_x4_x8}] 0]" >> flash.tcl
 	echo "current_hw_cfgmem -hw_device [current_hw_device] [get_property PROGRAM.HW_CFGMEM [current_hw_device]]" >> flash.tcl
-	echo "set_property PROGRAM.FILES [list \"$(PROJECT)_primary.mcs\" \"$(PROJECT)_secondary.mcs\"] [current_hw_cfgmem]" >> flash.tcl
-	echo "set_property PROGRAM.PRM_FILES [list \"$(PROJECT)_primary.prm\" \"$(PROJECT)_secondary.prm\"] [current_hw_cfgmem]" >> flash.tcl
+	echo "set_property PROGRAM.FILES [list \"Projects/${PROJECT}_primary.mcs\" \"Projects/${PROJECT}_secondary.mcs\"] [current_hw_cfgmem]" >> flash.tcl
+	echo "set_property PROGRAM.PRM_FILES [list \"Projects/${PROJECT}_primary.prm\" \"Projects/${PROJECT}_secondary.prm\"] [current_hw_cfgmem]" >> flash.tcl
 	echo "set_property PROGRAM.ERASE 1 [current_hw_cfgmem]" >> flash.tcl
 	echo "set_property PROGRAM.CFG_PROGRAM 1 [current_hw_cfgmem]" >> flash.tcl
 	echo "set_property PROGRAM.VERIFY 1 [current_hw_cfgmem]" >> flash.tcl

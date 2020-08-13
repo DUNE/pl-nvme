@@ -6,7 +6,6 @@ The directory contains build environments for the following FPGA/NVMe board conf
 - KCU105 + Opsero 047
 - HiTech Global K800 + Design Gateway AB17-M2FMC
 - VCU118 + Design Gateway AB17-M2FMC
-- 
 
 ---
 
@@ -33,9 +32,9 @@ The directory contains build environments for the following FPGA/NVMe board conf
 
 2. Edit the vivado *Config-template.mk* for desired hardware:
     1. `cd vivado`
-    2. Daughter board selection is made via *PROJECT:*
-        - `DuneNvme` - Design Gateway AB17-M2FMC
-        - `DuneNvmeOpsero` - Opsero 047
+    2. Daughter board selection is made via *CARD*:
+        - `DesignGateway` - Design Gateway AB17-M2FMC
+        - `Opsero` - Opsero 047
     3. Board selection is made via *BOARD_NAME* (case sensitive):
         - `KCU105` - Kintex Ultrascale KCU105
         - `K800` - HiTech Global K800
