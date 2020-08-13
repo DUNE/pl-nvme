@@ -61,7 +61,7 @@ Projects/${PROJECT}.xpr: Projects/.built-${PROJECT}.xpr
 Projects/.built-${PROJECT}.xpr: Makefile Config.mk $(XCI_FILES)
 	rm -rf defines.v
 	touch defines.v
-	test ! -d Projects && mkdir Projects
+	if [ ! -d "~/Projects" ]; then mkdir -p Projects; fi
 	for x in $(DEFS); do echo '`define' $$x >> defines.v; done
 	echo "create_project -force -part $(FPGA_PART) Projects/${PROJECT}" > create_project.tcl
 	if [ "${BOARD}" != "" ]; then echo "set_property board_part ${BOARD} [current_project]" >> create_project.tcl; fi
