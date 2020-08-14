@@ -4,8 +4,8 @@
 --!
 --! @class	NvmeWrite
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
---! @date	2020-05-11
---! @version	0.9.0
+--! @date	2020-08-10
+--! @version	1.0.0
 --!
 --! @brief
 --! This module performs the Nvme write data functionality.
@@ -111,7 +111,7 @@ architecture Behavioral of NvmeWrite is
 constant TCQ		: time := 1 ns;
 constant SimDelay	: boolean := False;			--! Input data delay after each packet for simulation tests
 constant SimWaitReply	: boolean := False;			--! Wait for each write command to return a reply
-constant DoTrim		: boolean := True;			--! Perform trim/deallocate functionality
+constant DoTrim		: boolean := False;			--! Perform trim/deallocate functionality
 constant DoWrite	: boolean := True;			--! Perform write blocks
 
 constant NvmeBlocks	: integer := BlockSize / NvmeBlockSize;		--! The number of Nvme blocks per NvmeStorage system block
@@ -275,12 +275,21 @@ begin
 end;
 
 --! The number of blocks to trim based on how many 4k blocks left to trim
-function numTrimBlocks(total: unsigned; current: unsigned) return unsigned is
+function numTrimBlocksNvme(total: unsigned; current: unsigned) return unsigned is
 begin
 	if((current + TrimNum) > total) then
 		return truncate(((total - current) * NvmeBlocks) - 1, 16);
 	else
 		return to_unsigned(32768-1, 16);
+	end if;
+end;
+
+function numTrimBlocks(total: unsigned; current: unsigned) return unsigned is
+begin
+	if((current + TrimNum) > total) then
+		return truncate((total - current), 32);
+	else
+		return to_unsigned(32768/NvmeBlocks, 32);
 	end if;
 end;
 
@@ -571,7 +580,7 @@ begin
 
 				when STATE_TQUEUE_2 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						requestOut.data	<= zeros(96) & x"0200" & to_stl(numTrimBlocks(dataChunkSize, numBlocksTrimmed));	-- Deallocate, NumBlocks (0 is 1 block)
+						requestOut.data	<= zeros(96) & x"0200" & to_stl(numTrimBlocksNvme(dataChunkSize, numBlocksTrimmed));	-- Deallocate, NumBlocks (0 is 1 block)
 						requestOut.last	<= '1';
 						state		<= STATE_TQUEUE_3;
 					end if;

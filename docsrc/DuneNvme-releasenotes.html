@@ -6,7 +6,10 @@
 	<meta name="generator" content="LibreOffice 6.3.6.2 (Linux)"/>
 	<meta name="created" content="00:00:00"/>
 	<meta name="changedby" content="Terry Barnaby"/>
-	<meta name="changed" content="2020-07-18T07:19:54.309394236"/>
+	<meta name="changed" content="2020-08-12T16:39:14.355194619"/>
+	<meta name="created" content="00:00:00">
+	<meta name="created" content="00:00:00">
+	<meta name="created" content="00:00:00">
 	<meta name="created" content="00:00:00">
 	<style type="text/css">
 		h3.cjk { font-family: "Noto Sans CJK SC" }
@@ -15,7 +18,29 @@
 </head>
 <body lang="en-GB" dir="ltr"><h1 align="center">DuneNvme test system
 Release Notes</h1>
-<h3 class="western">Release 1.0.1: <font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>2020-0</b></font></font><font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>7</b></font></font><font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>-1</b></font></font><font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>8</b></font></font></h3>
+<h3 class="western">Release 1.0.2: Preliminary</h3>
+<ol>
+	<li><p>Improved CDC crossing system when reading registers.</p>
+	<li><p>Added support to the NvmeRead module to trim/deallocate a set
+	of data blocks.</p>
+	<li><p>Fixed an issue in NvmeWrite if the optional trim function was
+	enabled to trim the correct number of blocks (was doing 8x less).</p>
+	<li><p>Disabled Trim in NvmeWrite as support is now in NvmeRead
+	where it is better placed for Dune usage and the way current NVMe’s
+	operate.</p>
+	<li><p>Improved NvmeRead performance to a Linux program. This was
+	done by collating the small 128 Byte PCIe packets into a pseudo 4k
+	block PCIe packet within the NvmeRead engine and sending these
+	through the streams to the Linux driver. This reduces packet
+	processing requirements in the Linux driver and application.
+	Measured read performance is now in the order of 400 MBytes/sec on
+	the test system. The NvmeRead engines SendFullBlock boolean can
+	enable/disable this feature.</p>
+	<li><p>Fixed a minor bug in the test_nvme test software where read
+	block validation was incorrect once the 0x40000000 block integer
+	value had been reached.</p>
+</ol>
+<h3 class="western">Release 1.0.1: <font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>2020-07-18</b></font></font></h3>
 <p>Minor bugfix release to aid debugging.</p>
 <ol>
 	<li><p>The bfpga_driver’s Makefile now finds the correct PCI

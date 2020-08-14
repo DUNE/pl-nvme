@@ -29,18 +29,17 @@
 --! NvmeRegStride parameters.
 --! See the NvmeStorageManual for more details.
 --!
---! @copyright GNU GPL License
---! Copyright (c) Beam Ltd, All rights reserved. <br>
---! This code is free software: you can redistribute it and/or modify
---! it under the terms of the GNU General Public License as published by
---! the Free Software Foundation, either version 3 of the License, or
---! (at your option) any later version.
---! This program is distributed in the hope that it will be useful,
---! but WITHOUT ANY WARRANTY; without even the implied warranty of
---! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
---! GNU General Public License for more details. <br>
---! You should have received a copy of the GNU General Public License
---! along with this code. If not, see <https://www.gnu.org/licenses/>.
+--! @copyright 2020 Beam Ltd, Apache License, Version 2.0
+--! Copyright 2020 Beam Ltd
+--! Licensed under the Apache License, Version 2.0 (the "License");
+--! you may not use this file except in compliance with the License.
+--! You may obtain a copy of the License at
+--!   http://www.apache.org/licenses/LICENSE-2.0
+--! Unless required by applicable law or agreed to in writing, software
+--! distributed under the License is distributed on an "AS IS" BASIS,
+--! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--! See the License for the specific language governing permissions and
+--! limitations under the License.
 --!
 library ieee;
 use ieee.std_logic_1164.all;
@@ -104,6 +103,25 @@ architecture Behavioral of NvmeStorageUnit is
 constant TCQ		: time := 1 ns;
 constant NumStreams	: integer := 8;
 constant ResetCycles	: integer := (100 ms / ClockPeriod);
+
+-- Platform specifics
+function pcieRqUserBits return integer is
+begin
+	if(platform = "Ultrascale+") then
+		return 62;
+	else
+		return 60;
+	end if;
+end;
+
+function pcieCqUserBits return integer is
+begin
+	if(platform = "Ultrascale+") then
+		return 88;
+	else
+		return 85;
+	end if;
+end;
 
 component RegAccessClockConvertor is
 port (
@@ -170,7 +188,7 @@ port (
 	s_axis_rq_tkeep : in std_logic_vector ( 3 downto 0 );
 	s_axis_rq_tlast : in std_logic;
 	s_axis_rq_tready : out std_logic_vector ( 3 downto 0 );
-	s_axis_rq_tuser : in std_logic_vector ( 59 downto 0 );
+	s_axis_rq_tuser : in std_logic_vector ( pcieRqUserBits-1 downto 0 );
 	s_axis_rq_tvalid : in std_logic;
 	m_axis_rc_tdata : out std_logic_vector ( 127 downto 0 );
 	m_axis_rc_tkeep : out std_logic_vector ( 3 downto 0 );
@@ -182,7 +200,7 @@ port (
 	m_axis_cq_tkeep : out std_logic_vector ( 3 downto 0 );
 	m_axis_cq_tlast : out std_logic;
 	m_axis_cq_tready : in std_logic;
-	m_axis_cq_tuser : out std_logic_vector ( 84 downto 0 );
+	m_axis_cq_tuser : out std_logic_vector ( pcieCqUserBits-1 downto 0 );
 	m_axis_cq_tvalid : out std_logic;
 	s_axis_cc_tdata : in std_logic_vector ( 127 downto 0 );
 	s_axis_cc_tkeep : in std_logic_vector ( 3 downto 0 );
@@ -217,7 +235,7 @@ port (
 	s_axis_rq_tkeep : in std_logic_vector ( 3 downto 0 );
 	s_axis_rq_tlast : in std_logic;
 	s_axis_rq_tready : out std_logic_vector ( 3 downto 0 );
-	s_axis_rq_tuser : in std_logic_vector ( 59 downto 0 );
+	s_axis_rq_tuser : in std_logic_vector ( pcieRqUserBits-1 downto 0 );
 	s_axis_rq_tvalid : in std_logic;
 	m_axis_rc_tdata : out std_logic_vector ( 127 downto 0 );
 	m_axis_rc_tkeep : out std_logic_vector ( 3 downto 0 );
@@ -229,7 +247,7 @@ port (
 	m_axis_cq_tkeep : out std_logic_vector ( 3 downto 0 );
 	m_axis_cq_tlast : out std_logic;
 	m_axis_cq_tready : in std_logic;
-	m_axis_cq_tuser : out std_logic_vector ( 84 downto 0 );
+	m_axis_cq_tuser : out std_logic_vector ( pcieCqUserBits-1 downto 0 );
 	m_axis_cq_tvalid : out std_logic;
 	s_axis_cc_tdata : in std_logic_vector ( 127 downto 0 );
 	s_axis_cc_tkeep : in std_logic_vector ( 3 downto 0 );
@@ -349,11 +367,11 @@ port (
 	complete	: out std_logic;			--! Set when capture process is complete
 
 	-- To Nvme Request/reply streams
-	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
+	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream
 	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
 
 	-- From Nvme Request/reply streams
-	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream (4)
+	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream
 	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
 	
 	regWrite	: in std_logic;				--! Enable write to register
@@ -377,9 +395,13 @@ port (
 	enable		: in std_logic;				--! Enable operation, used to limit bandwidth used
 
 	-- To Nvme Request/reply streams
-	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
+	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream
 	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
 
+	-- From Nvme Request/reply streams
+	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream
+	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
+	
 	regWrite	: in std_logic;				--! Enable write to register
 	regAddress	: in unsigned(3 downto 0);		--! Register to read/write
 	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
@@ -409,6 +431,8 @@ alias writeMemSend		is streamSend(5);
 alias writeMemRecv		is streamRecv(5);
 alias readSend			is streamSend(6);
 alias readRecv			is streamRecv(6);
+alias readMemSend		is streamSend(7);
+alias readMemRecv		is streamRecv(7);
 
 signal dataIn1			: AxisStreamType;
 signal streamNone		: AxisStreamType := AxisStreamOutput;
@@ -418,7 +442,7 @@ signal streamSink		: AxisStreamType := AxisStreamSink;
 signal hostReq			: AxisStreamType;
 signal hostReq_ready		: std_logic_vector(3 downto 0);
 signal hostReq_morethan1	: std_logic;
-signal hostReq_user		: std_logic_vector(59 downto 0);
+signal hostReq_user		: std_logic_vector(pcieRqUserBits-1 downto 0);
 
 signal hostReply		: AxisStreamType;
 
@@ -787,8 +811,8 @@ begin
 	-- Warning: This may not be valid for message and atomic packets.
 	--hostReq_morethan1 <= reg_control(31);
 	hostReq_morethan1 <= '1' when(unsigned(hostReq.data(74 downto 64)) > 1) else '0';
-	hostReq_user <= x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "1111" & "1111" when(hostReq_morethan1 = '1')
-		else x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "0000" & "1111";
+	hostReq_user <= extend(x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "1111" & "1111", hostReq_user'length) when(hostReq_morethan1 = '1')
+		else extend(x"00000000" & "0000" & "00000000" & "0" & "00" & "0" & "0" & "000" & "0000" & "1111", hostReq_user'length);
 
 	nvmeReply.ready <= nvmeReply_ready(0) and nvmeReply_ready(1) and nvmeReply_ready(2) and nvmeReply_ready(3);
 	nvmeReply_user <= (others => '0');
@@ -805,11 +829,6 @@ begin
 	end generate;
 	
 	-- Full switched communications
-	set1: for i in 7 to 7 generate
-		streamSend(i).valid	<= '0';
-		streamRecv(i).ready	<= '1';
-	end generate;
-
 	streamSwitch0 : StreamSwitch
 	port map (
 		clk		=> nvme_user_clk,
@@ -897,6 +916,9 @@ begin
 
 		requestOut	=> readSend,
 		replyIn		=> readRecv,
+
+		memReqIn	=> readMemRecv,
+		memReplyOut	=> readMemSend,
 
 		regWrite	=> nvmeRead_write,
 		regAddress	=> regAddress1(3 downto 0),

@@ -29,18 +29,17 @@
  * The class accesses the FPGA system over the hosts PCIe bus using the Beam bfpga Linux driver. This interfaces with the Xilinx PCIe DMA IP.
  * The class uses a thread to respond to Nvme requests.
  *
- * @copyright GNU GPL License
- * Copyright (c) Beam Ltd, All rights reserved. <br>
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details. <br>
- * You should have received a copy of the GNU General Public License
- * along with this code. If not, see <https://www.gnu.org/licenses/>.
+ * @copyright 2020 Beam Ltd, Apache License, Version 2.0
+ * Copyright 2020 Beam Ltd
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 #pragma once
 
@@ -61,6 +60,7 @@ const Bool	UseFpgaConfigure = 0;			///< Expect the NvmeStorage module to have co
 const Bool	UseConfigEngine = 0;			///< Use the FPGA configuration engine
 const Bool	UseQueueEngine = 1;			///< Use the FPGA queue engine implementation
 const BUInt	PcieMaxPayloadSize = 32;		///< The Pcie maximim packet payload in 32bit DWords
+const BUInt	MaxPayloadSize = 1024;			///< The Pcie maximim packet payload in 32bit DWords
 const BUInt	BlockSize = 4096;			///< The NvmeStorage block size in bytes
 
 const BUInt	RegIdent		= 0x000;	///< The ident and version
@@ -99,7 +99,7 @@ public:
 	BUInt32		completerId:16;		///< The completers ID
 	BUInt32		requesterIdEnable:1;	///< Enable the manual use of the requestorId field.
 	BUInt32		fill3:7;		///< 
-	BUInt32		data[PcieMaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
+	BUInt32		data[MaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
 };
 
 class NvmeReplyPacket {
@@ -120,7 +120,7 @@ public:
 	BUInt32		completerId:16;		///< The completer id
 	BUInt32		fill3:7;		///< 
 	BUInt32		reply:1;		///< This bit indicates a reply (we have used an unused bit for this)
-	BUInt32		data[PcieMaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
+	BUInt32		data[MaxPayloadSize];	///< The data words (Max of 1024 bytes but can be increased)
 };
 
 const BUInt NvmeSglTypeData	= 0;
