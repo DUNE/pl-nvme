@@ -45,6 +45,7 @@ use work.NvmeStoragePkg.all;
 entity DuneNvmeTestTop is
 generic(
 	Simulate	: boolean	:= False
+	Platform	: string	:= "Ultrascale+"
 );
 port (
 	sys_clk_p	: in std_logic;
@@ -60,9 +61,12 @@ port (
 	pci_exp_rxp	: in std_logic_vector(3 downto 0);
 	pci_exp_rxn	: in std_logic_vector(3 downto 0);
 
-	nvme_clk_p	: in std_logic;
-	nvme_clk_n	: in std_logic;
-	nvme_reset_n	: out std_logic;
+	nvme0_clk_p	: in std_logic;
+	nvme0_clk_n	: in std_logic;
+	nvme1_clk_p : in std_logic;
+	nvme1_clk_n : in std_logic;
+	nvme0_reset	: out std_logic;
+	--nvme1_reset : out std_logic;
 
 	nvme0_exp_txp	: out std_logic_vector(3 downto 0);
 	nvme0_exp_txn	: out std_logic_vector(3 downto 0);
@@ -134,7 +138,7 @@ port (
 	cfg_mgmt_read : in std_logic;
 	cfg_mgmt_read_data : out std_logic_vector(31 downto 0);
 	cfg_mgmt_read_write_done : out std_logic;
-	cfg_mgmt_type1_cfg_reg_access : in std_logic;
+	--cfg_mgmt_type1_cfg_reg_access : in std_logic;
 	s_axis_c2h_tdata_0 : in std_logic_vector(127 downto 0);
 	s_axis_c2h_tlast_0 : in std_logic;
 	s_axis_c2h_tvalid_0 : in std_logic;
@@ -144,11 +148,11 @@ port (
 	m_axis_h2c_tlast_0 : out std_logic;
 	m_axis_h2c_tvalid_0 : out std_logic;
 	m_axis_h2c_tready_0 : in std_logic;
-	m_axis_h2c_tkeep_0 : out std_logic_vector(15 downto 0);
+	m_axis_h2c_tkeep_0 : out std_logic_vector(15 downto 0)
 
-	int_qpll1lock_out : out std_logic_vector(0 to 0);
-	int_qpll1outrefclk_out : out std_logic_vector(0 to 0);
-	int_qpll1outclk_out : out std_logic_vector(0 to 0)
+	--int_qpll1lock_out : out std_logic_vector(0 to 0);
+	--int_qpll1outrefclk_out : out std_logic_vector(0 to 0);
+	--int_qpll1outclk_out : out std_logic_vector(0 to 0)
 );
 end component;
 
@@ -157,8 +161,12 @@ signal sys_clk			: std_logic := 'U';
 
 signal pci_clk			: std_logic := 'U';
 signal pci_clk_gt		: std_logic := 'U';
-signal nvme_clk			: std_logic := 'U';
-signal nvme_clk_gt		: std_logic := 'U';
+signal nvme0_clk		: std_logic := 'U';
+signal nvme0_clk_gt		: std_logic := 'U';
+signal nvme0_reset_n    : std_logic := 'U';
+signal nvme1_clk        : std_logic := 'U';
+signal nvme1_clk_gt     : std_logic := 'U';
+--signal nvme1_reset_n    : std_logic := 'U';
 
 signal leds_l			: std_logic_vector(7 downto 0) := (others => '0');
 
@@ -184,7 +192,7 @@ begin
 	);
 
 	-- PCIE Clock, 100MHz
-	pci_clk_buf0 : IBUFDS_GTE3 port map (
+	pci_clk_buf0 : IBUFDS_GTE4 port map (
 		I       => pci_clk_p,
 		IB      => pci_clk_n,
 		O       => pci_clk_gt,
@@ -192,14 +200,26 @@ begin
 		CEB     => '0'
 	);
 	
-	-- NVME PCIE Clock, 100MHz. Clock shared between both Nvme devices
-	nvme_clk_buf0 : IBUFDS_GTE3 port map (
-		I       => nvme_clk_p,
-		IB      => nvme_clk_n,
-		O       => nvme_clk_gt,
-		ODIV2   => nvme_clk,
+	-- NVME PCIE Clock, 100MHz. Clock for NVMe drive 0
+	nvme_clk_buf0 : IBUFDS_GTE4 port map (
+		I       => nvme0_clk_p,
+		IB      => nvme0_clk_n,
+		O       => nvme0_clk_gt,
+		ODIV2   => nvme0_clk,
 		CEB     => '0'
 	);
+	
+	-- NVME PCIE Clock, 100MHz. Clock for NVMe drive 1
+	nvme_clk_buf1 : IBUFDS_GTE4 port map (
+		I       => nvme1_clk_p,
+		IB      => nvme1_clk_n,
+		O       => nvme1_clk_gt,
+		ODIV2   => nvme1_clk,
+		CEB     => '0'
+	);
+	
+	nvme0_reset <= nvme0_reset_n;
+	--nvme1_reset <= not nvme1_reset_n;
 	
 	-- The PCIe interface to the host
 	pcie_host0 : Pcie_host
@@ -249,7 +269,7 @@ begin
 		cfg_mgmt_read		=> '0',
 		--cfg_mgmt_read_data		=> cfg_mgmt_read_data,
 		--cfg_mgmt_read_write_done	=> cfg_mgmt_read_write_done,
-		cfg_mgmt_type1_cfg_reg_access	=> '0',
+		--cfg_mgmt_type1_cfg_reg_access	=> '0',
 
 		s_axis_c2h_tdata_0	=> hostRecv.data,
 		s_axis_c2h_tlast_0	=> hostRecv.last,
@@ -270,7 +290,7 @@ begin
 	nvmeStorage0 : NvmeStorage
 	generic map (
 		Simulate	=> False,			--! Generate simulation core
-		Platform	=> "Ultrascale",		--! The underlying target platform
+		Platform	=> Platform,			--! The underlying target platform
 		ClockPeriod	=> 4 ns,			--! Clock period for timers (250 MHz)
 		BlockSize	=> NvmeStorageBlockSize,	--! System block size
 		NumBlocksDrop	=> 2,				--! The number of blocks to drop at a time
@@ -300,16 +320,16 @@ begin
 		dataIn_ready	=> dataStream_ready,
 
 		-- NVMe interface
-		nvme0_clk	=> nvme_clk,
-		nvme0_clk_gt	=> nvme_clk_gt,
-		nvme0_reset_n	=> nvme_reset_n,
+		nvme0_clk	=> nvme0_clk,
+		nvme0_clk_gt	=> nvme0_clk_gt,
+		nvme0_reset_n	=> nvme0_reset_n,
 		nvme0_exp_txp	=> nvme0_exp_txp,
 		nvme0_exp_txn	=> nvme0_exp_txn,
 		nvme0_exp_rxp	=> nvme0_exp_rxp,
 		nvme0_exp_rxn	=> nvme0_exp_rxn,
 
-		nvme1_clk	=> nvme_clk,
-		nvme1_clk_gt	=> nvme_clk_gt,
+		nvme1_clk	=> nvme1_clk,
+		nvme1_clk_gt	=> nvme1_clk_gt,
 		--nvme1_reset_n	=> nvme1_reset_n,
 		nvme1_exp_txp	=> nvme1_exp_txp,
 		nvme1_exp_txn	=> nvme1_exp_txn,

@@ -19,18 +19,17 @@
 --! internal data register for better system timing. This will add an additional 1 cycle latency on
 --! memory reads.
 --!
---! @copyright GNU GPL License
---! Copyright (c) Beam Ltd, All rights reserved. <br>
---! This code is free software: you can redistribute it and/or modify
---! it under the terms of the GNU General Public License as published by
---! the Free Software Foundation, either version 3 of the License, or
---! (at your option) any later version.
---! This program is distributed in the hope that it will be useful,
---! but WITHOUT ANY WARRANTY; without even the implied warranty of
---! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
---! GNU General Public License for more details. <br>
---! You should have received a copy of the GNU General Public License
---! along with this code. If not, see <https://www.gnu.org/licenses/>.
+--! @copyright 2020 Beam Ltd, Apache License, Version 2.0
+--! Copyright 2020 Beam Ltd
+--! Licensed under the Apache License, Version 2.0 (the "License");
+--! you may not use this file except in compliance with the License.
+--! You may obtain a copy of the License at
+--!   http://www.apache.org/licenses/LICENSE-2.0
+--! Unless required by applicable law or agreed to in writing, software
+--! distributed under the License is distributed on an "AS IS" BASIS,
+--! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--! See the License for the specific language governing permissions and
+--! limitations under the License.
 --!
 library ieee;
 use ieee.std_logic_1164.all;

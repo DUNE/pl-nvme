@@ -1,0 +1,10 @@
+LICENSE
+
+Copyright 2020 Beam Ltd.
+
+The contents of these directories are licensed under either the
+Apache License version 2.0 or the GNU General Public License version 2.0.
+Most of the code is under the Apache License but the Linux device driver
+is under the GNU General Public License version 2.0. Individual files
+provide license details. If the license is not stated they are licensed under
+the Apache License version 2.0 license.

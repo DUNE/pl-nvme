@@ -4,8 +4,8 @@
 --!
 --! @class	NvmeWrite
 --! @author	Terry Barnaby (terry.barnaby@beam.ltd.uk)
---! @date	2020-05-11
---! @version	0.9.0
+--! @date	2020-08-10
+--! @version	1.0.0
 --!
 --! @brief
 --! This module performs the Nvme write data functionality.
@@ -49,18 +49,17 @@
 --!   There are no timeouts or any other error handling.
 --!   It will limit the dataChunkSize to the value of the parameter NvmeTotalBlocks.
 --!
---! @copyright GNU GPL License
---! Copyright (c) Beam Ltd, All rights reserved. <br>
---! This code is free software: you can redistribute it and/or modify
---! it under the terms of the GNU General Public License as published by
---! the Free Software Foundation, either version 3 of the License, or
---! (at your option) any later version.
---! This program is distributed in the hope that it will be useful,
---! but WITHOUT ANY WARRANTY; without even the implied warranty of
---! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
---! GNU General Public License for more details. <br>
---! You should have received a copy of the GNU General Public License
---! along with this code. If not, see <https://www.gnu.org/licenses/>.
+--! @copyright 2020 Beam Ltd, Apache License, Version 2.0
+--! Copyright 2020 Beam Ltd
+--! Licensed under the Apache License, Version 2.0 (the "License");
+--! you may not use this file except in compliance with the License.
+--! You may obtain a copy of the License at
+--!   http://www.apache.org/licenses/LICENSE-2.0
+--! Unless required by applicable law or agreed to in writing, software
+--! distributed under the License is distributed on an "AS IS" BASIS,
+--! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--! See the License for the specific language governing permissions and
+--! limitations under the License.
 --!
 library ieee;
 use ieee.std_logic_1164.all;
@@ -111,7 +110,7 @@ architecture Behavioral of NvmeWrite is
 constant TCQ		: time := 1 ns;
 constant SimDelay	: boolean := False;			--! Input data delay after each packet for simulation tests
 constant SimWaitReply	: boolean := False;			--! Wait for each write command to return a reply
-constant DoTrim		: boolean := True;			--! Perform trim/deallocate functionality
+constant DoTrim		: boolean := False;			--! Perform trim/deallocate functionality
 constant DoWrite	: boolean := True;			--! Perform write blocks
 
 constant NvmeBlocks	: integer := BlockSize / NvmeBlockSize;		--! The number of Nvme blocks per NvmeStorage system block
@@ -275,12 +274,21 @@ begin
 end;
 
 --! The number of blocks to trim based on how many 4k blocks left to trim
-function numTrimBlocks(total: unsigned; current: unsigned) return unsigned is
+function numTrimBlocksNvme(total: unsigned; current: unsigned) return unsigned is
 begin
 	if((current + TrimNum) > total) then
 		return truncate(((total - current) * NvmeBlocks) - 1, 16);
 	else
 		return to_unsigned(32768-1, 16);
+	end if;
+end;
+
+function numTrimBlocks(total: unsigned; current: unsigned) return unsigned is
+begin
+	if((current + TrimNum) > total) then
+		return truncate((total - current), 32);
+	else
+		return to_unsigned(32768/NvmeBlocks, 32);
 	end if;
 end;
 
@@ -488,7 +496,7 @@ begin
 						elsif(DoWrite and (processQueueOut /= processQueueIn)) then
 							bufferOutNum		<= processQueue(processQueueOut);
 							processQueueOut		<= incrementPos(processQueueOut);
-							buffers(bufferOutNum).startTime	<= timeUs;
+							buffers(processQueue(processQueueOut)).startTime <= timeUs;
 							requestOut.data		<= setHeader(1, 16#02010000#, 16, 0);
 							requestOut.valid	<= '1';
 							state			<= STATE_WQUEUE_HEAD;
@@ -571,7 +579,7 @@ begin
 
 				when STATE_TQUEUE_2 =>
 					if(requestOut.valid = '1' and requestOut.ready = '1') then
-						requestOut.data	<= zeros(96) & x"0200" & to_stl(numTrimBlocks(dataChunkSize, numBlocksTrimmed));	-- Deallocate, NumBlocks (0 is 1 block)
+						requestOut.data	<= zeros(96) & x"0200" & to_stl(numTrimBlocksNvme(dataChunkSize, numBlocksTrimmed));	-- Deallocate, NumBlocks (0 is 1 block)
 						requestOut.last	<= '1';
 						state		<= STATE_TQUEUE_3;
 					end if;

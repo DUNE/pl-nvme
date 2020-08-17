@@ -18,18 +18,17 @@
 --! host where the packet is from.
 --! It is used to pass requests from the host to the appropriate NvmeStorageUnit engine and get replies.
 --!
---! @copyright GNU GPL License
---! Copyright (c) Beam Ltd, All rights reserved. <br>
---! This code is free software: you can redistribute it and/or modify
---! it under the terms of the GNU General Public License as published by
---! the Free Software Foundation, either version 3 of the License, or
---! (at your option) any later version.
---! This program is distributed in the hope that it will be useful,
---! but WITHOUT ANY WARRANTY; without even the implied warranty of
---! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
---! GNU General Public License for more details. <br>
---! You should have received a copy of the GNU General Public License
---! along with this code. If not, see <https://www.gnu.org/licenses/>.
+--! @copyright 2020 Beam Ltd, Apache License, Version 2.0
+--! Copyright 2020 Beam Ltd
+--! Licensed under the Apache License, Version 2.0 (the "License");
+--! you may not use this file except in compliance with the License.
+--! You may obtain a copy of the License at
+--!   http://www.apache.org/licenses/LICENSE-2.0
+--! Unless required by applicable law or agreed to in writing, software
+--! distributed under the License is distributed on an "AS IS" BASIS,
+--! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--! See the License for the specific language governing permissions and
+--! limitations under the License.
 --!
 library ieee;
 use ieee.std_logic_1164.all;
@@ -135,6 +134,7 @@ begin
 	
 	-- Multiplex streams. Sets the Nvme number based on if streams have valid status and toggling between streams to give a fair share
 	nvmeStream <= '0' when(((muxState = MUX_STATE_START) and (nvme0In.valid = '1') and (nvmeStream0Last = '0')) or (muxState = MUX_STATE_SENDPACKET0)) else '1';
+	--nvmeStream <= '1' when(((muxState = MUX_STATE_START) and (nvme1In.valid = '1') and (nvmeStream0Last = '1')) or (muxState = MUX_STATE_SENDPACKET1)) else '0';
 
 	nvme1StreamData <= nvme1In.data(127 downto 81) & '1' & nvme1In.data(79 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '1'))
 		else nvme1In.data(127 downto 32) & x"1" & nvme1In.data(27 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '0'))
