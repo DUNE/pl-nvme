@@ -685,6 +685,9 @@ void NvmeAccess::dumpRegs(int nvmeNum){
 	printf("ReadStatus:     %8.8x\n", oregs[nvmeRegbase/4 + 33]);
 	printf("ReadBlock:      %8.8x\n", oregs[nvmeRegbase/4 + 34]);
 	printf("ReadNumBlocks:  %8.8x\n", oregs[nvmeRegbase/4 + 35]);
+	printf("ReadError:      %8.8x\n", oregs[nvmeRegbase/4 + 36]);
+	printf("ReadBlocksProc: %8.8x\n", oregs[nvmeRegbase/4 + 37]);
+	printf("ReadBlocksDone: %8.8x\n", oregs[nvmeRegbase/4 + 38]);
 
 #ifdef ZAP	
 	for(r = 16; r < 21; r++){

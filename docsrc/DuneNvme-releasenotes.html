@@ -6,7 +6,12 @@
 	<meta name="generator" content="LibreOffice 6.3.6.2 (Linux)"/>
 	<meta name="created" content="00:00:00"/>
 	<meta name="changedby" content="Terry Barnaby"/>
-	<meta name="changed" content="2020-08-12T16:39:14.355194619"/>
+	<meta name="changed" content="2020-08-17T10:39:16.572388775"/>
+	<meta name="created" content="00:00:00">
+	<meta name="created" content="00:00:00">
+	<meta name="created" content="00:00:00">
+	<meta name="created" content="00:00:00">
+	<meta name="created" content="00:00:00">
 	<meta name="created" content="00:00:00">
 	<meta name="created" content="00:00:00">
 	<meta name="created" content="00:00:00">
@@ -18,7 +23,7 @@
 </head>
 <body lang="en-GB" dir="ltr"><h1 align="center">DuneNvme test system
 Release Notes</h1>
-<h3 class="western">Release 1.0.2: Preliminary</h3>
+<h3 class="western">Release 1.0.2: <font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>2020-08-17</b></font></font></h3>
 <ol>
 	<li><p>Improved CDC crossing system when reading registers.</p>
 	<li><p>Added support to the NvmeRead module to trim/deallocate a set
@@ -39,6 +44,19 @@ Release Notes</h1>
 	<li><p>Fixed a minor bug in the test_nvme test software where read
 	block validation was incorrect once the 0x40000000 block integer
 	value had been reached.</p>
+	<li><p>Fixed an issue where the peakLatency value was occasionally
+	invalid.</p>
+	<li><p>Removed incorrect/unused K800 constraint.</p>
+	<li><p>In NvmeRead now clears Fifo when read is re-triggered. We
+	have also added a ReadError status register to provide the NVMe
+	error status value should this occur.</p>
+	<li><p>There was a bug in the test software that could lead to read
+	block errors being reported. This would occur when one of the two
+	NVMe devices was slower than the other when reading data such as
+	with the FireCuda drives that have a SLC cache as well as RAM cache
+	shortly after a write of data. The software fifos have had their
+	size increased to help handle this and will provide an error if they
+	overflow.</p>
 </ol>
 <h3 class="western">Release 1.0.1: <font face="Liberation Serif, serif"><font size="4" style="font-size: 14pt"><b>2020-07-18</b></font></font></h3>
 <p>Minor bugfix release to aid debugging.</p>

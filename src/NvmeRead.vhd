@@ -23,18 +23,17 @@
 --! the host will receive a set of Pcie write request packets with the address 0x01FXXXXX.
 --! These packets will contain the block data and be sized to the Pcie max payload size.
 --!
---! @copyright GNU GPL License
---! Copyright (c) Beam Ltd, All rights reserved. <br>
---! This code is free software: you can redistribute it and/or modify
---! it under the terms of the GNU General Public License as published by
---! the Free Software Foundation, either version 3 of the License, or
---! (at your option) any later version.
---! This program is distributed in the hope that it will be useful,
---! but WITHOUT ANY WARRANTY; without even the implied warranty of
---! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
---! GNU General Public License for more details. <br>
---! You should have received a copy of the GNU General Public License
---! along with this code. If not, see <https://www.gnu.org/licenses/>.
+--! @copyright 2020 Beam Ltd, Apache License, Version 2.0
+--! Copyright 2020 Beam Ltd
+--! Licensed under the Apache License, Version 2.0 (the "License");
+--! you may not use this file except in compliance with the License.
+--! You may obtain a copy of the License at
+--!   http://www.apache.org/licenses/LICENSE-2.0
+--! Unless required by applicable law or agreed to in writing, software
+--! distributed under the License is distributed on an "AS IS" BASIS,
+--! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--! See the License for the specific language governing permissions and
+--! limitations under the License.
 --!
 library ieee;
 use ieee.std_logic_1164.all;
@@ -207,6 +206,8 @@ begin
 			else std_logic_vector(dataStart) when(regAddress = 2)
 			else std_logic_vector(dataSize) when(regAddress = 3)
 			else std_logic_vector(error) when(regAddress = 4)
+			else std_logic_vector(numBlocksProc) when(regAddress = 5)
+			else std_logic_vector(numBlocksDone) when(regAddress = 6)
 			else ones(32);
 	
 	enabled			<= control(0);
@@ -444,7 +445,8 @@ begin
 
 
 	-- Process Nvme write data requests
-	fifoReset	<= reset;
+	--fifoReset	<= reset;
+	fifoReset	<= not enabled;
 	memReqIn.ready	<= fifoInReady;
 	memRequestHead	<= sendBlockHeader(to_PcieRequestHeadType(memReqIn.data));
 	fifoInValid	<= memReqIn.valid when((memState = MEMSTATE_IDLE) or (memState = MEMSTATE_WRITE)) else '0';

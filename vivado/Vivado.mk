@@ -52,7 +52,7 @@ clean:
 	-rm -f utilisation.txt Projects/.built-${PROJECT}.xpr
 
 distclean: clean
-	-rm -fr *.cache *.hw *.ip_user_files *.runs *.sim *.srcs .Xil defines.v
+	-rm -fr Projects .Xil defines.v
 	-rm -fr rev bitfiles
 
 # Vivado project file

@@ -84,8 +84,10 @@ include Vivado.mk
 all: dirs fpga
 
 all_targets:
-	make PROJECT=DuneNvme
-	make PROJECT=DuneNvmeOspero
+	make PROJECT=DuneNvme_KCU105_DesignGateway
+	make PROJECT=DuneNvme_KCU105_Opsero
+	#make PROJECT=DuneNvme_K800_DesignGateway
+	#make PROJECT=DuneNvme_VCU118_DesignGateway
 
 sync_ip:
 	mkdir -p ../src/ip/${BOARD_NAME}/

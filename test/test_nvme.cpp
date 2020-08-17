@@ -120,7 +120,7 @@ public:
 	FILE*		ofile;					///< The output file
 };
 
-Control::Control() : ofifo0(1024*1024), ofifo1(1024*1024){
+Control::Control() : ofifo0(100*1024*1024), ofifo1(100*1024*1024){
 	overbose = 0;
 	omachine = 0;
 	oreset = 1;
@@ -367,16 +367,28 @@ int Control::nvmeConfigure(){
 
 /// This function is called from the Nvme request processing thread when PciWrite to memory requests arrive
 void Control::nvmeDataPacket(NvmeRequestPacket& packet){
+	int	e;
+
 	dl2printf("Control::nvmeDataPacket: Address: %x\n", packet.address);
 	dl2hd32(packet.data, packet.numWords);
 
 	// The data is written to the approprate Nvme's fifo. This assumes the PcieWrites are in order
 	if(packet.address & 0xF0000000){
 		// Nvme 1
+		if(ofifo1.writeAvailable() < packet.numWords * 4){
+			printf("Fifo1 overrun\n");
+			exit(1);
+		}
+
 		ofifo1.write(packet.data, packet.numWords * 4);
 	}
 	else {
 		// Nvme 0
+		if(ofifo0.writeAvailable() < packet.numWords * 4){
+			printf("Fifo0 overrun\n");
+			exit(1);
+		}
+
 		ofifo0.write(packet.data, packet.numWords * 4);
 	}
 
@@ -442,7 +454,9 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 			}
 			if(ovalidate){
 				if(validateBlock(oblockNum, odataBlock)){
-					printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
+					e = readNvmeStorageReg(RegReadError);
+
+					printf("Error in block: %u status: %8.8x startAddress(0x%8.8x)\n", oblockNum, e, (oblockNum * BlockSize / 4));
 					dumpDataBlock(odataBlock, (overbose > 1)?1:0);
 					exit(1);
 				}
@@ -464,7 +478,9 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 			}
 			if(ovalidate){
 				if(validateBlock(oblockNum, odataBlock)){
-					printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
+					e = readNvmeStorageReg(RegReadError);
+
+					printf("Error in block: %u status: %8.8x startAddress(0x%8.8x)\n", oblockNum, e, (oblockNum * BlockSize / 4));
 					dumpDataBlock(odataBlock, (overbose > 1)?1:0);
 					exit(1);
 				}
@@ -720,8 +736,9 @@ int Control::nvmeRead(){
 	
 	uprintf("Read time: %f\n", te - ts);
 
+	e = readNvmeStorageReg(RegReadError);
 	r = ((double(BlockSize) * onumBlocks) / (te - ts));
-	printf("NvmeRead: rate: %f MBytes/s\n", r / (1024 * 1024));
+	printf("NvmeRead: status: %8.8x rate: %f MBytes/s\n", e, r / (1024 * 1024));
 
 	uprintf("Stop NvmeRead engine\n");
 	writeNvmeStorageReg(RegReadControl, 0x00000000);
@@ -1000,7 +1017,7 @@ int Control::nvmeRegs(){
 
 	while(1){
 		v = readNvmeStorageReg(RegIdent);
-		if(v != 0x56000901){
+		if(v != 0x56010001){
 			printf("Error: %u RegIdent: %8.8x\n", n, v);
 			return 1;
 		}
@@ -1010,6 +1027,25 @@ int Control::nvmeRegs(){
 			printf("Error: %u RegTotalBlocks: %u %8.8x\n", n, v, v);
 			return 1;
 		}
+
+		v = readNvmeStorageReg(RegTotalBlocks);
+		if(v != 104857600){
+			printf("Error: %u RegTotalBlocks: %u %8.8x\n", n, v, v);
+			return 1;
+		}
+		
+		//t = readNvmeStorageReg(RegWriteTime);
+		//if(tLast && (t != tLast)){
+		//	printf("Time changed: %u\n", t);
+		//}
+		//tLast = t;
+		
+		l = readNvmeStorageReg(RegWritePeakLatency);
+		if(lLast && (l != lLast)){
+			printf("Peak latency changed changed: %u\n", t);
+		}
+		lLast = l;
+
 		n++;
 	}
 #endif
@@ -1424,7 +1460,7 @@ int Control::validateBlock(BUInt32 blockNum, void* data){
 	
 	for(w = 0; w < BlockSize / 4; w++){
 		if(d[w] != ((blockNum * (BlockSize / 4)) + w)){
-			printf("Validate Error: Block: %u Position: %u 0x%8.8x != 0x%8.8x\n", blockNum, w, d[w], ((blockNum * (BlockSize / 4)) + w));
+			printf("Validate Error: Block: %u Position: %u has 0x%8.8x != 0x%8.8x\n", blockNum, w, d[w], ((blockNum * (BlockSize / 4)) + w));
 			return 1;
 		}
 	}

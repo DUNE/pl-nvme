@@ -80,6 +80,7 @@ const BUInt	RegReadControl		= 0x080;	///< The read data control register
 const BUInt	RegReadStatus		= 0x084;	///< The read data status register
 const BUInt	RegReadBlock		= 0x088;	///< The read data starting block register
 const BUInt	RegReadNumBlocks	= 0x08C;	///< The read data number of blocks register
+const BUInt	RegReadError		= 0x090;	///< The read error status
 
 const BUInt	NvmeRegCapLow		= 0x000;	///< NVMe capabilities low register
 const BUInt	NvmeRegCapHigh		= 0x004;	///< NVMe capabilities high register
