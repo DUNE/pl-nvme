@@ -152,6 +152,27 @@ port (
 );
 end component;
 
+component NvmeStrmFmtTestData
+generic (
+    BlockSize	: integer	:= NvmeStorageBlockSize		--! The block size in Bytes.
+);
+port ( 	
+	clk		: in std_logic;
+	reset	: in std_logic;
+
+	-- Control and status interface
+	enable		: in std_logic;				--! Enable production of data. Clears to reset state when set to 0.
+
+	-- AXIS data output
+	dataOut		: out AxisDataStreamType;		--! Output data stream
+	dataOutReady	: in std_logic;				--! Ready signal for output data stream
+	
+	-- Error
+	error	: out std_logic
+);
+end component;
+
+
 -- Clock and controls
 signal sys_clk			: std_logic := 'U';
 
@@ -321,15 +342,14 @@ begin
 	);
 
 	-- The test data interface
-	testData0 : TestData
+	testData0 : NvmeStrmFmtTestData
 	port map (
-		clk		=> axil_clk,
-		reset		=> axil_reset,
-
-		enable		=> dataEnabled,
-
-		dataOut		=> dataStream,
-		dataOutReady	=> dataStream_ready
+		clk			    => axil_clk,
+		reset		    => axil_reset,
+		enable		    => dataEnabled,
+		dataOut			=> dataStream,
+		dataOutReady	=> dataStream_ready,
+		error		    => leds_l(6)
 	);
 
 	-- Led buffers
@@ -337,6 +357,5 @@ begin
 		obuf_led_i: OBUF port map (I => leds_l(i), O => leds(i));
 	end generate;
 
-	leds_l(6) <= '0';
 end;
 

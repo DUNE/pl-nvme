@@ -49,10 +49,14 @@ test4(){
 
 	while true; do
 		./test_nvme -nr -d 2 -s 0 -n 52428800 capture
+		./test_nvme -nr -nv -d 2 -s 0 -n 100 read 
+		sleep 300
 		./test_nvme -nr -d 2 -s 0 -n 52428800 trim
-		sleep 10
+		sleep 300
 
 		./test_nvme -nr -d 2 -s 52428800 -n 52428800 capture
+		./test_nvme -nr -nv -d 2 -s 52428800 -n 100 read
+		sleep 300
 		./test_nvme -nr -d 2 -s 52428800 -n 52428800 trim
 		sleep 10
 	done
@@ -75,6 +79,25 @@ test5(){
 		./test_nvme -nr -d 2 -s 0 -n 52428800 capture
 		./test_nvme -nr -d 2 -s 0 -n 52428800 trim
 		sleep 10
+
+	done
+}
+
+test6(){
+	echo "Simple read, write, trim test loop: 200 GByte"
+
+	./test_nvme -d 2 -s 0 -n 52428800 trim
+	./test_nvme -nr -d 2 -s 52428800 -n 52428800 trim 
+	sleep 20
+
+	while true; do
+		./test_nvme -nr -d 2 -s 0 -n 52428800 captureAndRead
+		./test_nvme -nr -d 2 -s 52428800 -n 52428800 captureAndRead
+		sleep 300
+
+		./test_nvme -nr -d 2 -s 0 -n 52428800 trim 
+		./test_nvme -nr -d 2 -s 52428800 -n 52428800 trim 
+		sleep 300
 
 	done
 }

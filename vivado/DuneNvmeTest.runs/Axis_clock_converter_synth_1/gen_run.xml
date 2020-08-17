@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenRun Id="Axis_clock_converter_synth_1" LaunchPart="xcku115-flva1517-2-e" LaunchTime="1597416895">
+  <File Type="VDS-TIMING-PB" Name="Axis_clock_converter_timing_summary_synth.pb"/>
+  <File Type="VDS-TIMINGSUMMARY" Name="Axis_clock_converter_timing_summary_synth.rpt"/>
+  <File Type="RDS-DCP" Name="Axis_clock_converter.dcp"/>
+  <File Type="REPORTS-TCL" Name="Axis_clock_converter_reports.tcl"/>
+  <File Type="PA-TCL" Name="Axis_clock_converter.tcl"/>
+  <File Type="RDS-RDS" Name="Axis_clock_converter.vds"/>
+  <File Type="RDS-PROPCONSTRS" Name="Axis_clock_converter_drc_synth.rpt"/>
+  <File Type="RDS-UTIL" Name="Axis_clock_converter_utilization_synth.rpt"/>
+  <File Type="RDS-UTIL-PB" Name="Axis_clock_converter_utilization_synth.pb"/>
+  <FileSet Name="sources" Type="BlockSrcs" RelSrcDir="$PSRCDIR/Axis_clock_converter">
+    <File Path="$PSRCDIR/sources_1/ip/Axis_clock_converter/Axis_clock_converter.xci">
+      <FileInfo>
+        <Attr Name="ImportPath" Val="$PPRDIR/../src/ip/Axis_clock_converter.xci"/>
+        <Attr Name="ImportTime" Val="1596109143"/>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <Config>
+      <Option Name="TopModule" Val="Axis_clock_converter"/>
+      <Option Name="UseBlackboxStub" Val="1"/>
+    </Config>
+  </FileSet>
+  <FileSet Name="constrs_in" Type="BlockSrcs" RelSrcDir="$PSRCDIR/Axis_clock_converter">
+    <File Path="$PSRCDIR/sources_1/ip/Axis_clock_converter/Axis_clock_converter.xci">
+      <FileInfo>
+        <Attr Name="ImportPath" Val="$PPRDIR/../src/ip/Axis_clock_converter.xci"/>
+        <Attr Name="ImportTime" Val="1596109143"/>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <Config>
+      <Option Name="TopModule" Val="Axis_clock_converter"/>
+      <Option Name="UseBlackboxStub" Val="1"/>
+    </Config>
+  </FileSet>
+  <FileSet Name="utils" Type="Utils" RelSrcDir="$PSRCDIR/utils_1">
+    <Filter Type="Utils"/>
+    <Config>
+      <Option Name="TopAutoSet" Val="TRUE"/>
+    </Config>
+  </FileSet>
+  <Strategy Version="1" Minor="2">
+    <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019">
+      <Desc>Vivado Synthesis Defaults</Desc>
+    </StratHandle>
+    <Step Id="synth_design"/>
+  </Strategy>
+</GenRun>

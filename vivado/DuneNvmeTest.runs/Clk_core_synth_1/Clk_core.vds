@@ -1,0 +1,352 @@
+#-----------------------------------------------------------
+# Vivado v2019.2 (64-bit)
+# SW Build 2708876 on Wed Nov  6 21:39:14 MST 2019
+# IP Build 2700528 on Thu Nov  7 00:09:20 MST 2019
+# Start of session at: Fri Aug 14 15:54:59 2020
+# Process ID: 17842
+# Current directory: /usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.runs/Clk_core_synth_1
+# Command line: vivado -log Clk_core.vds -product Vivado -mode batch -messageDb vivado.pb -notrace -source Clk_core.tcl
+# Log file: /usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.runs/Clk_core_synth_1/Clk_core.vds
+# Journal file: /usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.runs/Clk_core_synth_1/vivado.jou
+#-----------------------------------------------------------
+source Clk_core.tcl -notrace
+Command: synth_design -top Clk_core -part xcku115-flva1517-2-e -mode out_of_context
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xcku115'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xcku115'
+INFO: [Common 17-1540] The version limit for your license is '2020.04' and has expired for new software. A version limit expiration means that, although you may be able to continue to use the current version of tools or IP with this license, you will not be eligible for any updates or new releases.
+INFO: [Device 21-403] Loading part xcku115-flva1517-2-e
+INFO: Launching helper process for spawning children vivado processes
+INFO: Helper process launched with PID 18489 
+---------------------------------------------------------------------------------
+Starting RTL Elaboration : Time (s): cpu = 00:00:04 ; elapsed = 00:00:08 . Memory (MB): peak = 2427.031 ; gain = 196.707 ; free physical = 7157 ; free virtual = 15863
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6157] synthesizing module 'Clk_core' [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core.v:70]
+INFO: [Synth 8-6157] synthesizing module 'Clk_core_clk_wiz' [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core_clk_wiz.v:68]
+INFO: [Synth 8-6157] synthesizing module 'IBUFDS' [/software/CAD/Xilinx/2019.2/Vivado/2019.2/scripts/rt/data/unisim_comp.v:32952]
+	Parameter CAPACITANCE bound to: DONT_CARE - type: string 
+	Parameter DIFF_TERM bound to: FALSE - type: string 
+	Parameter DQS_BIAS bound to: FALSE - type: string 
+	Parameter IBUF_DELAY_VALUE bound to: 0 - type: string 
+	Parameter IBUF_LOW_PWR bound to: TRUE - type: string 
+	Parameter IFD_DELAY_VALUE bound to: AUTO - type: string 
+	Parameter IOSTANDARD bound to: DEFAULT - type: string 
+INFO: [Synth 8-6155] done synthesizing module 'IBUFDS' (1#1) [/software/CAD/Xilinx/2019.2/Vivado/2019.2/scripts/rt/data/unisim_comp.v:32952]
+INFO: [Synth 8-6157] synthesizing module 'MMCME3_ADV' [/software/CAD/Xilinx/2019.2/Vivado/2019.2/scripts/rt/data/unisim_comp.v:40131]
+	Parameter BANDWIDTH bound to: OPTIMIZED - type: string 
+	Parameter CLKFBOUT_MULT_F bound to: 5.000000 - type: double 
+	Parameter CLKFBOUT_PHASE bound to: 0.000000 - type: double 
+	Parameter CLKFBOUT_USE_FINE_PS bound to: FALSE - type: string 
+	Parameter CLKIN1_PERIOD bound to: 5.000000 - type: double 
+	Parameter CLKIN2_PERIOD bound to: 0.000000 - type: double 
+	Parameter CLKOUT0_DIVIDE_F bound to: 20.000000 - type: double 
+	Parameter CLKOUT0_DUTY_CYCLE bound to: 0.500000 - type: double 
+	Parameter CLKOUT0_PHASE bound to: 0.000000 - type: double 
+	Parameter CLKOUT0_USE_FINE_PS bound to: FALSE - type: string 
+	Parameter CLKOUT1_DIVIDE bound to: 1 - type: integer 
+	Parameter CLKOUT1_DUTY_CYCLE bound to: 0.500000 - type: double 
+	Parameter CLKOUT1_PHASE bound to: 0.000000 - type: double 
+	Parameter CLKOUT1_USE_FINE_PS bound to: FALSE - type: string 
+	Parameter CLKOUT2_DIVIDE bound to: 1 - type: integer 
+	Parameter CLKOUT2_DUTY_CYCLE bound to: 0.500000 - type: double 
+	Parameter CLKOUT2_PHASE bound to: 0.000000 - type: double 
+	Parameter CLKOUT2_USE_FINE_PS bound to: FALSE - type: string 
+	Parameter CLKOUT3_DIVIDE bound to: 1 - type: integer 
+	Parameter CLKOUT3_DUTY_CYCLE bound to: 0.500000 - type: double 
+	Parameter CLKOUT3_PHASE bound to: 0.000000 - type: double 
+	Parameter CLKOUT3_USE_FINE_PS bound to: FALSE - type: string 
+	Parameter CLKOUT4_CASCADE bound to: FALSE - type: string 
+	Parameter CLKOUT4_DIVIDE bound to: 1 - type: integer 
+	Parameter CLKOUT4_DUTY_CYCLE bound to: 0.500000 - type: double 
+	Parameter CLKOUT4_PHASE bound to: 0.000000 - type: double 
+	Parameter CLKOUT4_USE_FINE_PS bound to: FALSE - type: string 
+	Parameter CLKOUT5_DIVIDE bound to: 1 - type: integer 
+	Parameter CLKOUT5_DUTY_CYCLE bound to: 0.500000 - type: double 
+	Parameter CLKOUT5_PHASE bound to: 0.000000 - type: double 
+	Parameter CLKOUT5_USE_FINE_PS bound to: FALSE - type: string 
+	Parameter CLKOUT6_DIVIDE bound to: 1 - type: integer 
+	Parameter CLKOUT6_DUTY_CYCLE bound to: 0.500000 - type: double 
+	Parameter CLKOUT6_PHASE bound to: 0.000000 - type: double 
+	Parameter CLKOUT6_USE_FINE_PS bound to: FALSE - type: string 
+	Parameter COMPENSATION bound to: AUTO - type: string 
+	Parameter DIVCLK_DIVIDE bound to: 1 - type: integer 
+	Parameter IS_CLKFBIN_INVERTED bound to: 1'b0 
+	Parameter IS_CLKIN1_INVERTED bound to: 1'b0 
+	Parameter IS_CLKIN2_INVERTED bound to: 1'b0 
+	Parameter IS_CLKINSEL_INVERTED bound to: 1'b0 
+	Parameter IS_PSEN_INVERTED bound to: 1'b0 
+	Parameter IS_PSINCDEC_INVERTED bound to: 1'b0 
+	Parameter IS_PWRDWN_INVERTED bound to: 1'b0 
+	Parameter IS_RST_INVERTED bound to: 1'b0 
+	Parameter REF_JITTER1 bound to: 0.010000 - type: double 
+	Parameter REF_JITTER2 bound to: 0.010000 - type: double 
+	Parameter SS_EN bound to: FALSE - type: string 
+	Parameter SS_MODE bound to: CENTER_HIGH - type: string 
+	Parameter SS_MOD_PERIOD bound to: 10000 - type: integer 
+	Parameter STARTUP_WAIT bound to: FALSE - type: string 
+INFO: [Synth 8-6155] done synthesizing module 'MMCME3_ADV' (2#1) [/software/CAD/Xilinx/2019.2/Vivado/2019.2/scripts/rt/data/unisim_comp.v:40131]
+INFO: [Synth 8-6157] synthesizing module 'BUFG' [/software/CAD/Xilinx/2019.2/Vivado/2019.2/scripts/rt/data/unisim_comp.v:1075]
+INFO: [Synth 8-6155] done synthesizing module 'BUFG' (3#1) [/software/CAD/Xilinx/2019.2/Vivado/2019.2/scripts/rt/data/unisim_comp.v:1075]
+INFO: [Synth 8-6155] done synthesizing module 'Clk_core_clk_wiz' (4#1) [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core_clk_wiz.v:68]
+INFO: [Synth 8-6155] done synthesizing module 'Clk_core' (5#1) [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core.v:70]
+---------------------------------------------------------------------------------
+Finished RTL Elaboration : Time (s): cpu = 00:00:06 ; elapsed = 00:00:11 . Memory (MB): peak = 2493.762 ; gain = 263.438 ; free physical = 6897 ; free virtual = 15606
+---------------------------------------------------------------------------------
+
+Report Check Netlist: 
++------+------------------+-------+---------+-------+------------------+
+|      |Item              |Errors |Warnings |Status |Description       |
++------+------------------+-------+---------+-------+------------------+
+|1     |multi_driven_nets |      0|        0|Passed |Multi driven nets |
++------+------------------+-------+---------+-------+------------------+
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:07 ; elapsed = 00:00:12 . Memory (MB): peak = 2493.762 ; gain = 263.438 ; free physical = 7015 ; free virtual = 15724
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:07 ; elapsed = 00:00:12 . Memory (MB): peak = 2493.762 ; gain = 263.438 ; free physical = 7015 ; free virtual = 15724
+---------------------------------------------------------------------------------
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2504.656 ; gain = 0.000 ; free physical = 6962 ; free virtual = 15673
+INFO: [Netlist 29-17] Analyzing 3 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
+INFO: [Project 1-570] Preparing netlist for logic optimization
+
+Processing XDC Constraints
+Initializing timing engine
+Parsing XDC File [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core_ooc.xdc] for cell 'inst'
+Finished Parsing XDC File [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core_ooc.xdc] for cell 'inst'
+Parsing XDC File [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core_board.xdc] for cell 'inst'
+Finished Parsing XDC File [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core_board.xdc] for cell 'inst'
+Parsing XDC File [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core.xdc] for cell 'inst'
+Finished Parsing XDC File [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core.xdc] for cell 'inst'
+INFO: [Project 1-236] Implementation specific constraints were found while reading constraint file [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.srcs/sources_1/ip/Clk_core/Clk_core.xdc]. These constraints will be ignored for synthesis but will be used in implementation. Impacted constraints are listed in the file [.Xil/Clk_core_propImpl.xdc].
+Resolution: To avoid this warning, move constraints listed in [.Xil/Clk_core_propImpl.xdc] to another XDC file and exclude this new file from synthesis with the used_in_synthesis property (File Properties dialog in GUI) and re-run elaboration/synthesis.
+INFO: [Timing 38-2] Deriving generated clocks
+Parsing XDC File [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.runs/Clk_core_synth_1/dont_touch.xdc]
+Finished Parsing XDC File [/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.runs/Clk_core_synth_1/dont_touch.xdc]
+Completed Processing XDC Constraints
+
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2596.469 ; gain = 0.000 ; free physical = 6929 ; free virtual = 15643
+INFO: [Project 1-111] Unisim Transformation Summary:
+  A total of 2 instances were transformed.
+  BUFG => BUFGCE: 1 instance 
+  IBUFDS => IBUFDS (DIFFINBUF, IBUFCTRL): 1 instance 
+
+Constraint Validation Runtime : Time (s): cpu = 00:00:00.03 ; elapsed = 00:00:00.08 . Memory (MB): peak = 2596.473 ; gain = 0.004 ; free physical = 6992 ; free virtual = 15706
+---------------------------------------------------------------------------------
+Finished Constraint Validation : Time (s): cpu = 00:00:14 ; elapsed = 00:00:26 . Memory (MB): peak = 2596.473 ; gain = 366.148 ; free physical = 6164 ; free virtual = 14897
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Loading Part and Timing Information
+---------------------------------------------------------------------------------
+Loading part: xcku115-flva1517-2-e
+INFO: [Synth 8-6742] Reading net delay rules and data
+---------------------------------------------------------------------------------
+Finished Loading Part and Timing Information : Time (s): cpu = 00:00:14 ; elapsed = 00:00:26 . Memory (MB): peak = 2596.473 ; gain = 366.148 ; free physical = 6157 ; free virtual = 14891
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Applying 'set_property' XDC Constraints
+---------------------------------------------------------------------------------
+Applied set_property DONT_TOUCH = true for inst. (constraint file  /usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.runs/Clk_core_synth_1/dont_touch.xdc, line 9).
+---------------------------------------------------------------------------------
+Finished applying 'set_property' XDC Constraints : Time (s): cpu = 00:00:14 ; elapsed = 00:00:26 . Memory (MB): peak = 2596.473 ; gain = 366.148 ; free physical = 6171 ; free virtual = 14891
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:00:14 ; elapsed = 00:00:26 . Memory (MB): peak = 2596.473 ; gain = 366.148 ; free physical = 6160 ; free virtual = 14880
+---------------------------------------------------------------------------------
+
+Report RTL Partitions: 
++-+--------------+------------+----------+
+| |RTL Partition |Replication |Instances |
++-+--------------+------------+----------+
++-+--------------+------------+----------+
+---------------------------------------------------------------------------------
+Start RTL Component Statistics 
+---------------------------------------------------------------------------------
+Detailed RTL Component Info : 
+---------------------------------------------------------------------------------
+Finished RTL Component Statistics 
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start RTL Hierarchical Component Statistics 
+---------------------------------------------------------------------------------
+Hierarchical RTL Component report 
+---------------------------------------------------------------------------------
+Finished RTL Hierarchical Component Statistics
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Part Resource Summary
+---------------------------------------------------------------------------------
+Part Resources:
+DSPs: 5520 (col length:120)
+BRAMs: 4320 (col length: RAMB18 240 RAMB36 120)
+---------------------------------------------------------------------------------
+Finished Part Resource Summary
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Cross Boundary and Area Optimization
+---------------------------------------------------------------------------------
+Warning: Parallel synthesis criteria is not met 
+---------------------------------------------------------------------------------
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:00:15 ; elapsed = 00:00:27 . Memory (MB): peak = 2596.473 ; gain = 366.148 ; free physical = 6087 ; free virtual = 14810
+---------------------------------------------------------------------------------
+
+Report RTL Partitions: 
++-+--------------+------------+----------+
+| |RTL Partition |Replication |Instances |
++-+--------------+------------+----------+
++-+--------------+------------+----------+
+---------------------------------------------------------------------------------
+Start Applying XDC Timing Constraints
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Applying XDC Timing Constraints : Time (s): cpu = 00:00:35 ; elapsed = 00:01:34 . Memory (MB): peak = 2678.801 ; gain = 448.477 ; free physical = 4697 ; free virtual = 13447
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Timing Optimization
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Timing Optimization : Time (s): cpu = 00:00:36 ; elapsed = 00:01:34 . Memory (MB): peak = 2678.801 ; gain = 448.477 ; free physical = 4697 ; free virtual = 13447
+---------------------------------------------------------------------------------
+
+Report RTL Partitions: 
++-+--------------+------------+----------+
+| |RTL Partition |Replication |Instances |
++-+--------------+------------+----------+
++-+--------------+------------+----------+
+---------------------------------------------------------------------------------
+Start Technology Mapping
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Technology Mapping : Time (s): cpu = 00:00:36 ; elapsed = 00:01:34 . Memory (MB): peak = 2688.809 ; gain = 458.484 ; free physical = 4696 ; free virtual = 13446
+---------------------------------------------------------------------------------
+
+Report RTL Partitions: 
++-+--------------+------------+----------+
+| |RTL Partition |Replication |Instances |
++-+--------------+------------+----------+
++-+--------------+------------+----------+
+---------------------------------------------------------------------------------
+Start IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished IO Insertion : Time (s): cpu = 00:00:38 ; elapsed = 00:01:37 . Memory (MB): peak = 2702.688 ; gain = 472.363 ; free physical = 4631 ; free virtual = 13381
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Instances
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Instances : Time (s): cpu = 00:00:38 ; elapsed = 00:01:37 . Memory (MB): peak = 2702.688 ; gain = 472.363 ; free physical = 4631 ; free virtual = 13381
+---------------------------------------------------------------------------------
+
+Report RTL Partitions: 
++-+--------------+------------+----------+
+| |RTL Partition |Replication |Instances |
++-+--------------+------------+----------+
++-+--------------+------------+----------+
+
+Report Check Netlist: 
++------+------------------+-------+---------+-------+------------------+
+|      |Item              |Errors |Warnings |Status |Description       |
++------+------------------+-------+---------+-------+------------------+
+|1     |multi_driven_nets |      0|        0|Passed |Multi driven nets |
++------+------------------+-------+---------+-------+------------------+
+---------------------------------------------------------------------------------
+Start Rebuilding User Hierarchy
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Rebuilding User Hierarchy : Time (s): cpu = 00:00:38 ; elapsed = 00:01:37 . Memory (MB): peak = 2702.688 ; gain = 472.363 ; free physical = 4631 ; free virtual = 13381
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Ports
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Ports : Time (s): cpu = 00:00:38 ; elapsed = 00:01:37 . Memory (MB): peak = 2702.688 ; gain = 472.363 ; free physical = 4631 ; free virtual = 13381
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:38 ; elapsed = 00:01:37 . Memory (MB): peak = 2702.688 ; gain = 472.363 ; free physical = 4631 ; free virtual = 13381
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Nets
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Nets : Time (s): cpu = 00:00:38 ; elapsed = 00:01:37 . Memory (MB): peak = 2702.688 ; gain = 472.363 ; free physical = 4631 ; free virtual = 13381
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Writing Synthesis Report
+---------------------------------------------------------------------------------
+
+Report BlackBoxes: 
++-+--------------+----------+
+| |BlackBox name |Instances |
++-+--------------+----------+
++-+--------------+----------+
+
+Report Cell Usage: 
++------+-----------+------+
+|      |Cell       |Count |
++------+-----------+------+
+|1     |BUFG       |     1|
+|2     |MMCME3_ADV |     1|
+|3     |IBUFDS     |     1|
++------+-----------+------+
+
+Report Instance Areas: 
++------+---------+-----------------+------+
+|      |Instance |Module           |Cells |
++------+---------+-----------------+------+
+|1     |top      |                 |     3|
+|2     |  inst   |Clk_core_clk_wiz |     3|
++------+---------+-----------------+------+
+---------------------------------------------------------------------------------
+Finished Writing Synthesis Report : Time (s): cpu = 00:00:38 ; elapsed = 00:01:37 . Memory (MB): peak = 2702.688 ; gain = 472.363 ; free physical = 4631 ; free virtual = 13381
+---------------------------------------------------------------------------------
+Synthesis finished with 0 errors, 0 critical warnings and 0 warnings.
+Synthesis Optimization Runtime : Time (s): cpu = 00:00:36 ; elapsed = 00:01:33 . Memory (MB): peak = 2702.688 ; gain = 369.652 ; free physical = 4653 ; free virtual = 13403
+Synthesis Optimization Complete : Time (s): cpu = 00:00:38 ; elapsed = 00:01:37 . Memory (MB): peak = 2702.691 ; gain = 472.363 ; free physical = 4653 ; free virtual = 13403
+INFO: [Project 1-571] Translating synthesized netlist
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2702.691 ; gain = 0.000 ; free physical = 4647 ; free virtual = 13397
+INFO: [Netlist 29-17] Analyzing 3 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
+INFO: [Project 1-570] Preparing netlist for logic optimization
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+INFO: [Opt 31-326] The CLKFBOUT to CLKFBIN net for instance inst/mmcme3_adv_inst with COMPENSATION=INTERNAL is optimized away to aid design routability
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2745.281 ; gain = 0.000 ; free physical = 4658 ; free virtual = 13408
+INFO: [Project 1-111] Unisim Transformation Summary:
+  A total of 2 instances were transformed.
+  BUFG => BUFGCE: 1 instance 
+  IBUFDS => IBUFDS (DIFFINBUF, IBUFCTRL): 1 instance 
+
+INFO: [Common 17-83] Releasing license: Synthesis
+28 Infos, 0 Warnings, 0 Critical Warnings and 0 Errors encountered.
+synth_design completed successfully
+synth_design: Time (s): cpu = 00:00:54 ; elapsed = 00:02:13 . Memory (MB): peak = 2745.281 ; gain = 1106.238 ; free physical = 4779 ; free virtual = 13529
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2745.281 ; gain = 0.000 ; free physical = 4779 ; free virtual = 13529
+WARNING: [Constraints 18-5210] No constraints selected for write.
+Resolution: This message can indicate that there are no constraints for the design, or it can indicate that the used_in flags are set such that the constraints are ignored. This later case is used when running synth_design to not write synthesis constraints to the resulting checkpoint. Instead, project constraints are read when the synthesized design is opened.
+INFO: [Common 17-1381] The checkpoint '/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.runs/Clk_core_synth_1/Clk_core.dcp' has been generated.
+WARNING: [Common 17-576] 'use_project_ipc' is deprecated. This option is deprecated and no longer used.
+INFO: [Coretcl 2-1648] Added synthesis output to IP cache for IP Clk_core, cache-ID = 9879475df2eac2dd
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 2745.289 ; gain = 0.000 ; free physical = 4855 ; free virtual = 13605
+WARNING: [Constraints 18-5210] No constraints selected for write.
+Resolution: This message can indicate that there are no constraints for the design, or it can indicate that the used_in flags are set such that the constraints are ignored. This later case is used when running synth_design to not write synthesis constraints to the resulting checkpoint. Instead, project constraints are read when the synthesized design is opened.
+INFO: [Common 17-1381] The checkpoint '/usersc/ag17009/NVMe/BlockFormatting/Test/pl-nvme/vivado/DuneNvmeTest.runs/Clk_core_synth_1/Clk_core.dcp' has been generated.
+INFO: [runtcl-4] Executing : report_utilization -file Clk_core_utilization_synth.rpt -pb Clk_core_utilization_synth.pb
+INFO: [Common 17-206] Exiting Vivado at Fri Aug 14 15:57:29 2020...

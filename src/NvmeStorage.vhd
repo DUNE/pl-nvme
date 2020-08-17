@@ -123,6 +123,7 @@ port (
 
 	-- Control and status interface
 	regWrite	: in std_logic;				--! Enable write to register
+	regRead		: in std_logic;				--! Enable read from register
 	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
 	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut	: out std_logic_vector(31 downto 0);	--! Register contents
@@ -186,7 +187,8 @@ constant TCQ		: time := 1 ns;
 
 signal reset_l		: std_logic := '0';
 signal wvalid_delay	: std_logic := '0';
-signal rvalid_delay	: unsigned(5 downto 0) := (others => '0');
+signal regRead_delay	: std_logic := '0';
+signal rvalid_delay	: unsigned(8 downto 0) := (others => '0');
 
 signal hostSend0	: AxisStreamType;
 signal hostRecv0	: AxisStreamType;
@@ -201,6 +203,7 @@ signal nvme1Recv	: AxisStreamType;
 
 signal regControl	: std_logic_vector(31 downto 0) := (others => '0');	--! Control register
 signal regWrite		: std_logic := '0';					--! Enable write to register
+signal regRead		: std_logic := '0';					--! Enable read from register
 signal regAddress	: unsigned(9 downto 0) := (others => '0');		--! Register to read/write
 signal regWrite0	: std_logic := '0';
 signal regWrite1	: std_logic := '0';
@@ -228,7 +231,7 @@ begin
 	-- Bus ready returns		
 	axilOut.awready	<= axilIn.awvalid;
 	axilOut.arready	<= axilIn.arvalid;
-	axilOut.rvalid	<= rvalid_delay(5);
+	axilOut.rvalid	<= rvalid_delay(8);
 	axilOut.wready	<= axilIn.wvalid and wvalid_delay;
 
 	-- Always return OK to read and write requests
@@ -237,8 +240,9 @@ begin
 	axilOut.bvalid	<= '1';
 
 	reset_l		<= reset or regControl(0);
-	regWrite	<= wvalid_delay;		-- Delayed to make sure bits are stable across CDC
-	
+	regWrite	<= wvalid_delay;		-- Delayed to match regAddress
+	regRead		<= regRead_delay;		-- Delayed to match regAddress
+
 	regWrite0	<= regWrite when(regAddress < 512) else '0';
 	regWrite1	<= regWrite when((regAddress < 256) or (regAddress >= 512)) else '0';
 	readNvme1	<= '1' when(regAddress >= 512) else '0';
@@ -252,6 +256,7 @@ begin
 				regAddress	<= (others => '0');
 				rvalid_delay	<= (others => '0');
 				wvalid_delay	<= '0';
+				regRead_delay	<= '0';
 			else
 				if(axilIn.awvalid = '1') then
 					regAddress <= unsigned(axilIn.awaddr(9 downto 0));
@@ -268,7 +273,8 @@ begin
 					regControl <= axilIn.wdata;
 				end if;
 				
-				wvalid_delay <= axilIn.wvalid;
+				wvalid_delay	<= axilIn.wvalid;
+				regRead_delay	<= axilIn.arvalid;
 			end if;
 		end if;
 	end process;
@@ -377,6 +383,7 @@ begin
 		reset		=> reset,
 
 		regWrite	=> regWrite0,	
+		regRead		=> regRead,
 		regAddress	=> regAddress(7 downto 2),
 		regDataIn	=> axilIn.wdata,
 		regDataOut	=> regDataOut0,
@@ -409,6 +416,7 @@ begin
 		reset		=> reset,
 
 		regWrite	=> regWrite1,
+		regRead		=> regRead,
 		regAddress	=> regAddress(7 downto 2),
 		regDataIn	=> axilIn.wdata,
 		regDataOut	=> regDataOut1,

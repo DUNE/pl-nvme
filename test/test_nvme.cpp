@@ -542,14 +542,23 @@ int Control::nvmeCapture(){
 	e = readNvmeStorageReg(RegWriteError);
 	t = readNvmeStorageReg(RegWriteTime);
 	l = readNvmeStorageReg(RegWritePeakLatency);
+	if(l != readNvmeStorageReg(RegWritePeakLatency)){
+		printf("Warning: latency register read error\n");
+		l = readNvmeStorageReg(RegWritePeakLatency);
+	}
 	r = ((double(BlockSize) * onumBlocks) / (1e-6 * t));
 
 	if(onvmeNum == 2){
 		setNvme(1);
 		if(!e && readNvmeStorageReg(RegWriteError))
 			e = readNvmeStorageReg(RegWriteError);
-		if(readNvmeStorageReg(RegWritePeakLatency) > l)
+		if(readNvmeStorageReg(RegWritePeakLatency) > l){
 			l = readNvmeStorageReg(RegWritePeakLatency);
+			if(l != readNvmeStorageReg(RegWritePeakLatency)){
+				printf("Warning: latency register read error\n");
+				l = readNvmeStorageReg(RegWritePeakLatency);
+			}
+		}
 
 		setNvme(2);
 	}

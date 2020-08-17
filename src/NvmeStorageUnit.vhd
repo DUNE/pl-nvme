@@ -71,6 +71,7 @@ port (
 
 	-- Control and status interface
 	regWrite	: in std_logic;				--! Enable write to register
+	regRead		: in std_logic;				--! Enable read from register
 	regAddress	: in unsigned(5 downto 0);		--! Register to read/write
 	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut	: out std_logic_vector(31 downto 0);	--! Register contents
@@ -110,6 +111,7 @@ port (
 	reset1		: in std_logic;				--! The active high reset line
 	
 	regWrite1	: in std_logic;				--! Enable write to register
+	regRead1	: in std_logic;				--! Enable read from register
 	regAddress1	: in unsigned(5 downto 0);		--! Register to read/write
 	regDataIn1	: in std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut1	: out std_logic_vector(31 downto 0);	--! Register contents
@@ -117,7 +119,8 @@ port (
 	clk2		: in std_logic;				--! The interface clock line
 	reset2		: in std_logic;				--! The active high reset line
 
-	regWrite2	: out std_logic;				--! Enable write to register
+	regWrite2	: out std_logic;			--! Enable write to register
+	regRead2	: out std_logic;			--! Enable read from register
 	regAddress2	: out unsigned(5 downto 0);		--! Register to read/write
 	regDataIn2	: out std_logic_vector(31 downto 0);	--! Register write data
 	regDataOut2	: in std_logic_vector(31 downto 0)	--! Register contents
@@ -346,11 +349,11 @@ port (
 	complete	: out std_logic;			--! Set when capture process is complete
 
 	-- To Nvme Request/reply streams
-	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
+	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream
 	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
 
 	-- From Nvme Request/reply streams
-	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream (4)
+	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream
 	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
 	
 	regWrite	: in std_logic;				--! Enable write to register
@@ -374,9 +377,13 @@ port (
 	enable		: in std_logic;				--! Enable operation, used to limit bandwidth used
 
 	-- To Nvme Request/reply streams
-	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream (3)
+	requestOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme request stream
 	replyIn		: inout AxisStreamType := AxisStreamInput;	--! from Nvme reply stream
 
+	-- From Nvme Request/reply streams
+	memReqIn	: inout AxisStreamType := AxisStreamInput;	--! From Nvme request stream
+	memReplyOut	: inout AxisStreamType := AxisStreamOutput;	--! To Nvme reply stream
+	
 	regWrite	: in std_logic;				--! Enable write to register
 	regAddress	: in unsigned(3 downto 0);		--! Register to read/write
 	regDataIn	: in std_logic_vector(31 downto 0);	--! Register write data
@@ -406,6 +413,8 @@ alias writeMemSend		is streamSend(5);
 alias writeMemRecv		is streamRecv(5);
 alias readSend			is streamSend(6);
 alias readRecv			is streamRecv(6);
+alias readMemSend		is streamSend(7);
+alias readMemRecv		is streamRecv(7);
 
 signal dataIn1			: AxisStreamType;
 signal streamNone		: AxisStreamType := AxisStreamOutput;
@@ -433,6 +442,8 @@ type StateType			is (STATE_START, STATE_IDLE, STATE_WRITE, STATE_READ1, STATE_RE
 signal state			: StateType := STATE_START;
 
 signal regWrite1		: std_logic;				--! Enable write to register
+signal regRead1			: std_logic;				--! Enable read from register
+signal regReadActive		: std_logic;				--! Register read in progress
 signal regAddress1		: unsigned(5 downto 0) := (others => '0');	--! Register to read/write
 signal regDataIn1		: std_logic_vector(31 downto 0);	--! Register write data
 signal regDataOut0		: std_logic_vector(31 downto 0);	--! Register contents
@@ -480,6 +491,7 @@ begin
 		reset1		=> reset,
 
 		regWrite1	=> regWrite,
+		regRead1	=> regRead,
 		regAddress1	=> regAddress,
 		regDataIn1	=> regDataIn,
 		regDataOut1	=> regDataOut0,
@@ -488,6 +500,7 @@ begin
 		reset2		=> nvme_user_reset,
 
 		regWrite2	=> regWrite1,
+		regRead2	=> regRead1,
 		regAddress2	=> regAddress1,
 		regDataIn2	=> regDataIn1,
 		regDataOut2	=> regDataOut1
@@ -543,15 +556,6 @@ begin
 	dataEnabledOut <= dataEnabledOut1;
 
 	-- Register access
-	regDataOut1 <= reg_id when(regAddress1 = 0) else
-			reg_control when(regAddress1 = 1) else
-			reg_status when(regAddress1 = 2) else
-			reg_totalBlocks when(regAddress1 = 3) else
-			reg_blocksLost when(regAddress1 = 4) else
-			reg_nvmeWrite when((regAddress1 >= 16) and (regAddress1 < 32)) else
-			reg_nvmeRead when((regAddress1 >= 32) and (regAddress1 < 48)) else
-			x"FFFFFFFF";
-
 	regDataOut <= zeros(31) & reset_local_active when(reset_local_active = '1') else regDataOut0;
 	nvmeWrite_write <= regWrite1 when((regAddress1 >= 16) and (regAddress1 < 32)) else '0';
 	nvmeRead_write <= regWrite1 when((regAddress1 >= 32) and (regAddress1 < 48)) else '0';
@@ -607,7 +611,30 @@ begin
 		if(rising_edge(nvme_user_clk)) then
 			if(nvme_user_reset = '1') then
 				reg_control	<= (others => '0');
+				regReadActive	<= '0';
 			else
+				if((regRead1 = '1') and (regReadActive = '0')) then
+					-- Register read
+					if(regAddress1 = 0) then
+						regDataOut1 <= reg_id;
+					elsif(regAddress1 = 1) then
+						regDataOut1 <= reg_control;
+					elsif(regAddress1 = 2) then
+						regDataOut1 <= reg_status;
+					elsif(regAddress1 = 3) then
+						regDataOut1 <= reg_totalBlocks;
+					elsif(regAddress1 = 4) then
+						regDataOut1 <= reg_blocksLost;
+					elsif((regAddress1 >= 16) and (regAddress1 < 32)) then
+						regDataOut1 <= reg_nvmeWrite;
+					elsif((regAddress1 >= 32) and (regAddress1 < 48)) then
+						regDataOut1 <= reg_nvmeRead;
+					else
+						regDataOut1 <= x"FFFFFFFF";
+					end if;
+				end if;
+				regReadActive <= regRead1;
+				
 				if(regWrite1 = '1') then
 					if(regAddress1 = 1) then
 						reg_control <= regDataIn1;
@@ -784,11 +811,6 @@ begin
 	end generate;
 	
 	-- Full switched communications
-	set1: for i in 7 to 7 generate
-		streamSend(i).valid	<= '0';
-		streamRecv(i).ready	<= '1';
-	end generate;
-
 	streamSwitch0 : StreamSwitch
 	port map (
 		clk		=> nvme_user_clk,
@@ -876,6 +898,9 @@ begin
 
 		requestOut	=> readSend,
 		replyIn		=> readRecv,
+
+		memReqIn	=> readMemRecv,
+		memReplyOut	=> readMemSend,
 
 		regWrite	=> nvmeRead_write,
 		regAddress	=> regAddress1(3 downto 0),

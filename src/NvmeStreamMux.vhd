@@ -135,6 +135,7 @@ begin
 	
 	-- Multiplex streams. Sets the Nvme number based on if streams have valid status and toggling between streams to give a fair share
 	nvmeStream <= '0' when(((muxState = MUX_STATE_START) and (nvme0In.valid = '1') and (nvmeStream0Last = '0')) or (muxState = MUX_STATE_SENDPACKET0)) else '1';
+	--nvmeStream <= '1' when(((muxState = MUX_STATE_START) and (nvme1In.valid = '1') and (nvmeStream0Last = '1')) or (muxState = MUX_STATE_SENDPACKET1)) else '0';
 
 	nvme1StreamData <= nvme1In.data(127 downto 81) & '1' & nvme1In.data(79 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '1'))
 		else nvme1In.data(127 downto 32) & x"1" & nvme1In.data(27 downto 0) when((muxState = MUX_STATE_START) and (nvme1In.data(95) = '0'))

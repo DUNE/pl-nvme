@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenRun Id="axis_data_fifo_ic_512_x_256_synth_1" LaunchPart="xcku115-flva1517-2-e" LaunchTime="1597417648">
+  <File Type="VDS-TIMING-PB" Name="axis_data_fifo_ic_512_x_256_timing_summary_synth.pb"/>
+  <File Type="VDS-TIMINGSUMMARY" Name="axis_data_fifo_ic_512_x_256_timing_summary_synth.rpt"/>
+  <File Type="RDS-DCP" Name="axis_data_fifo_ic_512_x_256.dcp"/>
+  <File Type="RDS-UTIL-PB" Name="axis_data_fifo_ic_512_x_256_utilization_synth.pb"/>
+  <File Type="RDS-UTIL" Name="axis_data_fifo_ic_512_x_256_utilization_synth.rpt"/>
+  <File Type="RDS-PROPCONSTRS" Name="axis_data_fifo_ic_512_x_256_drc_synth.rpt"/>
+  <File Type="RDS-RDS" Name="axis_data_fifo_ic_512_x_256.vds"/>
+  <File Type="REPORTS-TCL" Name="axis_data_fifo_ic_512_x_256_reports.tcl"/>
+  <File Type="PA-TCL" Name="axis_data_fifo_ic_512_x_256.tcl"/>
+  <FileSet Name="sources" Type="BlockSrcs" RelSrcDir="$PSRCDIR/axis_data_fifo_ic_512_x_256">
+    <File Path="$PSRCDIR/sources_1/ip/axis_data_fifo_ic_512_x_256/axis_data_fifo_ic_512_x_256.xci">
+      <FileInfo>
+        <Attr Name="ImportPath" Val="$PPRDIR/../src/ip/BlockFormatting/axis_data_fifo_ic_512_x_256.xci"/>
+        <Attr Name="ImportTime" Val="1594123434"/>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <Config>
+      <Option Name="TopModule" Val="axis_data_fifo_ic_512_x_256"/>
+      <Option Name="UseBlackboxStub" Val="1"/>
+    </Config>
+  </FileSet>
+  <FileSet Name="constrs_in" Type="BlockSrcs" RelSrcDir="$PSRCDIR/axis_data_fifo_ic_512_x_256">
+    <File Path="$PSRCDIR/sources_1/ip/axis_data_fifo_ic_512_x_256/axis_data_fifo_ic_512_x_256.xci">
+      <FileInfo>
+        <Attr Name="ImportPath" Val="$PPRDIR/../src/ip/BlockFormatting/axis_data_fifo_ic_512_x_256.xci"/>
+        <Attr Name="ImportTime" Val="1594123434"/>
+        <Attr Name="UsedIn" Val="synthesis"/>
+        <Attr Name="UsedIn" Val="implementation"/>
+        <Attr Name="UsedIn" Val="simulation"/>
+      </FileInfo>
+    </File>
+    <Config>
+      <Option Name="TopModule" Val="axis_data_fifo_ic_512_x_256"/>
+      <Option Name="UseBlackboxStub" Val="1"/>
+    </Config>
+  </FileSet>
+  <FileSet Name="utils" Type="Utils" RelSrcDir="$PSRCDIR/utils_1">
+    <Filter Type="Utils"/>
+    <Config>
+      <Option Name="TopAutoSet" Val="TRUE"/>
+    </Config>
+  </FileSet>
+  <Strategy Version="1" Minor="2">
+    <StratHandle Name="Vivado Synthesis Defaults" Flow="Vivado Synthesis 2019">
+      <Desc>Vivado Synthesis Defaults</Desc>
+    </StratHandle>
+    <Step Id="synth_design"/>
+  </Strategy>
+</GenRun>

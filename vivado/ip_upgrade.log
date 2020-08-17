@@ -1,0 +1,37 @@
+Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.
+-------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2019.2 (lin64) Build 2708876 Wed Nov  6 21:39:14 MST 2019
+| Date         : Fri Aug 14 15:52:46 2020
+| Host         : excession.phy.bris.ac.uk running 64-bit Scientific Linux release 7.8 (Nitrogen)
+| Command      : upgrade_ip
+| Device       : xcku115-flva1517-2-e
+-------------------------------------------------------------------------------------------------
+
+Upgrade Log for IP 'axis_fifo_cc_512_x_16'
+
+1. Summary
+----------
+
+SUCCESS in the conversion of axis_fifo_cc_512_x_16 (xilinx.com:ip:fifo_generator:13.2 (Rev. 5)) to Vivado generation flows.
+
+
+
+
+
+
+Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.
+-------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2019.2 (lin64) Build 2708876 Wed Nov  6 21:39:14 MST 2019
+| Date         : Fri Aug 14 15:52:26 2020
+| Host         : excession.phy.bris.ac.uk running 64-bit Scientific Linux release 7.8 (Nitrogen)
+| Command      : upgrade_ip
+| Device       : xcku115-flva1517-2-e
+-------------------------------------------------------------------------------------------------
+
+Upgrade Log for IP 'axis_data_fifo_ic_512_x_256'
+
+1. Summary
+----------
+
+SUCCESS in the conversion of axis_data_fifo_ic_512_x_256 (xilinx.com:ip:axis_data_fifo:2.0 (Rev. 2)) to Vivado generation flows.
+
