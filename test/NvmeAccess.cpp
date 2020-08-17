@@ -29,18 +29,17 @@
  * The class accesses the FPGA system over the hosts PCIe bus using the Beam bfpga Linux driver. This interfaces with the Xilinx PCIe DMA IP.
  * The class uses a thread to respond to Nvme requests.
  *
- * @copyright GNU GPL License
- * Copyright (c) Beam Ltd, All rights reserved. <br>
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details. <br>
- * You should have received a copy of the GNU General Public License
- * along with this code. If not, see <https://www.gnu.org/licenses/>.
+ * @copyright 2020 Beam Ltd, Apache License, Version 2.0
+ * Copyright 2020 Beam Ltd
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 #define	LDEBUG1		0		// High level debug
 #define	LDEBUG2		0		// Debug host to NVMe queued requests
@@ -150,8 +149,8 @@ int NvmeAccess::init(){
 		return 1;
 	}
 
-	posix_memalign((void **)&obufTx, 4096, 4096);
-	posix_memalign((void **)&obufRx, 4096, 4096);
+	posix_memalign((void **)&obufTx, 8192, 8192);
+	posix_memalign((void **)&obufRx, 8192, 8192);
 	
 	return 0;
 }
@@ -336,7 +335,7 @@ int NvmeAccess::nvmeProcess(){
 		dl4printf("NvmeAccess::nvmeProcess: loop\n");
 
 		// Read the packet from the Nvme. Coupdl be a request or a reply
-		if((nt = read(ohostRecvFd, obufRx, 4096)) < 0){
+		if((nt = read(ohostRecvFd, obufRx, 8192)) < 0){
 			return 1;
 		}
 
@@ -686,6 +685,9 @@ void NvmeAccess::dumpRegs(int nvmeNum){
 	printf("ReadStatus:     %8.8x\n", oregs[nvmeRegbase/4 + 33]);
 	printf("ReadBlock:      %8.8x\n", oregs[nvmeRegbase/4 + 34]);
 	printf("ReadNumBlocks:  %8.8x\n", oregs[nvmeRegbase/4 + 35]);
+	printf("ReadError:      %8.8x\n", oregs[nvmeRegbase/4 + 36]);
+	printf("ReadBlocksProc: %8.8x\n", oregs[nvmeRegbase/4 + 37]);
+	printf("ReadBlocksDone: %8.8x\n", oregs[nvmeRegbase/4 + 38]);
 
 #ifdef ZAP	
 	for(r = 16; r < 21; r++){

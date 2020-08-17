@@ -29,18 +29,17 @@
  * The program accesses the FPGA system over the hosts PCIe bus using the Beam bfpga Linux driver. This interfaces with the Xilinx PCIe DMA IP.
  * The program uses a thread to respond to Nvme requests.
  *
- * @copyright GNU GPL License
- * Copyright (c) Beam Ltd, All rights reserved. <br>
- * This code is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details. <br>
- * You should have received a copy of the GNU General Public License
- * along with this code. If not, see <https://www.gnu.org/licenses/>.
+ * @copyright 2020 Beam Ltd, Apache License, Version 2.0
+ * Copyright 2020 Beam Ltd
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 #define	LDEBUG1		0		// High level debug
 
@@ -75,8 +74,9 @@ public:
 	int		nvmeRead();				///< Read blocks from Nvme
 	int		nvmeCaptureAndRead();			///< Capture FPGA datastream writing to Nvme
 	int		nvmeWrite();				///< Write blocks to Nvme
-	int		nvmeTrim();				///< Trim blocks on Nvme
-	int		nvmeTrim1();				///< Trim blocks on Nvme using Write0 command
+	int		nvmeTrim();				///< Trim blocks on Nvme using NvmeRead engine
+	int		nvmeTrim1();				///< Trim blocks on Nvme using deallocate command
+	int		nvmeTrim2();				///< Trim blocks on Nvme using Write0 command
 	int		nvmeRegs();				///< Print register contents
 	int		nvmeInfoDevice(int device);		///< Print NVMe device info for a particular device
 	int		nvmeInfo();				///< Print NVMe device info
@@ -120,7 +120,7 @@ public:
 	FILE*		ofile;					///< The output file
 };
 
-Control::Control() : ofifo0(1024*1024), ofifo1(1024*1024){
+Control::Control() : ofifo0(100*1024*1024), ofifo1(100*1024*1024){
 	overbose = 0;
 	omachine = 0;
 	oreset = 1;
@@ -367,16 +367,28 @@ int Control::nvmeConfigure(){
 
 /// This function is called from the Nvme request processing thread when PciWrite to memory requests arrive
 void Control::nvmeDataPacket(NvmeRequestPacket& packet){
+	int	e;
+
 	dl2printf("Control::nvmeDataPacket: Address: %x\n", packet.address);
 	dl2hd32(packet.data, packet.numWords);
 
 	// The data is written to the approprate Nvme's fifo. This assumes the PcieWrites are in order
 	if(packet.address & 0xF0000000){
 		// Nvme 1
+		if(ofifo1.writeAvailable() < packet.numWords * 4){
+			printf("Fifo1 overrun\n");
+			exit(1);
+		}
+
 		ofifo1.write(packet.data, packet.numWords * 4);
 	}
 	else {
 		// Nvme 0
+		if(ofifo0.writeAvailable() < packet.numWords * 4){
+			printf("Fifo0 overrun\n");
+			exit(1);
+		}
+
 		ofifo0.write(packet.data, packet.numWords * 4);
 	}
 
@@ -390,7 +402,7 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 			}
 			if(ovalidate){
 				if(validateBlock(oblockNum, odataBlock)){
-					printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
+					printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * (BlockSize / 4)));
 					dumpDataBlock(odataBlock, (overbose > 1)?1:0);
 					exit(1);
 				}
@@ -442,7 +454,9 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 			}
 			if(ovalidate){
 				if(validateBlock(oblockNum, odataBlock)){
-					printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
+					e = readNvmeStorageReg(RegReadError);
+
+					printf("Error in block: %u status: %8.8x startAddress(0x%8.8x)\n", oblockNum, e, (oblockNum * BlockSize / 4));
 					dumpDataBlock(odataBlock, (overbose > 1)?1:0);
 					exit(1);
 				}
@@ -464,7 +478,9 @@ void Control::nvmeDataPacket(NvmeRequestPacket& packet){
 			}
 			if(ovalidate){
 				if(validateBlock(oblockNum, odataBlock)){
-					printf("Error in block: %u startAddress(0x%8.8x)\n", oblockNum, (oblockNum * BlockSize / 4));
+					e = readNvmeStorageReg(RegReadError);
+
+					printf("Error in block: %u status: %8.8x startAddress(0x%8.8x)\n", oblockNum, e, (oblockNum * BlockSize / 4));
 					dumpDataBlock(odataBlock, (overbose > 1)?1:0);
 					exit(1);
 				}
@@ -720,8 +736,9 @@ int Control::nvmeRead(){
 	
 	uprintf("Read time: %f\n", te - ts);
 
+	e = readNvmeStorageReg(RegReadError);
 	r = ((double(BlockSize) * onumBlocks) / (te - ts));
-	printf("NvmeRead: rate: %f MBytes/s\n", r / (1024 * 1024));
+	printf("NvmeRead: status: %8.8x rate: %f MBytes/s\n", e, r / (1024 * 1024));
 
 	uprintf("Stop NvmeRead engine\n");
 	writeNvmeStorageReg(RegReadControl, 0x00000000);
@@ -846,8 +863,66 @@ int Control::nvmeWrite(){
 
 int Control::nvmeTrim(){
 	int	e = 0;
-
+	BUInt	nvmeNum;
+	BUInt32	block = 0;
+	BUInt32	numBlocks = 8;
+	double	r;
+	double	ts;
+	double	te;
+	
 	printf("NvmeTrim: nvme: %u startBlock: %u numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
+
+	nvmeNum = getNvme();
+
+	if(e = nvmeInit())
+		return e;
+
+	oblockNum = 0;
+	oreadNumBlocks = onumBlocks;
+
+	if(onvmeNum == 2){
+		writeNvmeStorageReg(RegReadBlock, ostartBlock / 2);
+		writeNvmeStorageReg(RegReadNumBlocks, onumBlocks / 2);
+	}
+	else {
+		writeNvmeStorageReg(RegReadBlock, ostartBlock);
+		writeNvmeStorageReg(RegReadNumBlocks, onumBlocks);
+	}
+	
+	if(overbose > 2)
+		dumpRegs();
+	
+	// Start off NvmeRead engine
+	uprintf("Start NvmeRead engine\n");
+	ts = getTime();
+	writeNvmeStorageReg(RegReadControl, 0x00000003);
+
+	if(overbose > 2){
+		dumpRegs(0);
+		dumpRegs(1);
+	}
+
+	// Wait for complete
+	while(! (readNvmeStorageReg(RegReadStatus) & 0x02))
+		usleep(100000);
+
+	te = getTime();
+	
+	uprintf("Trim status: %8.8x time: %f\n", readNvmeStorageReg(RegReadStatus), te - ts);
+
+	r = ((double(BlockSize) * onumBlocks) / (te - ts));
+	printf("NvmeTrim: rate: %f MBytes/s\n", r / (1024 * 1024));
+
+	uprintf("Stop NvmeRead engine\n");
+	writeNvmeStorageReg(RegReadControl, 0x00000000);
+	
+	return 0;
+}
+
+int Control::nvmeTrim1(){
+	int	e = 0;
+
+	printf("NvmeTrim1: nvme: %u startBlock: %u numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
 	
 	if(e = nvmeInit())
 		return e;
@@ -879,13 +954,13 @@ int Control::nvmeTrim(){
 	return 0;
 }
 
-int Control::nvmeTrim1(){
+int Control::nvmeTrim2(){
 	int	e = 0;
 	BUInt32	b;
 	BUInt32	block;
 	BUInt	trimBlocks = 32768;
 
-	printf("NvmeTrim1: nvme: %u startBlock: %u numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
+	printf("NvmeTrim2: nvme: %u startBlock: %u numBlocks: %u\n", onvmeNum, ostartBlock, onumBlocks);
 	
 	if(e = nvmeInit())
 		return e;
@@ -942,7 +1017,7 @@ int Control::nvmeRegs(){
 
 	while(1){
 		v = readNvmeStorageReg(RegIdent);
-		if(v != 0x56000901){
+		if(v != 0x56010001){
 			printf("Error: %u RegIdent: %8.8x\n", n, v);
 			return 1;
 		}
@@ -952,6 +1027,25 @@ int Control::nvmeRegs(){
 			printf("Error: %u RegTotalBlocks: %u %8.8x\n", n, v, v);
 			return 1;
 		}
+
+		v = readNvmeStorageReg(RegTotalBlocks);
+		if(v != 104857600){
+			printf("Error: %u RegTotalBlocks: %u %8.8x\n", n, v, v);
+			return 1;
+		}
+		
+		//t = readNvmeStorageReg(RegWriteTime);
+		//if(tLast && (t != tLast)){
+		//	printf("Time changed: %u\n", t);
+		//}
+		//tLast = t;
+		
+		l = readNvmeStorageReg(RegWritePeakLatency);
+		if(lLast && (l != lLast)){
+			printf("Peak latency changed changed: %u\n", t);
+		}
+		lLast = l;
+
 		n++;
 	}
 #endif
@@ -1365,8 +1459,8 @@ int Control::validateBlock(BUInt32 blockNum, void* data){
 	BUInt		w;
 	
 	for(w = 0; w < BlockSize / 4; w++){
-		if(d[w] != ((blockNum * BlockSize / 4) + w)){
-			printf("Validate Error: Block: %u Position: %u 0x%8.8x !- 0x%8.8x\n", blockNum, w, d[w], ((blockNum * BlockSize / 4) + w));
+		if(d[w] != ((blockNum * (BlockSize / 4)) + w)){
+			printf("Validate Error: Block: %u Position: %u has 0x%8.8x != 0x%8.8x\n", blockNum, w, d[w], ((blockNum * (BlockSize / 4)) + w));
 			return 1;
 		}
 	}
@@ -1521,8 +1615,9 @@ int main(int argc, char** argv){
 		printf("read: Read data from Nvme's\n");
 		printf("captureAndRead: Perform data input from FPGA TestData source into Nvme's and read data.\n");
 		printf("write: Write data to Nvme's\n");
-		printf("trim: Trim/deallocate blocks on Nvme's\n");
-		printf("trim1: Trim/deallocate blocks on Nvme's using Write0 command\n");
+		printf("trim: Trim/deallocate blocks on Nvme's using NvmeRead engine\n");
+		printf("trim1: Trim/deallocate blocks on Nvme's using Deallocate command\n");
+		printf("trim2: Trim/deallocate blocks on Nvme's using Write0 command\n");
 		printf("regs: Display NvmeStorage register values\n");
 		printf("info: Display some info on the NVMe drives\n");
 		printf("test*: Collection of misc programmed tests. See source code.\n");
@@ -1559,6 +1654,9 @@ int main(int argc, char** argv){
 		}
 		else if(!strcmp(test, "trim1")){
 			err = control.nvmeTrim1();
+		}
+		else if(!strcmp(test, "trim2")){
+			err = control.nvmeTrim2();
 		}
 		else if(!strcmp(test, "regs")){
 			err = control.nvmeRegs();
