@@ -45,6 +45,7 @@ use work.NvmeStoragePkg.all;
 entity DuneNvmeTestTop is
 generic(
 	Simulate	: boolean	:= False
+	Platform	: string	:= "Ultrascale"
 );
 port (
 	sys_clk_p	: in std_logic;
@@ -270,7 +271,7 @@ begin
 	nvmeStorage0 : NvmeStorage
 	generic map (
 		Simulate	=> False,			--! Generate simulation core
-		Platform	=> "Ultrascale",		--! The underlying target platform
+		Platform	=> Platform,			--! The underlying target platform
 		ClockPeriod	=> 4 ns,			--! Clock period for timers (250 MHz)
 		BlockSize	=> NvmeStorageBlockSize,	--! System block size
 		NumBlocksDrop	=> 2,				--! The number of blocks to drop at a time
