@@ -64,7 +64,7 @@ This section will outline the steps you must take when adding new build files to
 
 4. Add all IP (.xci) files specific to that board
 
-5. To Makefile, add the following new line to `all_targets`
+5. To Makefile, add the following new line to `all_targets`:
     `make -C vivado PROJECT=DuneNvme_<BOARD_NAME>_<Daughter_BOARD_NAME>`
     eg for KCU105 with DG AB17-M2FMC: 
     `make -C vivado PROJECT=DuneNvme_KCU105_DesignGateway`
