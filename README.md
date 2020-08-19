@@ -28,7 +28,7 @@ The directory contains build environments for the following FPGA/NVMe board conf
 ---
 ## Usage instructions
 1. Clone the git repo: 
-    `git clone --single-branch -branch allBuilds/master <GIT URL>`
+    `git clone --single-branch --branch allBuilds/master <GIT URL>`
 
 2. Change to the vivado directory: `cd vivado`
 
