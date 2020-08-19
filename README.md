@@ -54,23 +54,23 @@ The directory contains build environments for the following FPGA/NVMe board conf
 ## Adding New Board-Specific Build Designs
 This section will outline the steps you must take when adding new build files to the directory in order to be able to utilise the Makefile system.
 
-1. Go to src/ and add a new directory named <BOARD_NAME> (eg VCU118, KCU105)
+1. Go to src/ and add a new directory named `<BOARD_NAME>` (eg VCU118, KCU105)
 
 2. Add the **top level** VHDL files to this directory using the naming convention:
-    - *DuneNvmeTop.\** for Design Gateway AB17-M2FMC designs
-    - *DuneNvmeOpseroTop.\** for Opsero 047 designs
+    - `DuneNvmeTop.*` for Design Gateway AB17-M2FMC designs
+    - `DuneNvmeOpseroTop.*` for Opsero 047 designs
     
-3. Go to src/ip and add a new directory named <BOARD_NAME> (Ensure this is the **same name used in step 1**)
+3. Go to src/ip and add a new directory named `<BOARD_NAME>` (Ensure this is the **same name used in step 1**)
 
 4. Add all IP (.xci) files specific to that board
 
-5. To Makefile, add the following new line to *all_targets*
+5. To Makefile, add the following new line to `all_targets`
     `make -C vivado PROJECT=DuneNvme_<BOARD_NAME>_<Daughter_BOARD_NAME>`
     eg for KCU105 with DG AB17-M2FMC: 
     `make -C vivado PROJECT=DuneNvme_KCU105_DesignGateway`
     
 6. Go to vivado/ and edit Makefile to add the following new lines:
-    (see vviado/Makefile for examples)
+    (see vivado/Makefile for examples)
     ``` 
     ifeq (${BOARD_NAME}, <BOARD_NAME>)
         BOARD       ?= <BOARD_PART_ID>
@@ -78,9 +78,9 @@ This section will outline the steps you must take when adding new build files to
     endif 
     ```
     
-7. To vivado/Makefile, add the following new line to *all_targets*
+7. To vivado/Makefile, add the following new line to `all_targets`
     `make -C vivado PROJECT=DuneNvme_<BOARD_NAME>_<CARD>`
-    NOTE: Current <CARD> options are `Opsero` and `DesignGateway`
+    NOTE: Current `<CARD>` options are `Opsero` and `DesignGateway`
     
 8. Finally, add the build configuration option to this document
 
